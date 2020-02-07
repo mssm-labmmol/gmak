@@ -1,0 +1,30 @@
+To create the topologies, the following must be specified
+in the input file:
+
+    - A fixed .itp file for the molecule considered.
+
+    - The atomtypes relevant to the simulations.
+
+    - The c6,c12,cs6,cs12 parameters of these atomtypes.
+
+    - The atomtype in the parameters loop (the one that will
+      be altered), along with which parameters will be altered.
+      The program supports 'c6', 'c12', 'cs6', 'cs12' and
+      the values for the bi-dimensional loop are specified in
+      'start', 'step' and 'size'.
+      
+Example:
+--------
+
+$parameters
+itp          /path/to/itp
+atomtypes    CH2           CH3
+c6           1.0e-03       1.0e-03
+c12          1.0-e06       1.0e-06
+cs6          0.5e-03       0.5e-03
+cs12         0.5e-06       0.5e-06
+loop         CH2           c6        c12
+start                      1.00e-03  1.00e-06
+step                       0.05-03   0.05e-06
+size                       33        33
+$end

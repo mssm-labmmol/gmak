@@ -1,0 +1,11 @@
+#
+# make_top
+    
+    # file with atomic parameters (should be created by RunFromInput.py)
+    -f      filename
+
+    # itp file to be concatenated to force field (should be given as input)
+    -i      filename
+
+    # output topology
+    -o      filename
