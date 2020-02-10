@@ -1,11 +1,13 @@
 #
 # make_top
     
-    # file with atomic parameters (should be created by RunFromInput.py)
+    # input file with atomic parameters
+    # each line contains 
+    # ATOMTYPE    SQRT_C6    SQRT_C12    SQRT_CS6    SQRT_CS12
     -f      filename
 
-    # itp file to be concatenated to force field (should be given as input)
+    # input itp file concatenated to force field
     -i      filename
 
-    # output topology
+    # output topology file
     -o      filename

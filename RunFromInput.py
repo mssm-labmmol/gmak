@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import multiprocessing
+from parameters import * 
 from simulate import *
 from traj_filter import * 
 from traj_ana import *
@@ -157,8 +158,8 @@ class gridOptimizer:
             for prop in properties:
                 propValue = grid[x[0]].estimated_properties[prop].value
                 propErr   = grid[x[0]].estimated_properties[prop].err
-                fp.write("%8.2f%8.2f" % (propValue, propErr))
-            fp.write("%16.6f\n" % x[1])
+                fp.write("%8.4f%8.4f" % (propValue, propErr))
+            fp.write("%16.6e\n" % x[1])
         fp.close()
 
     def determineNextSample (self, grid):

@@ -18,6 +18,7 @@ Example:
 
 $parameters
 itp          /path/to/itp
+make_top     /path/to/make_top
 atomtypes    CH2           CH3
 c6           1.0e-03       1.0e-03
 c12          1.0-e06       1.0e-06

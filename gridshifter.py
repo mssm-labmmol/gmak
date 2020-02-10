@@ -1,5 +1,6 @@
 import os
 
+# creates (soft) symbolic link from target to link_name
 def create_symbolic_link (target, link_name):
     os.system ("ln -s %s %s" % (target, link_name))
 
@@ -108,7 +109,6 @@ class GridShifter:
                 gp.id = new_id
                 # and put in the new list
                 new_gridpoints[gp.id] = gp
-
         
         # For the rest of the list, create gridpoints.
         for i in range(grid.linear_size):
@@ -127,6 +127,7 @@ class GridShifter:
         if not (doWeShift(grid)):
             print ("Note: No need to shift the grid.")
             return
+        print ("Note: We are shifting the grid.")
         self.shift(grid, old_workdir, new_workdir)
 
 
