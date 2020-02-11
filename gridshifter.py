@@ -43,7 +43,7 @@ class GridShifter:
         thr  = int (self.ncut * grid.linear_size)
 
         for k in range(thr):
-            idx = self.stateScores[k][0]
+            idx = optimizer.stateScores[k][0]
             i   = int(idx / ny)
             j   = idx % ny
             cg_x += i
