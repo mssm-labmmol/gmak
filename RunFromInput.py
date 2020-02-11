@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import multiprocessing
+from gridshifter import * 
 from parameters import * 
 from simulate import *
 from traj_filter import * 
@@ -1169,6 +1170,8 @@ def initialize_from_input (input_file):
     output_protocolsHash = {}
     output_workdir = ""
     output_optimizer = gridOptimizer ()
+    output_gridshifter = GridShifter ()
+    output_paramLoop = ParameterLoop ()
     output_reweightHash = {}
     fp = open(input_file, "r")
     for line in fp:
@@ -1262,6 +1265,10 @@ def initialize_from_input (input_file):
                     exit()
         if (line.rstrip() == '$optimize'):
             output_optimizer.readFromStream (fp)
+        if (line.rstrip() == '$parameters'):
+            output_paramLoop.readFromStream (fp)
+        if (line.rstrip() == '$gridshift'):
+            output_gridshifter.readFromStream (fp)
         if (line.rstrip() == '$reweight'):
             for line in fp:
                 if line[0] == '#':
@@ -1273,7 +1280,8 @@ def initialize_from_input (input_file):
                 output_reweightHash[option] = value
     fp.close()
     return (output_workdir, output_grid, output_protocols, output_properties, \
-            output_protocolsHash, output_optimizer, output_reweightHash)
+            output_protocolsHash, output_optimizer, output_gridshifter,\
+            output_paramLoop, output_reweightHash)
 
 # **************************************************************************** #
 # *                                   MAIN                                   * #
@@ -1281,47 +1289,60 @@ def initialize_from_input (input_file):
 #
 if __name__ == "__main__":
     
-    (workdir, grid, protocols, properties, protocolsHash, optimizer, reweightHash) = \
+    (base_workdir, grid, protocols, properties, protocolsHash, optimizer, gridShifter, paramLoop, reweightHash) = \
             initialize_from_input (sys.argv[1])
 
-    nextSample = -1
+    for nshifts in range(gridShifter.maxshifts):
+        nGrid = nshifts + 1
+        nextSample = -1
+        for nsteps in range(optimizer.maxSteps):
+            if (nsteps != 0):
+                grid.add_sample(nextSample)
+            workdir = base_workdir + ("/grid_%d/" % nGrid)
+            thisRunOutputs = workdir + "/step_%d" % (nsteps+1)
+            os.system("mkdir -p %s" % thisRunOutputs)
 
-    for nsteps in range(optimizer.maxSteps):
+            # create the grid file
+            gridFile = workdir + "/grid.dat"
+            paramLoop.loop.write_parameter_grid_to_file(gridFile)
+            reweightHash['grid'] = gridFile
 
-        if (nsteps != 0):
-            grid.add_sample(nextSample)
+            # create itp files for each grid point
+            os.system("mkdir -p " + workdir + "/topo")
+            for gridpoint in grid.grid_points:
+                itpPathPreffix = workdir + "/topo/gp_%d" % (gridpoint.id)
+                paramLoop.create_full_itp_for_position (gridpoint.id, itpPathPreffix)
+                gridpoint.itp_path = itpPathPreffix + ".itp"
 
-        thisRunOutputs = workdir + "/step_%d" % (nsteps+1)
-        os.system("mkdir -p %s" % thisRunOutputs)
-
-        for protocol in protocols:
-            grid.make_grid_for_protocol (protocol, workdir + "/" + protocol.name, reweightHash)
-            # clean!
-            #grid.clean_reweight_residues(protocol)
-        #
-        for prop in properties:
-            referenceValue = optimizer.referenceValues[prop]
-            # Parameters: property name and a list of protocols used for this
-            # property.
-            grid.compute_final_properties(prop, protocolsHash[prop])
-            grid.save_property_values_to_file (prop, thisRunOutputs + '/' + prop + '_EA_k.dat')
-            grid.save_property_err_to_file (prop, thisRunOutputs + '/' + prop + '_dEA_k.dat')
-            grid.save_property_diff_to_file (prop, referenceValue, thisRunOutputs + '/' + prop + '_diff.dat')
+            for protocol in protocols:
+                grid.make_grid_for_protocol (protocol, workdir + "/" + protocol.name, reweightHash)
+                # clean!
+                #grid.clean_reweight_residues(protocol)
             #
-            grid.plot_property_to_file (prop, thisRunOutputs + "/" + prop + "_EA_k.pdf")
-            grid.plot_property_err_to_file (prop, thisRunOutputs + "/" + prop + "_dEA_k.pdf")
-            grid.plot_property_diff_to_file (prop, referenceValue, thisRunOutputs + "/" + prop + "_diff.pdf")
-        #
-        optimizer.fillWithScores (grid)
-        optimizer.printToFile (grid, thisRunOutputs + "/optimizer_data.dat")
-        nextSample = optimizer.determineNextSample (grid)
-
-
-        print "Next sample is %d"  % nextSample
-
-        if (nextSample == -1):
+            for prop in properties:
+                referenceValue = optimizer.referenceValues[prop]
+                # Parameters: property name and a list of protocols used for this
+                # property.
+                grid.compute_final_properties(prop, protocolsHash[prop])
+                grid.save_property_values_to_file (prop, thisRunOutputs + '/' + prop + '_EA_k.dat')
+                grid.save_property_err_to_file (prop, thisRunOutputs + '/' + prop + '_dEA_k.dat')
+                grid.save_property_diff_to_file (prop, referenceValue, thisRunOutputs + '/' + prop + '_diff.dat')
+                #
+                grid.plot_property_to_file (prop, thisRunOutputs + "/" + prop + "_EA_k.pdf")
+                grid.plot_property_err_to_file (prop, thisRunOutputs + "/" + prop + "_dEA_k.pdf")
+                grid.plot_property_diff_to_file (prop, referenceValue, thisRunOutputs + "/" + prop + "_diff.pdf")
+            #
+            optimizer.fillWithScores (grid)
+            optimizer.printToFile (grid, thisRunOutputs + "/optimizer_data.dat")
+            nextSample = optimizer.determineNextSample (grid)
+            print "Next sample is %d"  % nextSample
+            if (nextSample == -1):
+                break
+        new_workdir = base_workdir + "/grid_%d" % (nGrid+1)
+        if (gridShifter.apply (gridOptimizer, grid, workdir, new_workdir)):
+            print ("End of grid shift!")
             break
-
+                
     ## set things
     ##properties = ['density', 'potential']
     #mdps_liq = ["em_pme.mdp", "nvt_pme.mdp", "npt_pme.mdp", "md_pme.mdp"]

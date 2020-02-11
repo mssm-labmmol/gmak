@@ -1,12 +1,9 @@
 from math import sqrt
+import re
 
 class Atomtype:
 
-    def __init__ (self):
-        self.type = ""
-        self.parameters = {'c6': 0.00, 'c12': 0.00, 'cs6': 0.00, 'cs12': 0.00}
-
-    def __init__ (self, typestring):
+    def __init__ (self, typestring=""):
         self.type = typestring
         self.parameters = {'c6': 0.00, 'c12': 0.00, 'cs6': 0.00, 'cs12': 0.00}
 
@@ -22,16 +19,25 @@ class Atomtype:
     def decouple (self, parameterName):
         self.alter_parameter (parameterName, 0.0)
 
+    def __eq__ (self, other):
+        return (self.type == other.type)
+
 class LoopData:
     
     def __init__ (self):
         self.atomtype = Atomtype ()
+        self.start = {}
+        self.step = {}
+        self.size = {}
         self.start['c6']  = 0.00
         self.step['c6']   = 0.00
         self.size['c6']   = 0
         self.start['c12'] = 0.00
         self.step['c12']  = 0.00
         self.size['c12']  = 0
+
+    def get_linear_size (self):
+        return self.size['c6'] * self.size['c12']
 
     def set_members (self, atomtype, c6start, c6step, c6size, c12start, c12step, c12size):
         # this is an Atomtype instance
@@ -43,13 +49,37 @@ class LoopData:
         self.step['c12']  = c12step
         self.size['c12']  = c12size
 
-    def set_at_linear_position (self, position):
+    def calc_at_linear_position (self, position):
         c6_position = int(position / self.size['c12'])
         c12_position = position % self.size['c12']
         this_c6 = self.start['c6'] + c6_position * self.step['c6']
         this_c12 = self.start['c12'] + c12_position * self.step['c12']
+        return (this_c6, this_c12)
+
+    def set_at_linear_position (self, position):
+        (this_c6, this_c12) = calc_at_linear_position (position)
         self.atomtype.alter_parameter ('c6', this_c6)
         self.atomtype.alter_parameter ('c12', this_c12)
+
+    def write_parameter_grid_to_file (self, fn):
+        fp = open(fn, 'w')
+        for i in range(self.size['c6']):
+            for j in range(self.size['c12']):
+                c6 = self.start['c6'] + i * self.step['c6']
+                c12 = self.start['c12'] + j * self.step['c12']
+                fp.write("%18.7e%18.7e\n" % (c6,c12))
+        fp.close()
+
+    def set_new_center (self, new_center_linear_position):
+        if (self.size['c6'] % 2 == 0) or (self.size['c12'] % 2 == 0):
+            print ("Error: Grid sizes must be odd.")
+            exit()
+        (oldc6, oldc12) = calc_at_linear_position ( int((self.get_linear_size() - 1)/2) )
+        (newc6, newc12) = calc_at_linear_position ( new_center_linear_position )
+        shiftc6 = newc6 - oldc6
+        shiftc12 = newc12 - oldc12
+        self.start['c6'] += shiftc6
+        self.start['c12'] += shiftc12
 
 class ParameterLoop:
 
@@ -83,7 +113,7 @@ class ParameterLoop:
                     selfc12 = 0
                 if (decoupleFlag > 2):
                     selfc6   = 0
-            stream.write("%-20s%10d%10.2f%10.2f%18.7e%18.7e\n", at.type, 6, 0.0, 0.0, selfc6, selfc12)
+            stream.write("%-20s%10d%10.2f%10.2f%-10s%18.7e%18.7e\n" % (at.type, 6, 0.0, 0.0, "A", selfc6, selfc12))
         stream.write("\n[ nonbond_params ]\n")
         for at in self.atomtypes:
             selfc6  = at.parameters['c6']
@@ -99,7 +129,7 @@ class ParameterLoop:
                     selfc12_o = ato.parameters['c12']
                     c6 = sqrt(selfc6 * selfc6_o)
                     c12 = sqrt(selfc12 * selfc12_o)
-                    stream.write("%-20s%-20s%10d%18.7e%18.7e\n", at.type, ato.type, 1, c6, c12)
+                    stream.write("%-20s%-20s%10d%18.7e%18.7e\n" % (at.type, ato.type, 1, c6, c12))
         stream.write("\n[ pairtypes ]\n")
         for at in self.atomtypes:
             selfc6  = at.parameters['cs6']
@@ -110,7 +140,7 @@ class ParameterLoop:
                     selfc12_o = ato.parameters['cs12']
                     c6 = sqrt(selfc6 * selfc6_o)
                     c12 = sqrt(selfc12 * selfc12_o)
-                    stream.write("%-20s%-20s%10d%18.7e%18.7e\n", at.type, ato.type, 1, c6, c12)
+                    stream.write("%-20s%-20s%10d%18.7e%18.7e\n" % (at.type, ato.type, 1, c6, c12))
         stream.write("\n")
 
     # create a itp with the given decoupleFlag
@@ -122,17 +152,20 @@ class ParameterLoop:
             fp.write(fpi.read())
         fp.close()
 
-    # Move loop to position and create an itp file based on this position.
+    # Move loop to position and create all itp files based on this position.
     def create_full_itp_for_position (self, linear_position, output_preffix):
         self.loop.set_at_linear_position (linear_position)
-        self.create_itp (output_fn)
+        self.create_itp (output_preffix + ".itp", 0)
+        self.create_itp (output_preffix + "_0.itp", 0)
+        for i in range(1,5):
+            self.create_itp (output_preffix + "_%d.itp" % i, i)
 
     # This assumes a stream is given.
     #
     # It will read from stream until line with terminating string '$end' is 
     # found.
     #
-    def read_from_stream (self, stream):
+    def readFromStream (self, stream):
         starts = []
         steps  = []
         sizes  = []
@@ -167,9 +200,9 @@ class ParameterLoop:
                 # now set pars 
                 pars = splitted[2:]
             if (splitted[0] == 'start'):
-                starts = float(splitted[1:])
+                starts = [float(x) for x in splitted[1:]]
             if (splitted[0] == 'step'):
-                steps = float(splitted[1:])
+                steps = [float(x) for x in splitted[1:]]
             if (splitted[0] == 'size'):
-                size = int(splitted[1:])
+                sizes = [int(x) for x in splitted[1:]]
 

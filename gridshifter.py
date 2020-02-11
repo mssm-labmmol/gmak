@@ -1,4 +1,5 @@
 import os
+from parameter import * 
 
 # creates (soft) symbolic link from target to link_name
 def create_symbolic_link (target, link_name):
@@ -8,8 +9,9 @@ class GridShifter:
 
     def __init__ (self):
 
-        # Margins delimiting the border region.
-        self.margins = {}
+        # Margins delimiting the border region.  self.margins = {}
+        self.maxshifts = 0
+        self.nshifts   = 0
         self.margins['left'] = 0.10
         self.margins['right'] = 0.90
         self.margins['bottom'] = 0.10
@@ -21,7 +23,6 @@ class GridShifter:
 
         # Stores the CG.
         self.cg = (0,0)
-
 
     # Calculates CG of the best ncut percent points.
     # Returns it as a tuple.
@@ -57,6 +58,8 @@ class GridShifter:
 
     # With CG calculated, verify if we need to shift.
     def doWeShift (self, grid):
+        if (self.nshifts == self.maxshifts):
+            return False
         x = self.cg[0]
         y = self.cg[1]
         real_left = int(self.margins['left'] * grid.size[0])
@@ -70,13 +73,16 @@ class GridShifter:
         return False
 
     # Performs shifting operations.
-    def shift (self, grid, old_workdir, new_workdir):
+    def shift (self, grid, paramLoop, old_workdir, new_workdir):
 
         # Create directory of new grid.
         os.mkdir(new_workdir)
 
+        # Move paramLoop.
+        paramLoop.loop.set_new_center (self.cg[0]*grid.size[1] + self.cg[1])
+
         # Create a grid file containing the parameters.
-        # TODO
+        paramLoop.loop.write_parameter_grid_to_file (new_workdir + "/grid.dat")
 
         # Clean MBAR results.
         grid.hashOfMBAR = {}
@@ -120,14 +126,37 @@ class GridShifter:
         # Substitute the grid's gridpoints.
         grid.grid_points = new_gridpoints
 
+        # Now everything should be working.
+        return
+
 
     # Apply shifter, which means: shift if necessary, do nothing if not.
     def apply (self, optimizer, grid, old_workdir, new_workdir):
         self.calcCG(optimizer, grid)
         if not (doWeShift(grid)):
             print ("Note: No need to shift the grid.")
-            return
+            return False
         print ("Note: We are shifting the grid.")
         self.shift(grid, old_workdir, new_workdir)
+        self.nshifts += 1
+        return True
+
+
+    def readFromStream:
+        for line in stream:
+            if line[0] == '#':
+                continue
+            if (re.match(r"^\$end.*",line)):
+                return
+            splitted = line.split()
+            if (splitted[0] == 'margins'):
+                self.margins['left'] = float(splitted[1])
+                self.margins['right'] = float(splitted[2])
+                self.margins['bottom'] = float(splitted[3])
+                self.margins['top'] = float(splitted[4])
+            if (splitted[0] == 'ncut'):
+                self.ncut = float(splitted[1])
+            if (splitted[0] == 'maxshifts'):
+                self.maxshifts = int(splitted[1])
 
 
