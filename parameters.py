@@ -57,7 +57,7 @@ class LoopData:
         return (this_c6, this_c12)
 
     def set_at_linear_position (self, position):
-        (this_c6, this_c12) = calc_at_linear_position (position)
+        (this_c6, this_c12) = self.calc_at_linear_position (position)
         self.atomtype.alter_parameter ('c6', this_c6)
         self.atomtype.alter_parameter ('c12', this_c12)
 
@@ -113,7 +113,7 @@ class ParameterLoop:
                     selfc12 = 0
                 if (decoupleFlag > 2):
                     selfc6   = 0
-            stream.write("%-20s%10d%10.2f%10.2f%-10s%18.7e%18.7e\n" % (at.type, 6, 0.0, 0.0, "A", selfc6, selfc12))
+            stream.write("%-20s%10d%10.2f%10.2f%10s%18.7e%18.7e\n" % (at.type, 6, 0.0, 0.0, "A", selfc6, selfc12))
         stream.write("\n[ nonbond_params ]\n")
         for at in self.atomtypes:
             selfc6  = at.parameters['c6']

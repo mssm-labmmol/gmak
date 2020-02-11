@@ -1,0 +1,119 @@
+# specify workdir
+workdir run
+
+# Grid specification.
+$grid
+# Geometry.
+size 33 33 
+# Names of parameters.
+labels $C_6^{1/2}$ $C_{12}^{1/2}$
+# List of starting samples (zero-indexed).
+samples 170 181 192 533 544 555 896 907 918
+$end
+
+# Specification of parameters.
+$parameters
+itp          et.itp
+atomtypes    CH3
+c6           9.3471353e-03     
+c12          2.6379573e-05 
+cs6          0.0000000e+00
+cs12         0.0000000e+00
+loop         CH3           c6            c12
+start                      9.3471353e-03 2.6379573e-05
+step                       1.6667000e-05 1.6667000e-08
+size                       33        33
+$end
+
+# Protocols.
+
+# Liquid.
+$protocol
+type liquid
+name liq
+mdps mdp/em_pme.mdp mdp/nvt_pme.mdp mdp/npt_pme.mdp mdp/md_pme.mdp
+coords et.gro
+length 4.20
+nmols 512
+$end
+
+## Slab.
+#$protocol
+#type slab
+#name slab
+#mdps /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/mdp/em_slab.mdp /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/mdp/nvt_slab_eq.mdp /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/mdp/nvt_slab.mdp
+## This means that the initial coordinates will be taken from the corresponding
+## liquid simulation.
+#follow liq
+#$end
+
+# Gas.
+$protocol
+type gas
+name gas
+mdps /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/grids/et/mdp/em_gas.mdp /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/grids/et/mdp/sd_gas.mdp
+coords /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/coord/et.gro
+gasdipole 1.85
+# infinite polarizability ==> correction == NULL
+polarizability 1e+23
+$end
+
+# Properties.
+# Notation:
+# LP = Liquid protocol.
+# GP = Gas protocol.
+# SP = Slab protocol.
+# CORR = Corrections to dhvap (besides polarization).
+$compute
+# density LP
+density liq
+# dhvap   LP   GP   CORR
+dhvap liq gas 0.00
+$end
+
+# Grid optimization.
+#
+# The optimization stops when maxsteps is reached or when the best ncut percent
+# of the parameters are within the tolerance established for each property.
+#
+$optimize
+maxsteps 15
+ncut 0.90
+# prop    ref     wei  tol    
+density  546.0   1.0  0.4
+dhvap    14.7  1.0  0.1
+#gamma    72.0    1.0  2.0
+$end
+
+$gridshift
+maxshifts   10
+#       l    r     b   t     
+margins     0.15   0.85  0.15  0.85
+ncut        0.1
+$end
+
+
+# Reweighting specification.
+$reweight
+# Type can be 'standard' or 'fast'.
+#
+# fast
+# -----
+#
+# In fast reweighting, the number of dofs of the parameter space must be
+# specified in an additional option 'npars'. This number is used to determine
+# the number of extra *.itp files per state, calculated as 2*npars + 1. These
+# extra topologies *MUST* be named after the original *.itp files as
+# PREFFIX_N.itp, where PREFFIX.itp corresponds to the original *.itp file and N
+# runs from 0 to 2*NPARS.
+#
+# The parameters of the grid must also be supplied in a file specified in the
+# option 'parameters'. This file must contain the GRID_SIZE x NPARS matrix
+# specifying the parameters (typically C6 and C12) of each state.
+#
+# Finally, the path of the ANA_RW binary must be given in the 'program' option.
+#
+type fast
+npars 2
+program ../../bin/ana_rw_quiet
+$end

@@ -1305,12 +1305,12 @@ if __name__ == "__main__":
             # create the grid file
             gridFile = workdir + "/grid.dat"
             paramLoop.loop.write_parameter_grid_to_file(gridFile)
-            reweightHash['grid'] = gridFile
+            reweightHash['parameters'] = gridFile
 
             # create itp files for each grid point
             os.system("mkdir -p " + workdir + "/topo")
             for gridpoint in grid.grid_points:
-                itpPathPreffix = workdir + "/topo/gp_%d" % (gridpoint.id)
+                itpPathPreffix = workdir + "/topo/et_%d" % (gridpoint.id)
                 paramLoop.create_full_itp_for_position (gridpoint.id, itpPathPreffix)
                 gridpoint.itp_path = itpPathPreffix + ".itp"
 

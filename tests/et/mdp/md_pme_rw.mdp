@@ -1,0 +1,57 @@
+title               =  
+cpp                 =  
+;Define              = -DPOSRES
+; OPTIONS FOR BONDS     = 
+continuation         = yes ; Restarts after NPT
+constraints              = all-bonds
+;Type of constraint algorithm = lincs
+constraint-algorithm     = lincs
+; Do not constrain the start configuration = 
+; Relative tolerance of shake = 
+;tol                = 0.0001
+;tinit               =  66
+integrator          =  md
+dt                  =  0.002 ; ps!
+nsteps              = 500000 ; 5 ns (modified by Yan)
+;nsteps              = 500000 ; 5 ns (modified by Yan) 
+nstcomm             =  1
+;
+; Output control (modified by Yan)
+;
+nstxout         = 1         ; save coordinates every 20 ps
+nstvout         = 1         ; save velocities every 20 ps
+nstenergy       = 1          ; save energies every 5 ps
+nstlog          = 5          ; update log file every 10 ps
+nstxtcout       = 1          ; xtc every 5 ps
+;
+;
+nstlist = 5 ; generated automatically
+ns_type             =  grid
+cutoff-scheme = Verlet ; corrected
+rlist = 1.0 ; corrected
+pbc                 =  xyz
+coulombtype = cut-off ; special for alkanes
+vdwtype    =    PME
+rcoulomb = 1.0 ; corrected
+rvdw = 1.0 ; corrected
+fourierspacing      =  0.12
+fourier_nx          =  0
+fourier_ny          =  0
+fourier_nz          =  0
+pme_order           =  4
+ewald_rtol          =  1e-5
+;optmize_fft         =  yes
+; Berendsen temperature coupling is on
+Tcoupl              =  v_rescale
+tau_t               =  0.5 
+tc_grps             =  system  
+ref_t = 184.52
+; Isotropic pressure coupling is now on
+;Pcoupl              =  Parrinello-Rahman
+Pcoupl              =  Berendsen
+Pcoupltype          = isotropic
+tau_p               =  0.5
+compressibility     =  4.5e-5
+ref_p               =  1.0
+; Generate velocites is on at 310K.
+gen_vel             =  no

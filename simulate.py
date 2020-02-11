@@ -77,8 +77,9 @@ def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
     if not (os.path.isfile(outconf)):
         command = "gmx insert-molecules -ci %s -nmol %d -box %f %f %f -o %s" % (conf,nmols,box[0],box[1],box[2],outconf)
         os.system(command)
-    # make topology if not there
-    if not (os.path.isfile(outtop)):
+    # always make topology if not there
+    if True:
+    #if not (os.path.isfile(outtop)):
         molecule_name = get_molecule_name_from_itp(itp)
         fp = open(outtop, 'w')
         fp.write("#include \"%s\"\n" % itp)

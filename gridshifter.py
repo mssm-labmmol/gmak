@@ -1,5 +1,5 @@
 import os
-from parameter import * 
+from parameters import * 
 
 # creates (soft) symbolic link from target to link_name
 def create_symbolic_link (target, link_name):
@@ -12,6 +12,7 @@ class GridShifter:
         # Margins delimiting the border region.  self.margins = {}
         self.maxshifts = 0
         self.nshifts   = 0
+        self.margins = {}
         self.margins['left'] = 0.10
         self.margins['right'] = 0.90
         self.margins['bottom'] = 0.10
@@ -142,7 +143,7 @@ class GridShifter:
         return True
 
 
-    def readFromStream:
+    def readFromStream (self, stream):
         for line in stream:
             if line[0] == '#':
                 continue

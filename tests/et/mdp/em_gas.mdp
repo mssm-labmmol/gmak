@@ -1,0 +1,17 @@
+define         =  -DFLEXIBLE
+integrator     =  steep
+emtol          =  1.0
+nsteps         =  1000
+nstenergy      =  10
+nstxtcout      =  10
+xtc_grps       =  System
+energygrps     =  System
+nstlist        =  5
+ns_type        =  simple
+rlist          =  1.4
+rcoulomb       =  1.4
+rvdw           =  1.4
+coulombtype    =  cut-off
+vdwtype        =  cut-off
+cutoff-scheme  =  group
+pbc            =  no
