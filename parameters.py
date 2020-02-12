@@ -74,8 +74,8 @@ class LoopData:
         if (self.size['c6'] % 2 == 0) or (self.size['c12'] % 2 == 0):
             print ("Error: Grid sizes must be odd.")
             exit()
-        (oldc6, oldc12) = calc_at_linear_position ( int((self.get_linear_size() - 1)/2) )
-        (newc6, newc12) = calc_at_linear_position ( new_center_linear_position )
+        (oldc6, oldc12) = self.calc_at_linear_position ( int((self.get_linear_size() - 1)/2) )
+        (newc6, newc12) = self.calc_at_linear_position ( new_center_linear_position )
         shiftc6 = newc6 - oldc6
         shiftc12 = newc12 - oldc12
         self.start['c6'] += shiftc6

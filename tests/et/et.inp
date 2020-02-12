@@ -8,7 +8,8 @@ size 33 33
 # Names of parameters.
 labels $C_6^{1/2}$ $C_{12}^{1/2}$
 # List of starting samples (zero-indexed).
-samples 170 181 192 533 544 555 896 907 918
+#samples 170 181 192 533 544 555 896 907 918
+samples 170 181 192 429 525 529 533 544 555 558 896 907 918 956
 $end
 
 # Specification of parameters.
@@ -51,8 +52,8 @@ $end
 $protocol
 type gas
 name gas
-mdps /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/grids/et/mdp/em_gas.mdp /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/grids/et/mdp/sd_gas.mdp
-coords /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/coord/et.gro
+mdps mdp/em_gas.mdp mdp/sd_gas.mdp
+coords et.gro
 gasdipole 1.85
 # infinite polarizability ==> correction == NULL
 polarizability 1e+23
@@ -89,7 +90,7 @@ $gridshift
 maxshifts   10
 #       l    r     b   t     
 margins     0.15   0.85  0.15  0.85
-ncut        0.1
+ncut        0.01
 $end
 
 

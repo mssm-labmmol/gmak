@@ -591,17 +591,20 @@ class ParameterGrid:
                         out_file = workdir_mbar + \
                                 "/reweighted_properties/pV_%d_%d.xvg" % \
                                 (gi.id, j)
-                        obtain_property (xtc, edr, gro, tpr, "pV", out_file)
+                        # Do nothing if file exists.
+                        if not (os.path.isfile(out_file)):
+                            obtain_property (xtc, edr, gro, tpr, "pV", out_file)
                 # Calculate filtered properties to use in MBAR estimation.
                 for i_prop,prop in enumerate(properties):
                     out_file = workdir_mbar + \
                             "/filtered_properties/%s_%d.xvg" % \
                             (prop, gi.id)
-                    if (prop == 'polcorr'):
-                        obtain_polcorr (xtc, edr, gro, tpr, protocol.dipole,\
-                                protocol.polar, out_file)
-                    else:
-                        obtain_property (xtc, edr, gro, tpr, prop, out_file)
+                    if not (os.path.isfile(out_file)):
+                        if (prop == 'polcorr'):
+                            obtain_polcorr (xtc, edr, gro, tpr, protocol.dipole,\
+                                    protocol.polar, out_file)
+                        else:
+                            obtain_property (xtc, edr, gro, tpr, prop, out_file)
 
     def clean_reweight_with_protocol_at_dir (self, protocol, workdir, workdir_mbar):
         properties = protocol.get_properties()
@@ -1339,7 +1342,7 @@ if __name__ == "__main__":
             if (nextSample == -1):
                 break
         new_workdir = base_workdir + "/grid_%d" % (nGrid+1)
-        if (gridShifter.apply (gridOptimizer, grid, workdir, new_workdir)):
+        if not (gridShifter.apply (optimizer, paramLoop, grid, workdir, new_workdir)):
             print ("End of grid shift!")
             break
                 

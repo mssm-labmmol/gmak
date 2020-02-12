@@ -1,8 +1,10 @@
 import os
 from parameters import * 
+from RunFromInput import GridPoint
 
 # creates (soft) symbolic link from target to link_name
 def create_symbolic_link (target, link_name):
+    print ("Linking: ln -s %s %s" % (target, link_name))
     os.system ("ln -s %s %s" % (target, link_name))
 
 class GridShifter:
@@ -77,7 +79,7 @@ class GridShifter:
     def shift (self, grid, paramLoop, old_workdir, new_workdir):
 
         # Create directory of new grid.
-        os.mkdir(new_workdir)
+        os.system("mkdir -p " + new_workdir)
 
         # Move paramLoop.
         paramLoop.loop.set_new_center (self.cg[0]*grid.size[1] + self.cg[1])
@@ -96,21 +98,23 @@ class GridShifter:
             gp.rw_outputs = {}
             gp.estimated_properties = {}
             gp.atomic_properties = {}
+            i_center = int((grid.size[0] - 1)/2)
+            j_center = int((grid.size[1] - 1)/2)
             i = int(gp.id / grid.size[1])
             j = gp.id % grid.size[1]
-            new_i = i - self.cg[0]
-            new_j = j - self.cg[1]
+            new_i = i - (self.cg[0] - i_center)
+            new_j = j - (self.cg[1] - j_center)
             new_id = new_i * grid.size[1] + new_j 
             # Link from the directories of the old simulation results to 
             # new simulation results. There is no need to change the 
             # itp path, I think.
-            if (new_i >= 0) and (new_j >= 0):
+            if (new_i >= 0) and (new_i < grid.size[0]) and (new_j >= 0) and (new_j < grid.size[1]):
                 # loop over protocols
                 for prot in gp.protocol_outputs:
                     # create a link for each protocol
                     old_dir = old_workdir + ("/%s/simu/%d" % (prot,gp.id))
                     new_dir = new_workdir + ("/%s/simu/%d" % (prot,new_id))
-                    os.mkdir(new_workdir +  ("/%s/simu/" % prot))
+                    os.system("mkdir -p " + new_workdir + ("/%s/simu/" % prot))
                     create_symbolic_link(old_dir, new_dir)
                 # after linking, I can now change the id 
                 gp.id = new_id
@@ -120,8 +124,7 @@ class GridShifter:
         # For the rest of the list, create gridpoints.
         for i in range(grid.linear_size):
             if (new_gridpoints[i] == 0):
-                # TODO Here I should create the itp file based on the force
-                # field loop
+                itp_path = new_workdir + "grid.dat"
                 new_gridpoints[i] = GridPoint(itp_path, i)
         
         # Substitute the grid's gridpoints.
@@ -132,13 +135,13 @@ class GridShifter:
 
 
     # Apply shifter, which means: shift if necessary, do nothing if not.
-    def apply (self, optimizer, grid, old_workdir, new_workdir):
+    def apply (self, optimizer, paramLoop, grid, old_workdir, new_workdir):
         self.calcCG(optimizer, grid)
-        if not (doWeShift(grid)):
+        if not (self.doWeShift(grid)):
             print ("Note: No need to shift the grid.")
             return False
         print ("Note: We are shifting the grid.")
-        self.shift(grid, old_workdir, new_workdir)
+        self.shift(grid, paramLoop, old_workdir, new_workdir)
         self.nshifts += 1
         return True
 
