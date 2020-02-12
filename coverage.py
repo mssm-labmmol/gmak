@@ -1,10 +1,11 @@
 from math import sqrt 
+from os   import system
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # Cartesian Position
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-class CartesianPosition:
+class CartesianPosition (object):
 
     def __init__ (self, r):
         self.dim = len(r)
@@ -17,6 +18,7 @@ class CartesianPosition:
         out_str = "["
         for i in range(self.dim):
             out_str += "%10.3e" % self.r[i]
+        out_str += "]"
         return out_str 
 
     def __getitem__ (self,i):
@@ -44,14 +46,18 @@ class CartesianPosition:
 # VolumeElement
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-class VolumeElement:
+class VolumeElement (object):
 
     def __init__ (self, position, volume):
         self.position = position
         self.volume   = volume
+        self.dimension = position.dim
 
     def __eq__ (self,other):
         return ((self.volume == other.volume) and (self.position == other.position))
+
+    def __repr__ (self):
+        return self.position.__repr__()
 
     def get_volume (self):
         return self.volume
@@ -70,14 +76,14 @@ class VolumeElement:
         self.volume = self.volume * lengthInNewDirection
 
     def dimensional_stack (self, other):
-        newElement = VolumeElement (dimensional_stack(self.r,other.r), self.volume*other.volume)
+        newElement = VolumeElement (self.position.dimensional_stack(other.position), self.volume*other.volume)
         return newElement
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # VolumeRegion
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-class VolumeRegion:
+class VolumeRegion (object):
     
     def __init__ (self, dimension):
         self.elements = []
@@ -91,6 +97,17 @@ class VolumeRegion:
         for element in other.elements:
             newRegion.add_element(element)
         return newRegion
+
+    def __repr__ (self):
+        out_str = "[ region \n"
+        for el in self.elements:
+            out_str += "\t" + el.__repr__()  + "\n"
+        out_str += "]\n"
+        return out_str
+
+    def copy_from (self,other):
+        self.elements = other.elements
+        self.dimension = other.dimension
 
     def add_element (self, element):
         if element not in self.elements:
@@ -120,10 +137,10 @@ class VolumeRegion:
                         return mindist
         return mindist
 
-    def clone_radius_around_element (self, other, radius, i):
+    def clone_radius_around_element (self, radius, i):
         newRegion = VolumeRegion (self.dimension)
-        for el in other.elements:
-            if (el.is_within_distance_of(other.elements[i], radius)):
+        for el in self.elements:
+            if (el.is_within_distance_of(self.elements[i], radius)):
                 newRegion.add_element(el)
         return newRegion
 
@@ -138,27 +155,51 @@ class VolumeRegion:
     def cartesian_product (self, other):
         newRegion = VolumeRegion (self.dimension + other.dimension)
         for el_i in self.elements:
-            for el_j in self.elements:
+            for el_j in other.elements:
                 newRegion.add_element(el_i.dimensional_stack(el_j))
         return newRegion
 
-
 # CubicgridRegion: a special type of VolumeRegion
-class CubicgridRegion (VolumeRegion):
+class CubicgridRegion (VolumeRegion,object):
 
     def __init__ (self, nBoxesAtSide, boxLength, dimension):
-
         if (dimension == 1):
-            self = VolumeRegion (1)
+            super(CubicgridRegion,self).__init__(1)
             for i in range(nBoxesAtSide):
                 self.add_element(VolumeElement(CartesianPosition([i*boxLength]), boxLength))
-            return self
         else:
-            self = CubicgridRegion(nBoxesAtSide, boxLength, 1)
-            self.cartesian_product(CubicgridRegion(nBoxesAtSide, boxLength, dimension - 1))
+            self.__init__(nBoxesAtSide, boxLength, 1)
+            product = self.cartesian_product(CubicgridRegion(nBoxesAtSide, boxLength, dimension - 1))
+            # now translate to self, because cartesian_product returns a new element
+            self.copy_from(product)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # VolumePrinter (mainly for debugging)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+class VolumePrinter (object):
+
+    def __init__ (self):
+
+        self.fn = "/tmp/volumeprintertmpfile.tex"
+        self.stream = open(self.fn, "w")
+
+
+
+    def savefig (self, output):
+
+        self.stream.close()
+
+
+
+if __name__ == '__main__':
+    # test
+    mygrid = CubicgridRegion(33, 1.0, 2)
+    radiusaround = mygrid.clone_radius_around_element(3.3, 0)
+    radiusaround2 = mygrid.clone_radius_around_element(3.3, 544)
+    print(mygrid)
+    print(radiusaround)
+    print(mygrid.get_volume())
+    print(radiusaround.get_volume())
+    print(radiusaround.distance_to_region(radiusaround2))
 

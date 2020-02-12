@@ -4,8 +4,11 @@ from RunFromInput import GridPoint
 
 # creates (soft) symbolic link from target to link_name
 def create_symbolic_link (target, link_name):
-    print ("Linking: ln -s %s %s" % (target, link_name))
-    os.system ("ln -s %s %s" % (target, link_name))
+    if not (os.path.isdir(link_name)):
+        print ("Linking: ln -s %s %s" % (target, link_name))
+        os.system ("ln -s %s %s" % (target, link_name))
+    else:
+        print ("Warning: Link %s already exists.\n" % link_name)
 
 class GridShifter:
 

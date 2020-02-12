@@ -151,15 +151,15 @@ class gridOptimizer:
         properties = self.referenceTolerances.keys()
         fp.write("# %3s" % "id")
         for prop in properties:
-            fp.write("%8s" % prop)
-            fp.write("%8s" % "err")
+            fp.write("%12s" % prop)
+            fp.write("%12s" % "err")
         fp.write("%16s\n" % "score")
         for x in self.stateScores:
             fp.write("%5d" % x[0])
             for prop in properties:
                 propValue = grid[x[0]].estimated_properties[prop].value
                 propErr   = grid[x[0]].estimated_properties[prop].err
-                fp.write("%8.4f%8.4f" % (propValue, propErr))
+                fp.write("%12.4f%12.4f" % (propValue, propErr))
             fp.write("%16.6e\n" % x[1])
         fp.close()
 

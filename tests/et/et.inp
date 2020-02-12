@@ -78,7 +78,7 @@ $end
 # of the parameters are within the tolerance established for each property.
 #
 $optimize
-maxsteps 15
+maxsteps 1
 ncut 0.90
 # prop    ref     wei  tol    
 density  546.0   1.0  0.4
