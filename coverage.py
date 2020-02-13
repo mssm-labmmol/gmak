@@ -1,6 +1,8 @@
 from math import sqrt 
 from random import choice
+import time
 import os
+from vbga import *
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # Cartesian Position
@@ -97,10 +99,14 @@ class VolumeRegion (object):
         return self.elements[i]
 
     def __add__ (self, other):
+        global combineTime
+        startTime = time.time()
         newRegion = VolumeRegion(self.dimension)
         newRegion.copy_from(self)
         for element in other.elements:
             newRegion.add_element(element)
+        endTime = time.time()
+        combineTime += endTime - startTime
         return newRegion
 
     def __repr__ (self):
@@ -127,6 +133,13 @@ class VolumeRegion (object):
         for element in self.elements:
             out += element.get_volume()
         return out
+
+    def get_extension (self):
+        listOfX = [r[0] for r in self.elements]
+        listOfY = [r[1] for r in self.elements]
+        sizeX = max(listOfX) - min(listOfX)
+        sizeY = max(listOfY) - min(listOfY)
+        return sizeX*sizeY
 
     def distance_to_region (self, other):
         mindist = -1
@@ -263,8 +276,11 @@ class coverageIndividualBase (object):
 
 class coverageIndividual (object):
 
-    def __init__ (self, coverageBase, numberOfNewSamples):
-        self.numberOfNewSamples = numberOfNewSamples
+    def __init__ (self, coverageBase, maxNumberOfNewSamples):
+        global initTime
+        startTime = time.time()
+        self.volumeCalculated = -1
+        self.maxNumberOfNewSamples = maxNumberOfNewSamples
         self.influenceRadius = coverageBase.influenceRadius
         self.basicGrid = coverageBase.basicGrid
         # dictionary, keys are the numbers of the samples on which the regions are based
@@ -273,65 +289,90 @@ class coverageIndividual (object):
         # define oldRegions
         for i, sampleIndex in enumerate(coverageBase.samplesList):
             self.oldRegions[sampleIndex] = coverageBase.regions[i]
+        endTime = time.time()
+        initTime += endTime - startTime
 
     def randomize (self):
-        # clear
+        global randomizeTime
+        startTime = time.time()
         self.newRegions = {}
-        for _ in range(self.numberOfNewSamples):
+        numberOfNewRegions = choice(range(0, self.maxNumberOfNewSamples + 1))
+        for _ in range(numberOfNewRegions):
             newSample = -1
             while (newSample in self.oldRegions) or (newSample in self.newRegions) or (newSample == -1):
                 newSample = choice(range(self.basicGrid.size()))
             self.newRegions[newSample] = self.basicGrid.clone_radius_around_element(self.influenceRadius,newSample)
+        endTime = time.time()
+        randomizeTime = randomizeTime + (endTime - startTime)
+
+    def has_element (self, element):
+        for region in self.oldRegions.values():
+            if element in set(region):
+                return True
+        for region in self.newRegions.values():
+            if element in set(region):
+                return True
+        return False
 
     def get_grid_volume (self):
-        return self.basicGrid.get_volume()
+        global gridVolumeTime
+        startTime = time.time()
+        volume = self.basicGrid.get_volume()
+        endTime = time.time()
+        gridVolumeTime += endTime - startTime
+        return volume
 
     def get_volume (self):
+        global volumeCalcTime
+        startTime = time.time()
+        total = 0
+        if (self.volumeCalculated == -1):
+            for el in self.basicGrid:
+                if (self.has_element(el)):
+                    total += el.get_volume()
+            self.volumeCalculated = total
+        else:
+            total = self.volumeCalculated
+        endTime = time.time()
+        volumeCalcTime += (endTime - startTime)
+        return total
+
+    def get_extension (self):
         combinedRegion = VolumeRegion (self.basicGrid.dimension)
         for region in list(self.oldRegions.values()) + list(self.newRegions.values()):
             combinedRegion += region
-        return combinedRegion.get_volume()
+        return combinedRegion.get_extension()
 
     def get_unoccupied_volume (self):
         return (self.get_grid_volume() - self.get_volume())
+
+    def get_unoccupied_extension (self):
+        return (self.get_grid_volume() - self.get_extension())
         
     def fitness (self):
-        #volumeTerm = self.get_unoccupied_volume() / self.get_grid_volume()
-        #distanceTerm = 0
-        #selfDistanceTerm = 0
-        #count = 0
-        #for j in self.newRegions:
-        #    for i in self.oldRegions:
-        #        distanceTerm += self.oldRegions[i].distance_to_region(self.newRegions[j])
-        #        count += 1
-        #    for i in self.newRegions:
-        #        if (i != j):
-        #            distanceTerm += self.newRegions[i].distance_to_region(self.newRegions[j])
-        #            count +=1 
-        #distanceTerm /= count
-        #distanceTerm /= self.basicGrid.get_size_len()
-        #print ("%.4f %.4f %.10f" % (volumeTerm, distanceTerm, volumeTerm + distanceTerm))
-        #return (volumeTerm + distanceTerm)
-        wallTerm = 0
-        for i in self.newRegions:
-            wallTerm += 0.25 / (self.basicGrid[i][0] + self.influenceRadius)
-            wallTerm += 0.25 / (self.basicGrid[i][1] + self.influenceRadius)
-            wallTerm += 0.25 / (self.basicGrid.get_size_len() - self.basicGrid[i][0] + self.influenceRadius)
-            wallTerm += 0.25 / (self.basicGrid.get_size_len() - self.basicGrid[i][1] + self.influenceRadius)
-        wallTerm /= len(self.newRegions)
-        regionsTerm = 0
-        count = 0
-        for i in self.newRegions:
-            for j in self.oldRegions:
-                regionsTerm += 1.0 / (self.basicGrid[i].distance_to(self.basicGrid[j]))
-                count += 1
-            for j in self.newRegions:
-                if (j != i):
-                    regionsTerm += 1.0 / (self.basicGrid[i].distance_to(self.basicGrid[j]))
-                    count += 1
-        regionsTerm /= count
-        return wallTerm + regionsTerm - 0.1*len(self.newRegions)
-        
+        #global wasteTime
+        #relativeWeiInter = 1000
+        #volumeSum        = 0
+        #volume           = self.get_volume()
+        #wasteStart = time.time()
+        #for region in list(self.oldRegions.values()) + list(self.newRegions.values()):
+        #    volumeSum += region.get_volume()
+        #wasteEnd = time.time()
+        #wasteTime += (wasteEnd - wasteStart)
+        #intersectingVolume = volumeSum - volume
+        #unoccupiedVolume = self.get_grid_volume() - volume
+        #return (relativeWeiInter*intersectingVolume + unoccupiedVolume)
+        if (self.get_new_samples() == []):
+            return 5000000000
+        idx = list(self.newRegions.keys())[0]
+        energy = 0
+        for idx2 in list(self.oldRegions.keys()):
+            dist = self.basicGrid[idx].distance_to(self.basicGrid[idx2])
+            if (dist >= 2*self.influenceRadius):
+                energy += (dist - 2*self.influenceRadius)**2
+            if (dist < 2*self.influenceRadius):
+                energy += 100*(dist - 2*self.influenceRadius)**2
+        return energy
 
     def print_to_file (self, interface, fn):
         printer = VolumePrinter (interface)
@@ -341,14 +382,107 @@ class coverageIndividual (object):
         for newRegion in self.newRegions:
             printer.drawRegion(self.newRegions[newRegion], 1.0, 'black', 'red', 40, 100)
         printer.savefig(fn)
-     
 
-if __name__ == '__main__':
+    def get_new_samples (self):
+        return list(self.newRegions.keys())
 
+    def unset_volume (self):
+        self.volumeCalculated = -1
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# GA Functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+def SelectionMethod(population, selectionSize=10):
+    population.sort(key=lambda x: x.fitValue, reverse=False)
+    return population[:selectionSize]   #return 0,1,2....selectionSize
+
+def CrossoverMethod(father, mother, childOne, childTwo):
+    # select a new region at random in father and mother and swap them
+    # forming their childs
+    if (father.get_new_samples() == []) or (mother.get_new_samples() == []):
+        childOne = father
+        childTwo = mother
+        childOne.unset_volume()
+        childTwo.unset_volume()
+        return [childOne, childTwo]
+    fatherChoice = choice(list(father.newRegions.keys()))
+    motherChoice = choice(list(mother.newRegions.keys()))
+    copyFatherRegion = father.newRegions[fatherChoice]
+    copyMotherRegion = mother.newRegions[motherChoice]
+    childOne = father
+    childTwo = mother
+    del(childOne.newRegions[fatherChoice])
+    childOne.newRegions[motherChoice] = copyMotherRegion
+    del(childTwo.newRegions[motherChoice])
+    childTwo.newRegions[fatherChoice] = copyFatherRegion
+    childOne.unset_volume()
+    childTwo.unset_volume()
+    return [childOne, childTwo]
+
+def MutationMethod(mutant):
+    choices = ['add', 'delete']
+    chosen = choice(choices)
+    if (chosen == 'add'):
+        newSample = -1
+        while (newSample in mutant.oldRegions) or (newSample in mutant.newRegions) or (newSample == -1):
+            newSample = choice(range(mutant.basicGrid.size()))
+        mutant.newRegions[newSample] = mutant.basicGrid.clone_radius_around_element(mutant.influenceRadius, newSample)
+    if (chosen == 'delete'):
+        if (mutant.get_new_samples() != []):
+            deleteSample = choice(list(mutant.newRegions.keys()))
+            del(mutant.newRegions[deleteSample])
+    mutant.unset_volume()
+    return mutant
+
+def Fitness(individual):
+    global fitnessTime
+    startTime = time.time()
+    fitness = individual.fitness()
+    endTime = time.time()
+    fitnessTime += endTime - startTime
+    return fitness
+
+
+
+
+
+
+
+howManyNew = 16
+samples = [544]
+
+for kp in range(howManyNew):
     tikz = TikzInterface(1.0, 1.0)
-    base = coverageIndividualBase (33, 1, 2, [0,100,544,918], 3.3)
-    for i in range(100):
-        individual = coverageIndividual (base, choice([1,2,3,4,5,6,7,8,9,10]))
-        individual.randomize()
-        individual.print_to_file(tikz, "aha_%f.pdf" % individual.fitness())
+    globalGrid = coverageIndividualBase (33, 1, 2, samples, 4.8)
+    globalMaxSamples = 1
+    randomizeTime = 0
+    fitnessTime = 0
+    initTime = 0
+    gridVolumeTime = 0
+    combineTime = 0
+    volumeCalcTime = 0
+    wasteTime = 0
+
+    startTime = time.time()
+    myGA = VBGA(coverageIndividual, globalGrid, globalMaxSamples, Fitness, SelectionMethod, CrossoverMethod, 10, MutationMethod, 5, populationSize=50)
+    myGA.run(40)
+    endTime = time.time()
+
+    # Get best individual.
+    optind = myGA.getBest()
+    optind.print_to_file(tikz, "best_%d.pdf" % kp)
+    print optind.get_new_samples()
+
+    print ("TIMING")
+    print (" Total        : " + str(endTime - startTime))
+    print ("    Init      : " + str(initTime))
+    print ("    Randomizer: " + str(randomizeTime))
+    print ("    Fitness   : " + str(fitnessTime))
+    print ("        GridV : " + str(gridVolumeTime))
+    print ("        Volum : " + str(volumeCalcTime))
+    print ("      Combine : " + str(combineTime))
+    print ("        Waste : " + str(wasteTime))
         
+    samples.append(optind.get_new_samples()[0])
