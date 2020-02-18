@@ -7,7 +7,6 @@ from simulate import *
 from traj_filter import * 
 from traj_ana import *
 from reweight import * 
-from mbar_estimate import *
 from grid_ana import * 
 from coverage import *
 import numpy as np
@@ -15,6 +14,19 @@ import shlex
 import os
 import re
 import sys
+
+# For technical reasons, the pymbar modules in my local computer
+# and in the cluster are different (3.0.4 and 3.0.3, respectively).
+# These different versions also contain different and incompatible API
+# interfaces. To account for these differences, two mbar_estimate
+# modules are provided: a legacy module which is compatible with the old
+# pymbar version (to use in the cluster) and invoked with the '--legacy'
+# option; and a standard module which is compatible with the newer
+# pymbar versions and runs by default.
+if ('--legacy' in sys.argv):
+    from mbar_estimate_legacy import *
+else:
+    from mbar_estimate import *
 
 def reweightItpChanger (inputTopology, index, outputTopology):
     fp = open(inputTopology, 'r')

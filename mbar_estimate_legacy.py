@@ -103,10 +103,9 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
 
     mbar = pymbar.MBAR (u_kn, N_k)
     Eff_k = mbar.computeEffectiveSampleNumber()
-
     over = mbar.computeOverlap()
-    Eig_k = over['eigenvalues']
-    Mat_k = over['matrix']
+    Eig_k = over[1]
+    Mat_k = over[2]
 
     print "MBAR WEIGHTS"
     print mbar.getWeights()
@@ -127,10 +126,7 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
             for p in P:
                 A_kn.append(p)
         A_kn = np.array(A_kn)
-        mbarComputeOutput = mbar.computeExpectations(A_kn)
-
-        EA_k = mbarComputeOutput['mu']
-        dEA_k = mbarComputeOutput['sigma']
+        (EA_k, dEA_k) = mbar.computeExpectations(A_kn)
 
         # write files with results
         np.savetxt (out_preffixes[i] + "_EA_k.dat", EA_k)
@@ -177,8 +173,8 @@ def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, 
     mbar = pymbar.MBAR (u_kn, N_k)
     Eff_k = mbar.computeEffectiveSampleNumber()
     over = mbar.computeOverlap()
-    Eig_k = over['eigenvalues']
-    Mat_k = over['matrix']
+    Eig_k = over[1]
+    Mat_k = over[2]
 
     print "MBAR WEIGHTS"
     print mbar.getWeights()
@@ -199,10 +195,7 @@ def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, 
             for p in P:
                 A_kn.append(p)
         A_kn = np.array(A_kn)
-        mbarComputeOutput = mbar.computeExpectations(A_kn)
-
-        EA_k = mbarComputeOutput['mu']
-        dEA_k = mbarComputeOutput['sigma']
+        (EA_k, dEA_k) = mbar.computeExpectations(A_kn)
 
         # write files with results
         np.savetxt (out_preffixes[i] + "_EA_k.dat", EA_k)
