@@ -9,7 +9,8 @@ size 33 33
 labels $C_6^{1/2}$ $C_{12}^{1/2}$
 # List of starting samples (zero-indexed).
 #samples 170 181 192 533 544 555 896 907 918
-samples 170 181 192 429 525 529 533 544 555 558 896 907 918 956
+#samples 170 181 192 429 525 529 533 544 555 558 896 907 918 956
+samples 525 529 533 544 555 558
 $end
 
 # Specification of parameters.
@@ -93,6 +94,16 @@ margins     0.15   0.85  0.15  0.85
 ncut        0.01
 $end
 
+$gacover
+maxsamples 12
+nruns 10
+volfrac 0.85
+radius 4.80
+hardness 500
+popsize 200
+ngens 20
+#nostart
+$end
 
 # Reweighting specification.
 $reweight

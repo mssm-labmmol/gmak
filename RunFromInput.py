@@ -9,6 +9,7 @@ from traj_ana import *
 from reweight import * 
 from mbar_estimate import *
 from grid_ana import * 
+from coverage import *
 import numpy as np
 import shlex
 import os
@@ -376,7 +377,7 @@ class ParameterGrid:
     def __init__ (self):
         self.dim = 0
         self.size = []
-        self.linear_size = 0;
+        self.linear_size = 0
         self.distmatrix_path = ""
         self.grid_points = []
         # indexed by protocol
@@ -1162,11 +1163,6 @@ The properties estimated for this protocol are %s.
             self.dEA_k = out[:,1]
 
 def initialize_from_input (input_file):
-    # will return a tuple containing, in order:
-    # 0 = the grid
-    # 1 = the list of protocols
-    # 2 = specifications of grid optimization
-    # 3 = specifications of the reweighting procedure (a hash)
     output_grid = ParameterGrid ()
     output_protocols = []
     output_properties = []
@@ -1175,6 +1171,7 @@ def initialize_from_input (input_file):
     output_optimizer = gridOptimizer ()
     output_gridshifter = GridShifter ()
     output_paramLoop = ParameterLoop ()
+    output_gaCoverInterface = coverInterface ()
     output_reweightHash = {}
     fp = open(input_file, "r")
     for line in fp:
@@ -1272,6 +1269,8 @@ def initialize_from_input (input_file):
             output_paramLoop.readFromStream (fp)
         if (line.rstrip() == '$gridshift'):
             output_gridshifter.readFromStream (fp)
+        if (line.rstrip() == '$gacover'):
+            output_gaCoverInterface.readFromStream (fp)
         if (line.rstrip() == '$reweight'):
             for line in fp:
                 if line[0] == '#':
@@ -1284,7 +1283,7 @@ def initialize_from_input (input_file):
     fp.close()
     return (output_workdir, output_grid, output_protocols, output_properties, \
             output_protocolsHash, output_optimizer, output_gridshifter,\
-            output_paramLoop, output_reweightHash)
+            output_paramLoop, output_gaCoverInterface, output_reweightHash)
 
 # **************************************************************************** #
 # *                                   MAIN                                   * #
@@ -1292,12 +1291,22 @@ def initialize_from_input (input_file):
 #
 if __name__ == "__main__":
     
-    (base_workdir, grid, protocols, properties, protocolsHash, optimizer, gridShifter, paramLoop, reweightHash) = \
+    (base_workdir, grid, protocols, properties, protocolsHash, optimizer, gridShifter, paramLoop, gaCoverInterface, reweightHash) = \
             initialize_from_input (sys.argv[1])
 
     for nshifts in range(gridShifter.maxshifts):
         nGrid = nshifts + 1
         nextSample = -1
+
+        # At the start of every (shifted) grid, fill it using the genetic algorithm approach.
+        # If the $gacover block in the input file contains the 'nostart' directive, skip this for the initial grid.
+        if (nshifts > 0) or not (gaCoverInterface.noStart):
+            gaCoverInterface.prepareForRun(grid.get_samples_id(), grid.size[0])
+            gaNewSamples = gaCoverInterface.run()            
+            if (len(gaNewSamples) > 0):
+                for x in gaNewSamples:
+                    grid.add_sample(x)
+
         for nsteps in range(optimizer.maxSteps):
             if (nsteps != 0):
                 grid.add_sample(nextSample)

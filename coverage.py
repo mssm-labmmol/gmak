@@ -2,6 +2,7 @@ from math import sqrt
 from random import choice
 import time
 import os
+import re
 from vbga import *
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -434,6 +435,7 @@ class coverInterface (object):
         self.popSize = popSize
         self.nGens = nGens
         self.previousSamples = previousSamples[:]
+        self.noStart = False
         # base
         self.covBase = coverageIndividualBase (gridSize, 1, 2, previousSamples[:], self.radius, self.hardness)
 
@@ -490,7 +492,6 @@ class coverInterface (object):
         print ("Best optimal samples: " + str(chosenSamples))
         print ("END GACOVER RUN")
 
-
         return chosenSamples
 
     # stream is at a '$gacover' line
@@ -513,7 +514,10 @@ class coverInterface (object):
                 self.popSize = int(splitted[1])
             if (splitted[0] == 'ngens'):
                 self.nGens = int(splitted[1])
+            if (splitted[0] == 'nostart'):
+                self.noStart = True
         
-samples = [544]
-covInt = coverInterface (33, previousSamples=samples, maxSamples=15, nRuns=10, volFrac=0.85, hardness=500.00, radius=4.80, popSize=100, nGens=20)
-covInt.run()
+if __name__ == "__main__":
+    samples = [544]
+    covInt = coverInterface (33, previousSamples=samples, maxSamples=15, nRuns=10, volFrac=0.85, hardness=500.00, radius=4.80, popSize=100, nGens=20)
+    covInt.run()
