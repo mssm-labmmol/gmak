@@ -99,14 +99,10 @@ class VolumeRegion (object):
         return self.elements[i]
 
     def __add__ (self, other):
-        global combineTime
-        startTime = time.time()
         newRegion = VolumeRegion(self.dimension)
         newRegion.copy_from(self)
         for element in other.elements:
             newRegion.add_element(element)
-        endTime = time.time()
-        combineTime += endTime - startTime
         return newRegion
 
     def __repr__ (self):
@@ -264,24 +260,33 @@ class VolumePrinter (object):
 
 class coverageIndividualBase (object):
 
-    def __init__ (self, size, sideLength, dimension, samples, influenceRadius):
+    def __init__ (self, size, sideLength, dimension, samples, influenceRadius, hardness):
 
         self.influenceRadius = influenceRadius
+        self.size = size
         self.basicGrid = CubicgridRegion (size, sideLength, dimension)
         self.samplesList = samples
+        self.hardness = hardness
         self.regions = []
         for sample in samples:
             influenceRegion = self.basicGrid.clone_radius_around_element(influenceRadius,sample)
             self.regions.append(influenceRegion)
 
+    def addSample (self, sample):
+        self.samplesList.append(sample)
+        newInfluenceRegion = self.basicGrid.clone_radius_around_element(self.influenceRadius,sample)
+        self.regions.append(newInfluenceRegion)
+
+    def getSize (self):
+        return int(self.size)
+
 class coverageIndividual (object):
 
     def __init__ (self, coverageBase, maxNumberOfNewSamples):
-        global initTime
-        startTime = time.time()
         self.volumeCalculated = -1
         self.maxNumberOfNewSamples = maxNumberOfNewSamples
         self.influenceRadius = coverageBase.influenceRadius
+        self.hardness = coverageBase.hardness
         self.basicGrid = coverageBase.basicGrid
         # dictionary, keys are the numbers of the samples on which the regions are based
         self.oldRegions = {}
@@ -289,12 +294,8 @@ class coverageIndividual (object):
         # define oldRegions
         for i, sampleIndex in enumerate(coverageBase.samplesList):
             self.oldRegions[sampleIndex] = coverageBase.regions[i]
-        endTime = time.time()
-        initTime += endTime - startTime
 
     def randomize (self):
-        global randomizeTime
-        startTime = time.time()
         self.newRegions = {}
         numberOfNewRegions = choice(range(0, self.maxNumberOfNewSamples + 1))
         for _ in range(numberOfNewRegions):
@@ -302,8 +303,6 @@ class coverageIndividual (object):
             while (newSample in self.oldRegions) or (newSample in self.newRegions) or (newSample == -1):
                 newSample = choice(range(self.basicGrid.size()))
             self.newRegions[newSample] = self.basicGrid.clone_radius_around_element(self.influenceRadius,newSample)
-        endTime = time.time()
-        randomizeTime = randomizeTime + (endTime - startTime)
 
     def has_element (self, element):
         for region in self.oldRegions.values():
@@ -315,16 +314,10 @@ class coverageIndividual (object):
         return False
 
     def get_grid_volume (self):
-        global gridVolumeTime
-        startTime = time.time()
         volume = self.basicGrid.get_volume()
-        endTime = time.time()
-        gridVolumeTime += endTime - startTime
         return volume
 
     def get_volume (self):
-        global volumeCalcTime
-        startTime = time.time()
         total = 0
         if (self.volumeCalculated == -1):
             for el in self.basicGrid:
@@ -333,8 +326,6 @@ class coverageIndividual (object):
             self.volumeCalculated = total
         else:
             total = self.volumeCalculated
-        endTime = time.time()
-        volumeCalcTime += (endTime - startTime)
         return total
 
     def get_extension (self):
@@ -350,20 +341,8 @@ class coverageIndividual (object):
         return (self.get_grid_volume() - self.get_extension())
         
     def fitness (self):
-        #global wasteTime
-        #relativeWeiInter = 1000
-        #volumeSum        = 0
-        #volume           = self.get_volume()
-        #wasteStart = time.time()
-        #for region in list(self.oldRegions.values()) + list(self.newRegions.values()):
-        #    volumeSum += region.get_volume()
-        #wasteEnd = time.time()
-        #wasteTime += (wasteEnd - wasteStart)
-        #intersectingVolume = volumeSum - volume
-        #unoccupiedVolume = self.get_grid_volume() - volume
-        #return (relativeWeiInter*intersectingVolume + unoccupiedVolume)
         if (self.get_new_samples() == []):
-            return 5000000000
+            return 5000000000000000
         idx = list(self.newRegions.keys())[0]
         energy = 0
         for idx2 in list(self.oldRegions.keys()):
@@ -371,7 +350,7 @@ class coverageIndividual (object):
             if (dist >= 2*self.influenceRadius):
                 energy += (dist - 2*self.influenceRadius)**2
             if (dist < 2*self.influenceRadius):
-                energy += 100*(dist - 2*self.influenceRadius)**2
+                energy += self.hardness*(dist - 2*self.influenceRadius)**2
         return energy
 
     def print_to_file (self, interface, fn):
@@ -385,6 +364,9 @@ class coverageIndividual (object):
 
     def get_new_samples (self):
         return list(self.newRegions.keys())
+
+    def get_total_number_of_samples (self):
+        return len(list(self.newRegions.keys()) + list(self.oldRegions.keys()))
 
     def unset_volume (self):
         self.volumeCalculated = -1
@@ -437,52 +419,101 @@ def MutationMethod(mutant):
     return mutant
 
 def Fitness(individual):
-    global fitnessTime
-    startTime = time.time()
     fitness = individual.fitness()
-    endTime = time.time()
-    fitnessTime += endTime - startTime
     return fitness
 
 
+class coverInterface (object):
+
+    def __init__ (self, gridSize=0, previousSamples=[], maxSamples=0, nRuns=0, volFrac=0.85, hardness=500.00, radius=4.80, popSize=200, nGens=500):
+        self.maxSamples = maxSamples
+        self.nRuns = nRuns
+        self.volFrac = volFrac
+        self.hardness = hardness
+        self.radius = radius
+        self.popSize = popSize
+        self.nGens = nGens
+        self.previousSamples = previousSamples[:]
+        # base
+        self.covBase = coverageIndividualBase (gridSize, 1, 2, previousSamples[:], self.radius, self.hardness)
+
+    def clear (self):
+        self.previousSamples = []
+
+    def prepareForRun (self, samplesList, gridSize):
+        self.clear()
+        self.previousSamples = samplesList[:]
+        self.covBase = coverageIndividualBase (gridSize, 1, 2, samplesList[:], self.radius, self.hardness)
+
+    def run (self):
+        chosenSamples = []
+        bestRun = -1
+        sumTimes = 0
+
+        print ("BEGIN GACOVER RUN")
+        for irun in range(self.nRuns):
+            self.prepareForRun(self.previousSamples, self.covBase.getSize())
+            startTime = time.time()
+            bestVolFrac = -1
+            thisVolFrac = -1
+            numberOfSamples = len(self.previousSamples)
+            addedSamples = []
+            while (thisVolFrac < self.volFrac) and (numberOfSamples < self.maxSamples):
+                # Run GA and get best volFrac and numberOfNewSamples.
+                myGA = VBGA(coverageIndividual, self.covBase, 1, Fitness, SelectionMethod, CrossoverMethod, 10, MutationMethod, 5, self.popSize)
+                myGA.run(self.nGens)
+                # Get best individual.
+                optind = myGA.getBest()
+                newSamples = optind.get_new_samples()
+                numberOfSamples = optind.get_total_number_of_samples()
+                numberOfNewSamples = len(newSamples)
+                thisVolFrac = float(optind.get_volume()) / float(optind.get_grid_volume())
+                if numberOfNewSamples > 0:
+                    addedSamples += newSamples
+                    self.covBase.addSample (newSamples[0])
+            thisTime = (time.time() - startTime)
+            sumTimes += thisTime
+            if (thisVolFrac > bestVolFrac):
+                bestVolFrac = thisVolFrac
+                chosenSamples = addedSamples[:]
+                bestRun = irun
+            try:
+                tikz = TikzInterface (1.0, 1.0)
+                optind.print_to_file(tikz, "gacover_%d.pdf" % (irun+1))
+            except:
+                print("Warning: An exception occurred while printing a cover grid to a file.")
+            print ("\t---> GACOVER RUN %d --------> Time spent: %d s" % (irun+1, int(thisTime)))
+            print ("\t                    --------> Volume fraction covered: %f" % (thisVolFrac))
+            print ("\t                    --------> Optimal samples: " + str(addedSamples))
+        print ("Total time spent: %d s" % sumTimes)
+        print ("Best volume fraction covered: %f" % bestVolFrac)
+        print ("Best optimal samples: " + str(chosenSamples))
+        print ("END GACOVER RUN")
 
 
+        return chosenSamples
 
-
-
-howManyNew = 16
-samples = [544]
-
-for kp in range(howManyNew):
-    tikz = TikzInterface(1.0, 1.0)
-    globalGrid = coverageIndividualBase (33, 1, 2, samples, 4.8)
-    globalMaxSamples = 1
-    randomizeTime = 0
-    fitnessTime = 0
-    initTime = 0
-    gridVolumeTime = 0
-    combineTime = 0
-    volumeCalcTime = 0
-    wasteTime = 0
-
-    startTime = time.time()
-    myGA = VBGA(coverageIndividual, globalGrid, globalMaxSamples, Fitness, SelectionMethod, CrossoverMethod, 10, MutationMethod, 5, populationSize=50)
-    myGA.run(40)
-    endTime = time.time()
-
-    # Get best individual.
-    optind = myGA.getBest()
-    optind.print_to_file(tikz, "best_%d.pdf" % kp)
-    print optind.get_new_samples()
-
-    print ("TIMING")
-    print (" Total        : " + str(endTime - startTime))
-    print ("    Init      : " + str(initTime))
-    print ("    Randomizer: " + str(randomizeTime))
-    print ("    Fitness   : " + str(fitnessTime))
-    print ("        GridV : " + str(gridVolumeTime))
-    print ("        Volum : " + str(volumeCalcTime))
-    print ("      Combine : " + str(combineTime))
-    print ("        Waste : " + str(wasteTime))
+    # stream is at a '$gacover' line
+    def readFromStream (self, stream):
+        for line in stream:
+            if line[0] == '#':
+                continue
+            if (re.match(r"^\$end.*",line)):
+                return
+            splitted = line.split()
+            if (splitted[0] == 'maxsamples'):
+                self.maxSamples = int(splitted[1])
+            if (splitted[0] == 'nruns'):
+                self.nRuns = int(splitted[1])
+            if (splitted[0] == 'volfrac'):
+                self.volFrac = float(splitted[1])
+            if (splitted[0] == 'radius'):
+                self.radius = float(splitted[1])
+            if (splitted[0] == 'popsize'):
+                self.popSize = int(splitted[1])
+            if (splitted[0] == 'ngens'):
+                self.nGens = int(splitted[1])
         
-    samples.append(optind.get_new_samples()[0])
+samples = [544]
+covInt = coverInterface (33, previousSamples=samples, maxSamples=15, nRuns=10, volFrac=0.85, hardness=500.00, radius=4.80, popSize=100, nGens=20)
+covInt.run()
