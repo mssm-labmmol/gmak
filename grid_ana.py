@@ -6,9 +6,14 @@
 #
 
 import numpy as np
-import matplotlib as mtp
-import matplotlib.pyplot as plt
-from   matplotlib.colors import LinearSegmentedColormap
+try:
+    import matplotlib as mtp
+    import matplotlib.pyplot as plt
+    from   matplotlib.colors import LinearSegmentedColormap
+except ImportError:
+    print ("Could not import matplotlib, please make sure you don't")
+    print ("want to plot anything.")
+
 
 # This function plots a generic grid into a matplotlib axis.
 #
