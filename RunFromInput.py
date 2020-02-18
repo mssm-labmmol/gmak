@@ -1352,9 +1352,10 @@ if __name__ == "__main__":
                 grid.save_property_err_to_file (prop, thisRunOutputs + '/' + prop + '_dEA_k.dat')
                 grid.save_property_diff_to_file (prop, referenceValue, thisRunOutputs + '/' + prop + '_diff.dat')
                 #
-                grid.plot_property_to_file (prop, thisRunOutputs + "/" + prop + "_EA_k.pdf")
-                grid.plot_property_err_to_file (prop, thisRunOutputs + "/" + prop + "_dEA_k.pdf")
-                grid.plot_property_diff_to_file (prop, referenceValue, thisRunOutputs + "/" + prop + "_diff.pdf")
+                if not ('--noplot' in sys.argv):
+                    grid.plot_property_to_file (prop, thisRunOutputs + "/" + prop + "_EA_k.pdf")
+                    grid.plot_property_err_to_file (prop, thisRunOutputs + "/" + prop + "_dEA_k.pdf")
+                    grid.plot_property_diff_to_file (prop, referenceValue, thisRunOutputs + "/" + prop + "_diff.pdf")
             #
             optimizer.fillWithScores (grid)
             optimizer.printToFile (grid, thisRunOutputs + "/optimizer_data.dat")
