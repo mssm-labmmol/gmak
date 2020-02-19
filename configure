@@ -1,0 +1,21 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+MKFILE=${DIR}/Makefile.in
+PREFIX=${DIR}/bin
+for i in "$@"
+do
+    case $i in
+        --prefix=*)
+            PREFIX="${i#*=}"
+            shift 
+            ;;
+        *)
+            echo "Can't parse $i"
+            exit
+            ;;
+    esac
+done
+sed -e "s:_PREFIX_:${PREFIX}:" \
+    -e "s:_SRCDIR_:${DIR}:" \
+    ${MKFILE} > Makefile
