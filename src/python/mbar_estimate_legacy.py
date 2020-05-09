@@ -70,6 +70,7 @@ def prepare_mbar (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_out):
 
     return (N_k, u_kn)
 
+# modified for reweighting by yMHG qua abr 29 21:12:58 -03 2020
 def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_out, eff_out, eig_out, mat_out, prop_matrix, out_preffixes):
 
     u_matrix = np.array(u_matrix)
@@ -96,8 +97,9 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
     # create path if it does not exist
     os.system("mkdir -p " + path_of_preffix)
 
-    M = len(prop_matrix[:,0])
-    N = len(prop_matrix[0,:])
+    M = prop_matrix.shape[0] # number of properties
+    K = prop_matrix.shape[1] # total number of states
+    N = prop_matrix.shape[2] # number of sampled states 
 
     (N_k, u_kn) = prepare_mbar (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_out)
 
@@ -118,15 +120,23 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
     out = [["" for j in range(2)] for i in range(M)]
     out_values = [[0.0 for j in range(2)] for i in range(M)]
 
+    # yMHG qua abr 29 19:56:39 -03 2020
+    # each A_kn matrix used in MBAR must be NSTATES x NCONFIGURATION
+    # i.e. A_kn[i,j] is property A evaluated at state i for j-th configuration
     # for each property
     for i in range(M):
         A_kn = []
-        for j in range(N):
-            P = np.loadtxt(prop_matrix[i,j], usecols=(1,), comments=['#','@'])
-            for p in P:
-                A_kn.append(p)
+        # for each state
+        for j in range(K):
+            P = []
+            # for each sampled state
+            for k in range(N):
+                P += np.loadtxt(prop_matrix[i,j,k], usecols=(1,), comments=['#','@']).tolist()
+            # now P contains all reweighted samples concatenated
+            A_kn.append(P)
+               
         A_kn = np.array(A_kn)
-        (EA_k, dEA_k) = mbar.computeExpectations(A_kn)
+        (EA_k, dEA_k) = mbar.computeExpectations(A_kn, state_dependent=True)
 
         # write files with results
         np.savetxt (out_preffixes[i] + "_EA_k.dat", EA_k)
@@ -140,7 +150,7 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
 
     return np.array(out_values)
 
-
+# modified for reweighting by yMHG qua abr 29 21:13:10 -03 2020
 def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, eff_out, eig_out, mat_out, prop_matrix, out_preffixes):
 
     u_matrix = np.array(u_matrix)
@@ -165,8 +175,10 @@ def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, 
     # create path if it does not exist
     os.system("mkdir -p " + path_of_preffix)
 
-    M = len(prop_matrix[:,0])
-    N = len(prop_matrix[0,:])
+    M = prop_matrix.shape[0] # number of properties
+    K = prop_matrix.shape[1] # total number of states
+    N = prop_matrix.shape[2] # number of sampled states 
+
 
     (N_k, u_kn) = prepare_mbar_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out)
 
@@ -187,15 +199,23 @@ def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, 
     out = [["" for j in range(2)] for i in range(M)]
     out_values = [[0.0 for j in range(2)] for i in range(M)]
 
+    # yMHG qua abr 29 19:56:39 -03 2020
+    # each A_kn matrix used in MBAR must be NSTATES x NCONFIGURATION
+    # i.e. A_kn[i,j] is property A evaluated at state i for j-th configuration
     # for each property
     for i in range(M):
         A_kn = []
-        for j in range(N):
-            P = np.loadtxt(prop_matrix[i,j], usecols=(1,), comments=['#','@'])
-            for p in P:
-                A_kn.append(p)
+        # for each state
+        for j in range(K):
+            P = []
+            # for each sampled state
+            for k in range(N):
+                P += np.loadtxt(prop_matrix[i,j,k], usecols=(1,), comments=['#','@']).tolist()
+            # now P contains all reweighted samples concatenated
+            A_kn.append(P)
+                
         A_kn = np.array(A_kn)
-        (EA_k, dEA_k) = mbar.computeExpectations(A_kn)
+        (EA_k, dEA_k) = mbar.computeExpectations(A_kn, state_dependent=True)
 
         # write files with results
         np.savetxt (out_preffixes[i] + "_EA_k.dat", EA_k)

@@ -579,9 +579,10 @@ class ParameterGrid:
                     listOfPotentialFiles.append(outPotential)
                     # Get the potential energy of the reweighted trajectory.
                     obtain_property (xtc, edr, gro, tpr, 'potential', outPotential)
-
+                            
+                    
                 # Run the reweighing program to obtain the reweighted potential
-                # energies.
+                # energies. This will always be necessary for MBAR.
                 filesArg = " ".join(listOfPotentialFiles)
                 fileGrid = reweightHash['parameters']
                 anaRwBinary = reweightHash['program']
@@ -591,13 +592,15 @@ class ParameterGrid:
                 os.system("mkdir -p %s/reweighted_properties/" % workdir_mbar)
                 os.system(command)
 
+
+                # Reweight other properties.
                 # Redefine variables.
                 # Note that rw = 0 corresponds to reweighting in the original state.
-                gi  = gp
                 xtc = preReweightOutputs[0]['xtc']
                 edr = preReweightOutputs[0]['edr']
                 tpr = preReweightOutputs[0]['tpr']
                 gro = preReweightOutputs[0]['gro']
+                gi  = gp
                 # Calculate pV if necessary -- it is the same for all reweighted states.
                 if (protocol.has_pv()):
                     for j,gp_other in enumerate(self.grid_points):
@@ -607,7 +610,8 @@ class ParameterGrid:
                         # Do nothing if file exists.
                         if not (os.path.isfile(out_file)):
                             obtain_property (xtc, edr, gro, tpr, "pV", out_file)
-                # Calculate filtered properties to use in MBAR estimation.
+                                
+                # Calculate filtered properties.
                 for i_prop,prop in enumerate(properties):
                     out_file = workdir_mbar + \
                             "/filtered_properties/%s_%d.xvg" % \
@@ -703,10 +707,42 @@ class ParameterGrid:
             print "|\n|\n|\n|\n|\n|ERROR: Reweight type must be 'standard' or 'fast'."
             return
 
+        # reweight properties of interest besides potential and pV
+        # args are list of properties
+        # samples - grid point objects
+        # directory where filtered properties are found
+        # directory where reweighted properties will be saved
+        self.reweight_mechanical_properties(protocol.properties,
+                        self.get_samples(),
+                        mbar_dir + "/filtered_properties/",
+                        mbar_dir + "/reweighted_properties/")
+
         # estimate 
         mbar = MBARControl (self, protocol, reweightHash, mbar_dir)
         mbar.estimate ()
         self.hashOfMBAR[protocol.name] = mbar
+
+
+    def reweight_mechanical_properties (self, properties, samples_gp, filter_dir, rw_dir):
+        for prop in properties:
+            # first, ignore potential and pV because they were dealt with in reweighting
+            if (prop == 'potential') or (prop == 'pV'):
+                continue
+            elif (prop == 'density') or (prop == 'polcorr'):
+                # same for all states
+                for gp in samples_gp:
+                    id = gp.id
+                    input_file = "%s/%s_%d.xvg" % (filter_dir, prop, id)
+                    for j in range(len(self.grid_points)):
+                        out_file = "%s/%s_%d_%d.xvg" % (rw_dir, prop, id, j)
+                        os.system("cp %s %s" % (input_file, out_file))
+            elif (prop == 'gamma'):
+                # something needs to be done
+                print ("ERROR: Property " + prop + " is not implemented.")
+                exit()                
+            else:
+                print ("ERROR: Property " + prop + " is not implemented.")
+                exit()
 
     def compute_final_properties (self, prop, propProtocols):
         for gp in self.grid_points:
@@ -1057,7 +1093,8 @@ class MBARControl:
                 range(parameter_grid.linear_size)]
         self.temp = protocol.get_temperature()
         self.workdir = os.path.abspath(workdir)
-        self.prop_matrix = [["" for i in range(self.n_samples)]\
+        # prop_matrix now has dimensions of NPROPS x NSAMPLES x NSAMPLEDSTATES | yMHG qua abr 29 21:47:16 -03 2020
+        self.prop_matrix = [[["" for k in range(self.n_samples)] for i in range(len(parameter_grid.grid_points))]\
                 for j in range(len(protocol.get_properties()))]
         self.properties = protocol.get_properties()
 
@@ -1124,29 +1161,33 @@ The properties estimated for this protocol are %s.
         # Create property files.
         for i_prop,prop in enumerate(self.properties):
             for gi in self.parameter_grid.grid_points:
-                if gi.is_sample:
-                    gi_id = self.parameter_grid.get_samples().index(gi)
-                    out_file = self.workdir + \
-                            "/filtered_properties/%s_%d.xvg" % \
-                            (prop, gi.id)
-                    if not (os.path.isfile(out_file)):
-                        xtc = gi.rw_outputs[gi.id][self.protocol.name]['xtc']
-                        edr = gi.rw_outputs[gi.id][self.protocol.name]['edr']
-                        tpr = gi.rw_outputs[gi.id][self.protocol.name]['tpr']
-                        gro = gi.rw_outputs[gi.id][self.protocol.name]['gro']
-                        print "Getting %s from %d and storing in %s." % \
-                        (prop, gi.id, out_file)
-                        # get
-                        if (prop == 'polcorr'):
-                            obtain_polcorr (xtc, edr, gro, tpr, self.protocol.dipole,\
-                                    self.protocol.polar, out_file)
-                        else:
-                            obtain_property (xtc, edr, gro, tpr, prop, out_file)
-                        # fill matrix
-                        print "Filling position %d,%d for array of shape %s" % (i_prop, gi_id, np.array(self.prop_matrix).shape)
-                        self.prop_matrix[i_prop][gi_id] = out_file
-                    else:
-                        self.prop_matrix[i_prop][gi_id] = out_file
+                for gj in self.parameter_grid.grid_points:
+                    if gi.is_sample:
+                        gi_id = self.parameter_grid.get_samples().index(gi)                        
+                        out_file = self.workdir + \
+                            "/reweighted_properties/%s_%d_%d.xvg" % \
+                            (prop, gi.id, gj.id)
+		        if not (os.path.isfile(out_file)):
+			    # error, I am no longer calculating properties in here | yMHG qua abr 29 21:46:08 -03 2020
+			    print "ERROR: You are inside MBAR but reweighted properties have not been calculated."
+			    exit()
+			    #xtc = gi.rw_outputs[gi.id][self.protocol.name]['xtc']
+			    #edr = gi.rw_outputs[gi.id][self.protocol.name]['edr']
+			    #tpr = gi.rw_outputs[gi.id][self.protocol.name]['tpr']
+			    #gro = gi.rw_outputs[gi.id][self.protocol.name]['gro']
+			    #print "Getting %s from %d and storing in %s." % \
+			        #(prop, gi.id, out_file)
+			    ## get
+			    #if (prop == 'polcorr'):
+			    #    obtain_polcorr (xtc, edr, gro, tpr, self.protocol.dipole,\
+			        #		 self.protocol.polar, out_file)
+			    #else:
+			    #    obtain_property (xtc, edr, gro, tpr, prop, out_file)
+			    # fill matrix
+			    #print "Filling position %d,%d for array of shape %s" % (i_prop, gi_id, np.array(self.prop_matrix).shape)
+			    #self.prop_matrix[i_prop][gi_id] = out_file
+		        else:
+			    self.prop_matrix[i_prop][gj.id][gi_id] = out_file
 
         # Actually estimate.
         # There are two cases: with and without pV.
@@ -1173,6 +1214,8 @@ The properties estimated for this protocol are %s.
                     self.prop_matrix, out_preffixes)
             self.EA_k = out[:,0]
             self.dEA_k = out[:,1]
+
+# - end of MBARControl class            
 
 def initialize_from_input (input_file):
     output_grid = ParameterGrid ()

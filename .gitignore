@@ -1,2 +1,3 @@
+Makefile
 *.pyc
 tests/et/run/*
