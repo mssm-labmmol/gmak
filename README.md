@@ -4,6 +4,7 @@
 ## Improvements
 
 - python3 compatibility
+- allow specifying ```gmx``` path
 - ```make test``` for all tests
 
 ## Tests
