@@ -1,6 +1,8 @@
 prefix = _PREFIX_
 srcdir = _SRCDIR_/src
 bindir = $(prefix)
+testdir = $(srcdir)/tests
+pythoncmd = _PYTHON_
 
 ana_rw_cpp = -DQUIET
 ana_rw_lib = -lm -fopenmp
@@ -12,8 +14,16 @@ all: prepare ana_rw python
 prepare:
 	mkdir -p $(bindir)
 
+prepare_tests:
+	cp -r $(testdir) .
+
 ana_rw: $(ana_rw_source)
 	gcc $(ana_rw_cpp) $(ana_rw_source) -o $(bindir)/ana_rw_quiet $(ana_rw_lib)
 
 python: $(python_source)
 	cp $^ $(bindir)/
+
+test_surrogate_model: 
+	cd tests/surrogate_model/ && $(pythoncmd) tests.py 
+
+test: prepare_tests test_surrogate_model
