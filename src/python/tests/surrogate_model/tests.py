@@ -15,16 +15,13 @@ class TestMBAR(unittest.TestCase):
         # mount A_pkn from data
         A_pkn = [None] * nprops
         for i in range(nprops):
-            A_pkn[i] = [None] * nstates
-            for j in range(nstates):
-                # collected samples of property 'i' evaluated at state 'j'
-                prop_file = os.path.join(dirname, 'data/prop_{}_{}.dat'.format(i,j))
-                A_pkn[i][j] = np.loadtxt(prop_file)
+            prop_file = os.path.join(dirname, 'data/prop_{}.dat'.format(i))
+            A_pkn[i] = np.loadtxt(prop_file)
         A_pkn = np.array(A_pkn)
         # mount u_kn from data/u_kn.dat
         u_kn = np.loadtxt(os.path.join(dirname, 'data/u_kn.dat'))
         # mount N_k from data/N_k.dat
-        N_kn = np.loadtxt(os.path.join(dirname, 'data/N_k.dat'))
+        N_k = np.loadtxt(os.path.join(dirname, 'data/N_k.dat'))
         # compute
         if (bool_legacy):
             mbar = surrogate_model.MBARLegacy()
@@ -41,23 +38,23 @@ class TestMBAR(unittest.TestCase):
         for i in range(nprops):
             # write output data
             mbar.writeExpectationsToFile(output_dir + '/prop_{}_EA_k.dat'.format(i),
-                    output_dir + '/prop_{}_dEA_k.dat'.format(i))
+                    output_dir + '/prop_{}_dEA_k.dat'.format(i), i)
             # compare output data with reference based on file values
             # average
             this_val = np.loadtxt(output_dir + '/prop_{}_EA_k.dat'.format(i))
             ref_val  = np.loadtxt(ref_dir + '/prop_{}_EA_k.dat'.format(i))
-            self.assertEqual(this_val, ref_val)
+            self.assertTrue(np.allclose(this_val, ref_val))
             # std
             this_val = np.loadtxt(output_dir + '/prop_{}_dEA_k.dat'.format(i))
             ref_val  = np.loadtxt(ref_dir + '/prop_{}_dEA_k.dat'.format(i))
-            self.assertEqual(this_val, ref_val)
+            self.assertTrue(np.allclose(this_val, ref_val))
         # compare log data with reference
-        self.assertEqual(np.loadtxt(output_dir + '/N_k.dat'),
-                np.loadtxt(ref_dir + '/N_k.dat'))
-        self.assertEqual(np.loadtxt(output_dir + '/Eff_k.dat'),
-                np.loadtxt(ref_dir + '/Eff_k.dat'))
-        self.assertEqual(np.loadtxt(output_dir + '/W_k.dat'),
-                np.loadtxt(ref_dir + '/W_k.dat'))
+        self.assertTrue(np.array_equal(np.loadtxt(output_dir + '/N_k.dat'),
+                np.loadtxt(ref_dir + '/N_k.dat')))
+        self.assertTrue(np.allclose(np.loadtxt(output_dir + '/Eff_k.dat'),
+                np.loadtxt(ref_dir + '/Eff_k.dat')))
+        self.assertTrue(np.allclose(np.loadtxt(output_dir + '/W_k.dat'),
+                np.loadtxt(ref_dir + '/W_k.dat')))
         # remove created files
         os.system('rm -rf ' + output_dir)
    
