@@ -27,8 +27,8 @@ class SurrogateModel:
         return self.reweight
 
     def writeExpectationsToFile(self, fn_avg, fn_err, which_property):
-        np.savetxt(fn_avg, self.avgs_pk[which_property,:])
-        np.savetxt(fn_err, self.stds_pk[which_property,:])
+        np.savetxt(fn_avg, self.EA_pk[which_property,:])
+        np.savetxt(fn_err, self.dEA_pk[which_property,:])
 
     def writeLogToDirectory(self, dir_path):
         return
@@ -75,11 +75,11 @@ class MBAR (SurrogateModel):
         n_props = A_pkn.shape[0]
         n_states = A_pkn.shape[1]
         n_confs = A_pkn.shape[2]
-        self.EA_pk = np.zeros((n_states, n_confs))
-        self.dEA_pk = np.zeros((n_states, n_confs))
+        self.EA_pk = np.zeros((n_props, n_states))
+        self.dEA_pk = np.zeros((n_props, n_states))
 
         # consistency check
-        if (n_states != u_kn.shape[1]):
+        if (n_states != u_kn.shape[0]):
             raise ValueError("Number of states inconsistent between properties and reduced energies.")
         if (n_states != N_k.shape[0]):
             raise ValueError("Number of states inconsistent between properties and collected samples.")
@@ -87,17 +87,18 @@ class MBAR (SurrogateModel):
         mbar = pymbar.MBAR(u_kn, N_k)
         self.Eff_k = mbar.computeEffectiveSampleNumber()
         self.W_k = mbar.getWeights()
+        self.N_k = N_k
 
         # loop over properties
         for i in range(n_props):
             mbarComputeOutput = mbar.computeExpectations(A_pkn[i,:,:], state_dependent=True)
             # MBAR API is different depending on ``legacy'' option
             if (self.legacy):
-                self.EA_pk[i,:,:] = mbarComputeOutput[0]
-                self.dEA_pk[i,:,:] = mbarComputeOutput[1]
+                self.EA_pk[i,:] = mbarComputeOutput[0]
+                self.dEA_pk[i,:] = mbarComputeOutput[1]
             else:
-                self.EA_pk[i,:,:] = mbarComputeOutput['mu']
-                self.dEA_pk[i,:,:] = mbarComputeOutput['sigma']
+                self.EA_pk[i,:] = mbarComputeOutput['mu']
+                self.dEA_pk[i,:] = mbarComputeOutput['sigma']
 
         return (self.EA_pk, self.dEA_pk)
 
@@ -206,7 +207,10 @@ class Interpolation (SurrogateModel):
             dA_k = griddata(sampleIndices, dA_ps[i,:], gridDomain, method=self.kind)
             A_pk.append(A_k)
             dA_pk.append(dA_k)
+        A_pk = np.array(A_pk)
+        dA_pk = np.array(dA_pk)
+        self.EA_pk = A_pk
+        self.dEA_pk = dA_pk
 
-        self.avgs_pk = A_pk
-        self.stds_pk = dA_pk
+        return (A_pk, dA_pk)
 
