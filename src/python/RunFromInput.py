@@ -9,6 +9,7 @@ from traj_ana import *
 from reweight import * 
 from grid_ana import * 
 from coverage import *
+from read_input import *
 import numpy as np
 import shlex
 import os
@@ -70,8 +71,8 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
     gro = gi.rw_outputs[gj_id][protocol.name]['gro']
     # If file already exists, no need to create it again.
     if not (os.path.isfile(out_file)):
-        print "Getting potential from %s and storing in %s." % \
-        (edr, out_file)
+        print ("Getting potential from %s and storing in %s." % \
+        (edr, out_file))
         # get
         obtain_property (xtc, edr, gro, tpr, 'potential', out_file)
     if (protocol.has_pv()):
@@ -80,8 +81,8 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
             (gi.id, gj_id)
         # If file already exists, no need to create it again, just set the variable.
         if not (os.path.isfile(out_file)):
-            print "Getting pV from %s and storing in %s." % \
-            (edr, out_file)
+            print ("Getting pV from %s and storing in %s." % \
+            (edr, out_file))
             # get
             obtain_property (xtc, edr, gro, tpr, 'pV', out_file)
 
@@ -92,8 +93,8 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
                     "/filtered_properties/%s_%d.xvg" % \
                     (prop, gi.id)
             if not (os.path.isfile(out_file)):
-                print "Getting %s from %d and storing in %s." % \
-                (prop, gi.id, out_file)
+                print ("Getting %s from %d and storing in %s." % \
+                (prop, gi.id, out_file))
                 # get
                 if (prop == 'polcorr'):
                     obtain_polcorr (xtc, edr, gro, tpr, protocol.dipole,\
@@ -239,14 +240,14 @@ class dHvap (PropertyBase):
         self.set_textual_elements ("dhvap", "kJ mol$^{-1}$", "$\\Delta H_\\mathrm{vap}$")
         self.value = value_gas - value_liq/nmols - value_pol + corrs + R*temperature
         self.err   = np.sqrt(err_gas**2 + (err_liq/nmols)**2 + (err_pol)**2)
-        print "************************************"
-        print "Initialized dHvap = %.2f +/- %.2f " % (self.value, self.err)
-        print "Components:"
-        print "U_liq = %.2f (%.2f)" % (value_liq, value_liq/nmols)
-        print "U_gas = %.2f " % (value_gas)
-        print "Polcorr = %.2f " % (value_pol)
-        print "Other corrections = %.2f " % (corrs)
-        print "RT = %.2f " % (R*temperature)
+        print( "************************************")
+        print( "Initialized dHvap = %.2f +/- %.2f " % (self.value, self.err))
+        print( "Components:")
+        print( "U_liq = %.2f (%.2f)" % (value_liq, value_liq/nmols))
+        print( "U_gas = %.2f " % (value_gas))
+        print( "Polcorr = %.2f " % (value_pol))
+        print( "Other corrections = %.2f " % (corrs))
+        print( "RT = %.2f " % (R*temperature))
 
 # GridPoint
 #
@@ -284,6 +285,12 @@ class GridPoint:
         #     instance estimated from MBAR
         self.estimated_properties = {}
 
+    def get_property_estimate(self, prop):
+        return self.estimated_properties[prop].value
+
+    def get_property_err(self, prop):
+        return self.estimated_properties[prop].err
+
     def add_itp (self, itp):
         self.itp_path = itp
 
@@ -316,7 +323,7 @@ class GridPoint:
     # obj is a PropertyBase::X object (X=Density,Gamma,dHvap)
     def add_property_estimate (self, name, obj):
         if (name != obj.name):
-            print "ERROR: expected %s but got %s.\n" % (name, obj.name)
+            print ("ERROR: expected %s but got %s.\n" % (name, obj.name))
             exit()
         self.estimated_properties[name] = obj
 
@@ -470,6 +477,12 @@ class ParameterGrid:
     def add_sample (self, new_sample):
         self.grid_points[new_sample].set_as_sample()
 
+    def add_corners(self):
+        """Add corners as sampling points. Useful when interpolation is used, to
+        guarantee that all points of the grid are estimated."""
+        # TODO
+
+
     def put_itp_at_position (self, itp, pos):
         self.grid_points[pos].add_itp(itp)
 
@@ -587,7 +600,7 @@ class ParameterGrid:
                 fileGrid = reweightHash['parameters']
                 anaRwBinary = reweightHash['program']
                 command  = "%s -f %s -p %s -r %d -o %s/reweighted_properties/potential_%d_%%d.xvg -time" % (anaRwBinary, filesArg, fileGrid, i, workdir_mbar, i)
-                print "ANA_RW: %s" % command 
+                print ("ANA_RW: %s" % command )
                 # Create containing directory.
                 os.system("mkdir -p %s/reweighted_properties/" % workdir_mbar)
                 os.system(command)
@@ -646,8 +659,8 @@ class ParameterGrid:
                     gro = gi.rw_outputs[gj_id][protocol.name]['gro']
                     # If file already exists, no need to create it again.
                     if not (os.path.isfile(out_file)):
-                        print "Getting potential from %s and storing in %s." % \
-                        (edr, out_file)
+                        print ("Getting potential from %s and storing in %s." % \
+                        (edr, out_file))
                         # get
                         obtain_property (xtc, edr, gro, tpr, 'potential', out_file)
                     if (protocol.has_pv()):
@@ -656,8 +669,8 @@ class ParameterGrid:
                             (gi.id, gj_id)
                         # If file already exists, no need to create it again, just set the variable.
                         if not (os.path.isfile(out_file)):
-                            print "Getting pV from %s and storing in %s." % \
-                            (edr, out_file)
+                            print ("Getting pV from %s and storing in %s." % \
+                            (edr, out_file))
                             # get
                             obtain_property (xtc, edr, gro, tpr, 'pV', out_file)
 
@@ -668,8 +681,8 @@ class ParameterGrid:
                                     "/filtered_properties/%s_%d.xvg" % \
                                     (prop, gi.id)
                             if not (os.path.isfile(out_file)):
-                                print "Getting %s from %d and storing in %s." % \
-                                (prop, gi.id, out_file)
+                                print ("Getting %s from %d and storing in %s." % \
+                                (prop, gi.id, out_file))
                                 # get
                                 if (prop == 'polcorr'):
                                     obtain_polcorr (xtc, edr, gro, tpr, protocol.dipole,\
@@ -704,7 +717,7 @@ class ParameterGrid:
             # NOTE More arguments are probably needed in this function.
             self.fast_clean_reweight_with_protocol_at_dir (protocol, reweightHash, rw_dir, mbar_dir)
         else:
-            print "|\n|\n|\n|\n|\n|ERROR: Reweight type must be 'standard' or 'fast'."
+            print ("|\n|\n|\n|\n|\n|ERROR: Reweight type must be 'standard' or 'fast'.")
             return
 
         # reweight properties of interest besides potential and pV
@@ -759,9 +772,9 @@ class ParameterGrid:
                 estimateObj   = Gamma (estimateValue, estimateErr)
                 gp.add_property_estimate (prop, estimateObj)
             if (prop == 'dhvap'):
-                print "***************************\n\n\n\nhash of mbar is %s \n\n\n\n%s\n%s\n%s\n%s" % (self.hashOfMBAR,\
+                print ("***************************\n\n\n\nhash of mbar is %s \n\n\n\n%s\n%s\n%s\n%s" % (self.hashOfMBAR,\
                      self.hashOfMBAR[propProtocols[0]].EA_k,  self.hashOfMBAR[propProtocols[1]].EA_k, self.hashOfMBAR[propProtocols[0]].protocol.properties,\
-                      self.hashOfMBAR[propProtocols[1]].protocol.properties)
+                      self.hashOfMBAR[propProtocols[1]].protocol.properties))
                 propIdxInMBAR = self.hashOfMBAR[propProtocols[0]].protocol.properties.index('potential')
                 estimateValueLiq = self.hashOfMBAR[propProtocols[0]].EA_k[propIdxInMBAR,gp.id]
                 estimateErrLiq   = self.hashOfMBAR[propProtocols[0]].dEA_k[propIdxInMBAR,gp.id]
@@ -1108,7 +1121,7 @@ class MBARControl:
 
         # Head message.
         print \
-"""
+("""
 ****************************************************************************
 * MBAR control initialization                                              *
 ****************************************************************************
@@ -1116,7 +1129,7 @@ MBAR was initialized with %d samples reweighted over %d states.
 The temperature read from protocol \"%s\" was %f.
 The properties estimated for this protocol are %s.
 """ % (self.n_samples, parameter_grid.linear_size, protocol.name, self.temp, \
-        protocol.get_properties())
+        protocol.get_properties()))
 
         # Fill u_kn and pv_kn with file names.
         for gi in parameter_grid.grid_points:
@@ -1131,13 +1144,13 @@ The properties estimated for this protocol are %s.
                         self.u_kn[gj_id][gi_id] = out_file
                     else:
                         if reweightHash['type'] == 'fast':
-                            print "UNEXPECTED BEHAVIOR: File %s does not exist." % out_file
+                            print ("UNEXPECTED BEHAVIOR: File %s does not exist." % out_file)
                         xtc = gi.rw_outputs[gj_id][protocol.name]['xtc']
                         edr = gi.rw_outputs[gj_id][protocol.name]['edr']
                         tpr = gi.rw_outputs[gj_id][protocol.name]['tpr']
                         gro = gi.rw_outputs[gj_id][protocol.name]['gro']
-                        print "Getting potential from %s and storing in %s." % \
-                        (edr, out_file)
+                        print ("Getting potential from %s and storing in %s." % \
+                        (edr, out_file))
                         # get
                         obtain_property (xtc, edr, gro, tpr, 'potential', out_file)
                         # fill u_kn
@@ -1150,8 +1163,8 @@ The properties estimated for this protocol are %s.
                         if (os.path.isfile(out_file)):
                             self.pv_kn[gj_id][gi_id] = out_file
                         else:
-                            print "Getting pV from %s and storing in %s." % \
-                            (edr, out_file)
+                            print ("Getting pV from %s and storing in %s." % \
+                            (edr, out_file))
                             # get
                             obtain_property (xtc, edr, gro, tpr, 'pV', out_file)
                             # fill pv_kn
@@ -1163,31 +1176,31 @@ The properties estimated for this protocol are %s.
             for gi in self.parameter_grid.grid_points:
                 for gj in self.parameter_grid.grid_points:
                     if gi.is_sample:
-                        gi_id = self.parameter_grid.get_samples().index(gi)                        
+                        gi_id = self.parameter_grid.get_samples().index(gi)
                         out_file = self.workdir + \
                             "/reweighted_properties/%s_%d_%d.xvg" % \
                             (prop, gi.id, gj.id)
-		        if not (os.path.isfile(out_file)):
-			    # error, I am no longer calculating properties in here | yMHG qua abr 29 21:46:08 -03 2020
-			    print "ERROR: You are inside MBAR but reweighted properties have not been calculated."
-			    exit()
-			    #xtc = gi.rw_outputs[gi.id][self.protocol.name]['xtc']
-			    #edr = gi.rw_outputs[gi.id][self.protocol.name]['edr']
-			    #tpr = gi.rw_outputs[gi.id][self.protocol.name]['tpr']
-			    #gro = gi.rw_outputs[gi.id][self.protocol.name]['gro']
-			    #print "Getting %s from %d and storing in %s." % \
-			        #(prop, gi.id, out_file)
-			    ## get
-			    #if (prop == 'polcorr'):
-			    #    obtain_polcorr (xtc, edr, gro, tpr, self.protocol.dipole,\
-			        #		 self.protocol.polar, out_file)
-			    #else:
-			    #    obtain_property (xtc, edr, gro, tpr, prop, out_file)
-			    # fill matrix
-			    #print "Filling position %d,%d for array of shape %s" % (i_prop, gi_id, np.array(self.prop_matrix).shape)
-			    #self.prop_matrix[i_prop][gi_id] = out_file
-		        else:
-			    self.prop_matrix[i_prop][gj.id][gi_id] = out_file
+                        if not (os.path.isfile(out_file)):
+                            # error, I am no longer calculating properties in here | yMHG qua abr 29 21:46:08 -03 2020
+                            print ("ERROR: You are inside MBAR but reweighted properties have not been calculated.")
+                            exit()
+                            #xtc = gi.rw_outputs[gi.id][self.protocol.name]['xtc']
+                            #edr = gi.rw_outputs[gi.id][self.protocol.name]['edr']
+                            #tpr = gi.rw_outputs[gi.id][self.protocol.name]['tpr']
+                            #gro = gi.rw_outputs[gi.id][self.protocol.name]['gro']
+                            #print "Getting %s from %d and storing in %s." % \
+                                #(prop, gi.id, out_file)
+                            ## get
+                            #if (prop == 'polcorr'):
+                            #    obtain_polcorr (xtc, edr, gro, tpr, self.protocol.dipole,\
+                                #                self.protocol.polar, out_file)
+                            #else:
+                            #    obtain_property (xtc, edr, gro, tpr, prop, out_file)
+                            # fill matrix
+                            #print "Filling position %d,%d for array of shape %s" % (i_prop, gi_id, np.array(self.prop_matrix).shape)
+                            #self.prop_matrix[i_prop][gi_id] = out_file
+                        else:
+                            self.prop_matrix[i_prop][gj.id][gi_id] = out_file
 
         # Actually estimate.
         # There are two cases: with and without pV.
@@ -1217,144 +1230,33 @@ The properties estimated for this protocol are %s.
 
 # - end of MBARControl class            
 
-def initialize_from_input (input_file):
-    output_grid = ParameterGrid ()
-    output_protocols = []
-    output_properties = []
-    output_protocolsHash = {}
-    output_workdir = ""
-    output_optimizer = gridOptimizer ()
-    output_gridshifter = GridShifter ()
-    output_paramLoop = ParameterLoop ()
-    output_gaCoverInterface = coverInterface ()
-    output_reweightHash = {}
-    fp = open(input_file, "r")
-    for line in fp:
-        if line[0] == '#':
-            continue
-        # grid
-        if len(line.split()) < 1:
-            continue
-        if (line.split()[0] == "workdir"):
-            output_workdir = os.path.abspath(line.split()[1])
-        if (line.rstrip() == "$grid"):
-            output_grid.read_from_stream (fp)
-        if (line.rstrip() == "$protocol"):
-            line = next(fp)
-            if (line.split()[0] == 'type'):
-                typeRead = line.split()[1]
-                if (typeRead == 'liquid'):
-                    new_protocol = LiquidProtocol("",0,"",[""],[],[])
-                    new_protocol.read_from_stream (fp)
-                    output_protocols.append(new_protocol)
-                elif (typeRead == 'gas'):
-                    new_protocol = GasProtocol("","",0.0,0.0,[],[])
-                    new_protocol.read_from_stream (fp)
-                    output_protocols.append(new_protocol)
-                elif (typeRead == 'slab'):
-                    new_protocol = SlabProtocol("",[],5.0,[])
-                    new_protocol.read_from_stream (fp)
-                    output_protocols.append(new_protocol)
-                else:
-                    print \
-"""ERROR: Type \"%s\" is not supported.\n""" % typeRead
-                    exit()
-            else:
-                print \
-"""ERROR: First line after a $protocol flag MUST assign its type.\n"""
-                exit()
-        if (line.rstrip() == '$compute'):
-            for line in fp:
-                if line[0] == '#':
-                    continue
-                if line.rstrip() == '$end':
-                    break
-                propRead = line.split()[0]
-                nameRead = line.split()[1]
-                output_properties.append(propRead)
-                if (propRead == 'density'):
-                    output_protocolsHash[propRead] = nameRead
-                    # find protocol with name given
-                    protocols = filter (lambda x: x.name == nameRead, \
-                            output_protocols)
-                    for protocol in protocols:
-                        protocol.properties.append('density') 
-                        # potential ALWAYS
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                elif (propRead == 'dhvap'):
-                    nameLiq = line.split()[1]
-                    nameGas = line.split()[2]
-                    corr    = float(line.split()[3])
-
-                    output_protocolsHash[propRead] = [nameLiq,nameGas]
-                    # find protocol with name given - Liq
-                    protocols = filter (lambda x: x.name == nameLiq, \
-                            output_protocols)
-                    for protocol in protocols:
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-
-                    # find protocol with name given - Gas
-                    protocols = filter (lambda x: x.name == nameGas, \
-                            output_protocols)
-                    for protocol in protocols:
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                        protocol.properties.append('polcorr')
-                        protocol.set_other_corrections(corr)
-
-                elif (propRead == 'gamma'):
-                    # find protocol with name given
-                    output_protocolsHash[propRead] = nameRead
-                    protocols = filter (lambda x: x.name == nameRead, \
-                            output_protocols)
-                    for protocol in protocols:
-                        protocol.properties.append('gamma')
-                        # potential ALWAYS
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                else:
-                    print \
-"""ERROR: Property \"%s\" is not supported.\n""" % typeRead
-                    exit()
-        if (line.rstrip() == '$optimize'):
-            output_optimizer.readFromStream (fp)
-        if (line.rstrip() == '$parameters'):
-            output_paramLoop.readFromStream (fp)
-        if (line.rstrip() == '$gridshift'):
-            output_gridshifter.readFromStream (fp)
-        if (line.rstrip() == '$gacover'):
-            output_gaCoverInterface.readFromStream (fp)
-        if (line.rstrip() == '$reweight'):
-            for line in fp:
-                if line[0] == '#':
-                    continue
-                if line.rstrip() == '$end':
-                    break
-                option = line.split()[0]
-                value  = line.split()[1]
-                output_reweightHash[option] = value
-    fp.close()
-    return (output_workdir, output_grid, output_protocols, output_properties, \
-            output_protocolsHash, output_optimizer, output_gridshifter,\
-            output_paramLoop, output_gaCoverInterface, output_reweightHash)
-
-# **************************************************************************** #
-# *                                   MAIN                                   * #
-# **************************************************************************** #
-#
+"""
+**************************************************************************** 
+*                                   Main                                   * 
+****************************************************************************
+"""
 if __name__ == "__main__":
     
-    (base_workdir, grid, protocols, properties, protocolsHash, optimizer, gridShifter, paramLoop, gaCoverInterface, reweightHash) = \
-            initialize_from_input (sys.argv[1])
+    (base_workdir,
+     grid,
+     protocols,
+     properties,
+     protocolsHash,
+     optimizer,
+     gridShifter,
+     paramLoop,
+     gaCoverInterface,
+     reweightHash) = initialize_from_input (sys.argv[1])
 
     for nshifts in range(gridShifter.maxshifts):
         nGrid = nshifts + 1
         nextSample = -1
 
-        # At the start of every (shifted) grid, fill it using the genetic algorithm approach.
-        # If the $gacover block in the input file contains the 'nostart' directive, skip this for the initial grid.
+        """ 
+        At the start of every (shifted) grid, fill it using the genetic
+        algorithm approach.  If the $gacover block in the input file contains
+        the 'nostart' directive, skip this for the initial grid.
+        """
         if (nshifts > 0) or not (gaCoverInterface.noStart):
             gaCoverInterface.prepareForRun(grid.get_samples_id(), grid.size[0])
             gaNewSamples = gaCoverInterface.run()            
@@ -1403,7 +1305,7 @@ if __name__ == "__main__":
             optimizer.fillWithScores (grid)
             optimizer.printToFile (grid, thisRunOutputs + "/optimizer_data.dat")
             nextSample = optimizer.determineNextSample (grid)
-            print "Next sample is %d"  % nextSample
+            print ("Next sample is %d"  % nextSample)
             if (nextSample == -1):
                 break
         new_workdir = base_workdir + "/grid_%d" % (nGrid+1)

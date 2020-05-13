@@ -146,9 +146,8 @@ class Interpolation (SurrogateModel):
             raise ValueError ("Unknown interpolation type: {}.".format(kind))
 
     def _computeAvgStd(self, A_psn):
-        numberProps = A_psn.shape[0]
-        numberConfs = A_pkn.shape[2]
-        numberStates = I_s.shape[0]
+        numberProps = len(A_psn)
+        numberStates = len(A_psn[0])
         A_ps = []
         dA_ps = []
         for i in range(numberProps):
@@ -156,9 +155,11 @@ class Interpolation (SurrogateModel):
             dA_s = []
             for s in range(numberStates):
                 A_s.append(np.mean(A_psn[i][s]))
-                dA_s.append(np.std(A_psn[i][s]))
+                dA_s.append(np.std(A_psn[i][s]) / np.sqrt(len(A_psn[i][s])-1))
             A_ps.append(A_s)
             dA_ps.append(dA_s)
+        A_ps = np.array(A_ps)
+        dA_ps = np.array(dA_ps)
         return (A_ps, dA_ps)
 
     def computeExpectations(self, A_psn, I_s, gridShape):
@@ -200,11 +201,11 @@ class Interpolation (SurrogateModel):
         # interpolate property data
         A_pk = []
         dA_pk = []
-        numberProps = A_psn.shape[0]
+        numberProps = len(A_psn)
 
         for i in range(numberProps):
-            A_k  = griddata(sampleIndices,  A_ps[i,:], gridDomain, method=self.kind)
-            dA_k = griddata(sampleIndices, dA_ps[i,:], gridDomain, method=self.kind)
+            A_k  = griddata(sampleIndices,  A_ps[i,:], tuple(gridDomain), method=self.kind)
+            dA_k = griddata(sampleIndices, dA_ps[i,:], tuple(gridDomain), method=self.kind)
             A_pk.append(A_k)
             dA_pk.append(dA_k)
         A_pk = np.array(A_pk)

@@ -1,6 +1,5 @@
 import os
 from parameters import * 
-from RunFromInput import GridPoint
 
 # creates (soft) symbolic link from target to link_name
 def create_symbolic_link (target, link_name):
@@ -36,7 +35,7 @@ class GridShifter:
     def calcCG (self, optimizer, grid):
         
         if (len(grid.size) != 2):
-            print "Error: GridShifter expects a bi-dimensional grid."
+            print ("Error: GridShifter expects a bi-dimensional grid.")
             exit()
 
         nx = grid.size[0]
@@ -58,7 +57,7 @@ class GridShifter:
         cg_y /= thr
 
         self.cg = (cg_x, cg_y)
-        print "Note: CG is %d, %d" % (cg_x, cg_y)
+        print ("Note: CG is %d, %d" % (cg_x, cg_y))
 
         return (cg_x, cg_y)
 
@@ -80,7 +79,7 @@ class GridShifter:
 
     # Performs shifting operations.
     def shift (self, grid, paramLoop, old_workdir, new_workdir):
-
+        from RunFromInput import GridPoint
         # Create directory of new grid.
         os.system("mkdir -p " + new_workdir)
 
