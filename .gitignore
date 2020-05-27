@@ -1,3 +1,8 @@
 Makefile
 *.pyc
+\#*
+*~
+*.bak
 tests/et/run/*
+debug/*
+LINUX/*

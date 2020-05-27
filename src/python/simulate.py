@@ -15,9 +15,9 @@ def simulate_something (conf, top, mdp, label, workdir):
     os.system("mkdir -p %s/%s" % (workdir, label))
     check_log_loc = "%s/%s/%s.log" % (workdir,label,label)
     if (os.path.isfile(check_log_loc)):
-        print "log from simulations " + check_log_loc + " already exists, will not perform it"
+        print ("log from simulations " + check_log_loc + " already exists, will not perform it")
     else:
-        print "log from simulations " + check_log_loc + " does not exist, will perform it"
+        print ("log from simulations " + check_log_loc + " does not exist, will perform it")
         command = "gmx grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (mdp, conf, top, workdir, label, label)
         print ("COMMAND: " + command)
         os.system(command)
@@ -30,14 +30,14 @@ def get_molecule_name_from_itp (itp):
     fp = open(itp, "r")
     flag = False
     for line in fp:
-        print "itp line is " + line
+        print ("itp line is " + line)
         if (re.match(r".*\[ moleculetype \].*", line)):
-            print "found moleculetype tag"
+            print ("found moleculetype tag")
             flag = True
             continue
         if (flag == True):
             if (re.match(r"^;", line) is None):
-                print "Matched line is " + line
+                print ("Matched line is " + line)
                 return line.split()[0]
     fp.close()
     return "NOT-FOUND"
@@ -267,7 +267,7 @@ if __name__ == "__main__":
 
     # check if labels match mdps
     if (len(labels) != len(mdps)):
-        print "labels do not match mdps"
+        print ("labels do not match mdps")
         exit(0)
 
     # simulate a full stage

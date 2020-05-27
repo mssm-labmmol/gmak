@@ -25,5 +25,5 @@
 # Possible Bugs/Things that don't make sense
 
 - [DONE] Filtering seems to be filtering too much!
-    - Actually, it is not - my test is actually at a low temperature, so auto-correlations are bigger.
+    - Actually, it is not - my test is actually at a low temperature, so auto-correlations are bigger in this case.
 - [TODO] Using tolerance for Interpolation makes no sense!

@@ -36,7 +36,7 @@ class gridOptimizer:
                 self.referenceTolerances[propertyName] = float(splittedLine[3])
 
     def rankScores (self):
-        self.stateScores.sort(cmp=lambda x,y: cmp(x[1],y[1]))  
+        self.stateScores.sort(key=lambda x: x[1])  
 
     def fillWithScores (self, grid):
         # clean stateScores first
@@ -68,6 +68,26 @@ class gridOptimizer:
                 fp.write("%12.4f%12.4f" % (propValue, propErr))
             fp.write("%16.6e\n" % x[1])
         fp.close()
+
+    def plotToPdf (self, grid, pdf_filename):
+        from grid_ana import plot_grid_to_file
+        import copy
+        
+        title = "Score"
+        cbox_label = ""
+        cbox_limits = ()
+        cbox_limits_colors = ()
+        if (grid.dim == 2):
+            # re-sort state scores by index
+            data = copy.deepcopy(self.stateScores)
+            data.sort(key=lambda x: x[0])
+            data = [x[1] for x in data]
+            data = np.array(data)
+            data = data.reshape (grid.size[0], grid.size[1])
+            plot_grid_to_file (pdf_filename, title, grid.xlabel, grid.ylabel, cbox_label, cbox_limits, cbox_limits_colors, data, grid.get_samples_id())
+        else:
+            warnings.warn("Can only plot scores for 2-D grid.")
+            return
 
     def determineNextSample (self, grid):
         nTested = 0

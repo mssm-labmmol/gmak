@@ -177,6 +177,13 @@ class VolumeRegion (object):
     def size (self):
         return len(self.elements)
 
+    def has_element (self, el):
+        for myel in self.elements:
+            if (el == myel):
+                return True
+        return False
+        
+
 # CubicgridRegion: a special type of VolumeRegion
 class CubicgridRegion (VolumeRegion,object):
 
@@ -307,10 +314,10 @@ class coverageIndividual (object):
 
     def has_element (self, element):
         for region in self.oldRegions.values():
-            if element in set(region):
+            if region.has_element(element):
                 return True
         for region in self.newRegions.values():
-            if element in set(region):
+            if region.has_element(element):
                 return True
         return False
 
@@ -435,6 +442,7 @@ class coverInterface (object):
         self.popSize = popSize
         self.nGens = nGens
         self.previousSamples = previousSamples[:]
+        self.minvolFrac = 0.50
         self.noStart = False
         # base
         self.covBase = coverageIndividualBase (gridSize, 1, 2, previousSamples[:], self.radius, self.hardness)
@@ -460,7 +468,7 @@ class coverInterface (object):
             thisVolFrac = -1
             numberOfSamples = len(self.previousSamples)
             addedSamples = []
-            while (thisVolFrac < self.volFrac) and (numberOfSamples < self.maxSamples):
+            while (thisVolFrac < self.volFrac) and ((thisVolFrac < self.minvolFrac) or (numberOfSamples < self.maxSamples)):
                 # Run GA and get best volFrac and numberOfNewSamples.
                 myGA = VBGA(coverageIndividual, self.covBase, 1, Fitness, SelectionMethod, CrossoverMethod, 10, MutationMethod, 5, self.popSize)
                 myGA.run(self.nGens)

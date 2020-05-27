@@ -35,8 +35,7 @@ except ImportError:
 #       A numpy bi-dimensional array containing the data to be plotted.
 #       TODO Specify how the grid will be plotted.
 #   
-def put_grid_into_axis (ax, title, x_label, y_label, cbox_label, cbox_limits, \
-        cbox_limits_colors, data):
+def put_grid_into_axis (ax, title, x_label, y_label, cbox_label, cbox_limits, cbox_limits_colors, data):
 
     plot_data = np.transpose(data)
 
@@ -75,7 +74,7 @@ def put_markers_into_axis (ax, marker_ids, shape):
     x = []
     y = []
     for m in marker_ids:
-        x.append ( int(m) / int(shape[1]) )
+        x.append ( int(m) // int(shape[1]) )
         y.append ( int(m) % int(shape[1]) )
     ax.scatter( x,y, color='black' )
 
@@ -92,8 +91,7 @@ def plot_grid_to_file (filename, title, x_label, y_label, cbox_label, cbox_limit
     fig = plt.figure()
     ax = fig.gca()
 
-    put_grid_into_axis (ax, title, x_label, y_label, cbox_label, cbox_limits, \
-        cbox_limits_colors, data)
+    put_grid_into_axis (ax, title, x_label, y_label, cbox_label, cbox_limits, cbox_limits_colors, data)
 
     put_markers_into_axis (ax, markers, data.shape)
 

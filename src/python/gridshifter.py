@@ -100,13 +100,13 @@ class GridShifter:
             gp.rw_outputs = {}
             gp.estimated_properties = {}
             gp.atomic_properties = {}
-            i_center = int((grid.size[0] - 1)/2)
-            j_center = int((grid.size[1] - 1)/2)
-            i = int(gp.id / grid.size[1])
+            i_center = int((grid.size[0] - 1)//2)
+            j_center = int((grid.size[1] - 1)//2)
+            i = int(gp.id // grid.size[1])
             j = gp.id % grid.size[1]
             new_i = i - (self.cg[0] - i_center)
             new_j = j - (self.cg[1] - j_center)
-            new_id = new_i * grid.size[1] + new_j 
+            new_id = int(new_i * grid.size[1] + new_j) 
             # Link from the directories of the old simulation results to 
             # new simulation results. There is no need to change the 
             # itp path, I think.

@@ -4,7 +4,7 @@ import numpy as np
 import os 
 
 # assumes that the propfiles are standard Gromacs xvg files
-def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc):
+def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
     xtc = os.path.abspath(xtc)
     tpr = os.path.abspath(tpr)
     oxtc = os.path.abspath(oxtc)
@@ -20,8 +20,15 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc):
         skips.append(skip)
 
     actual_skip = np.max(skips)
+    print("FILTER: Skip is {}".format(actual_skip))
 
     os.system("echo 0 | gmx trjconv -f %s -s %s -skip %d -o %s" % (xtc,tpr,actual_skip,oxtc))
+    
+    # also filter the selected properties
+    for i,propfile in enumerate(propfiles):
+        x = np.loadtxt(propfile, comments=['@','#'], usecols=(0,1,))
+        x_skipped = x[::actual_skip]
+        np.savetxt(opropfiles[i], x_skipped)
 
 def truncated_autocorr(x):
     lags = range(len(x))

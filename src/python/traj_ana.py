@@ -73,9 +73,9 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
     gr_data = []
     # calculate the rdf curves for all frames
     for i in range(len(times)):
-	b = times[i]
-	e = b
-	os.system("gmx rdf -f %s -s %s -n %s -b %f -e %f -o %s_%d.xvg -ref %s -sel %s -cut %s -rmax %f -bin %f" % (xtc,tpr,ndx,b,e,output_file_preffix,i+1,g1,g2,cut,rmax,bin))
+        b = times[i]
+        e = b
+        os.system("gmx rdf -f %s -s %s -n %s -b %f -e %f -o %s_%d.xvg -ref %s -sel %s -cut %s -rmax %f -bin %f" % (xtc,tpr,ndx,b,e,output_file_preffix,i+1,g1,g2,cut,rmax,bin))
         idxs = np.loadtxt("%s_%d.xvg" % (output_file_preffix, i+1), usecols=(0,), comments=['@','#'])
         idxs_relevant = [j for j,x in enumerate(idxs) if ((x >= cut) and (x <= rmax))]
         gr_data.append(np.loadtxt("%s_%d.xvg" % (output_file_preffix, i+1),

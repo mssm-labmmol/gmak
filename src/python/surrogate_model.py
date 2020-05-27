@@ -12,6 +12,15 @@ import numpy as np
 import sys
 from scipy.interpolate import griddata
 
+def init_surrogate_model_from_string (string, bool_legacy):
+    if (string == 'mbar'):
+        if (bool_legacy):
+            return MBARLegacy()
+        else:
+            return MBAR()
+    else:
+        return Interpolation(string)
+
 class SurrogateModel:
 
     def requiresCorners(self):
@@ -39,6 +48,7 @@ class MBAR (SurrogateModel):
     legacy = False
     reweight = True
     corners = False
+    kind = 'mbar'
 
     def __init__(self):
         self.Eff_k = []
@@ -162,6 +172,33 @@ class Interpolation (SurrogateModel):
         dA_ps = np.array(dA_ps)
         return (A_ps, dA_ps)
 
+    def computeExpectationsFromAvgStd(self, A_ps, dA_ps, I_s, gridShape):
+        # make grid from shape
+        gridDomain = np.meshgrid(*[np.arange(s) for s in gridShape], indexing='ij')
+        # determine grid indices for sampled states
+        sampleIndices = []
+        linearIdx = 0
+        for idx in np.ndindex(gridShape):
+            if linearIdx in I_s:
+                sampleIndices.append(idx)
+            linearIdx += 1
+        # interpolate property data
+        A_pk = []
+        dA_pk = []
+        numberProps = A_ps.shape[0]
+        for i in range(numberProps):
+            A_k  = griddata(sampleIndices,  A_ps[i,:], tuple(gridDomain), method=self.kind)
+            dA_k = griddata(sampleIndices, dA_ps[i,:], tuple(gridDomain), method=self.kind)
+            A_pk.append(A_k)
+            dA_pk.append(dA_k)
+        A_pk = np.array(A_pk)
+        dA_pk = np.array(dA_pk)
+        A_pk = A_pk.reshape((numberProps, A_k.size))
+        dA_pk = dA_pk.reshape((numberProps, dA_k.size))        
+        self.EA_pk = A_pk
+        self.dEA_pk = dA_pk
+        return (A_pk, dA_pk)
+        
     def computeExpectations(self, A_psn, I_s, gridShape):
         """
         Parameters:
@@ -186,32 +223,5 @@ class Interpolation (SurrogateModel):
         """
         # mean and std for sampled states
         (A_ps, dA_ps) = self._computeAvgStd(A_psn)
-
-        # make grid from shape
-        gridDomain = np.meshgrid(*[np.arange(s) for s in gridShape], indexing='ij')
-
-        # determine grid indices for sampled states
-        sampleIndices = []
-        linearIdx = 0
-        for idx in np.ndindex(gridShape):
-            if linearIdx in I_s:
-                sampleIndices.append(idx)
-            linearIdx += 1
-
-        # interpolate property data
-        A_pk = []
-        dA_pk = []
-        numberProps = len(A_psn)
-
-        for i in range(numberProps):
-            A_k  = griddata(sampleIndices,  A_ps[i,:], tuple(gridDomain), method=self.kind)
-            dA_k = griddata(sampleIndices, dA_ps[i,:], tuple(gridDomain), method=self.kind)
-            A_pk.append(A_k)
-            dA_pk.append(dA_k)
-        A_pk = np.array(A_pk)
-        dA_pk = np.array(dA_pk)
-        self.EA_pk = A_pk
-        self.dEA_pk = dA_pk
-
-        return (A_pk, dA_pk)
+        return self.computeExpectationsFromAvgStd(A_ps, dA_ps, I_s, gridShape)
 

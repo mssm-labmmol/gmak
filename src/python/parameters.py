@@ -39,6 +39,9 @@ class LoopData:
     def get_linear_size (self):
         return self.size['c6'] * self.size['c12']
 
+    def get_size(self):
+        return (int(self.size['c6']), int(self.size['c12']))
+
     def set_members (self, atomtype, c6start, c6step, c6size, c12start, c12step, c12size):
         # this is an Atomtype instance
         self.atomtype = atomtype
@@ -80,6 +83,16 @@ class LoopData:
         shiftc12 = newc12 - oldc12
         self.start['c6'] += shiftc6
         self.start['c12'] += shiftc12
+
+    def create_refined (self, factor_c6, factor_c12):
+        import copy
+        refined_loop = copy.deepcopy(self)
+        # alter what is needed
+        refined_loop.step['c6'] /= factor_c6
+        refined_loop.step['c12'] /= factor_c12
+        refined_loop.size['c6'] = refined_loop.size['c6'] * factor_c6 - factor_c6 + 1
+        refined_loop.size['c12'] = refined_loop.size['c12'] * factor_c12 - factor_c12 + 1
+        return refined_loop
 
 class ParameterLoop:
 

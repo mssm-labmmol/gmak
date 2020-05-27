@@ -113,8 +113,8 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
     Eig_k = over['eigenvalues']
     Mat_k = over['matrix']
 
-    print "MBAR WEIGHTS"
-    print mbar.getWeights()
+    print ("MBAR WEIGHTS")
+    print (mbar.getWeights())
 
     np.savetxt(eff_out, Eff_k)
     np.savetxt(eig_out, Eig_k)
@@ -195,8 +195,8 @@ def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, 
     Eig_k = over['eigenvalues']
     Mat_k = over['matrix']
 
-    print "MBAR WEIGHTS"
-    print mbar.getWeights()
+    print ("MBAR WEIGHTS")
+    print (mbar.getWeights())
 
     np.savetxt(eff_out, Eff_k)
     np.savetxt(eig_out, Eig_k)
