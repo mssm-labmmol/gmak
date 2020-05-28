@@ -724,7 +724,9 @@ class ParameterGrid:
             fn_err = "%s/%s/estimated_properties/%s_dEA_k.dat" % (workdir, model.kind, prop)
             model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):
+    # type-hinted header is commented because it is not supported in old Python versions
+    #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            
+    def create_refined_subgrid(self, factors_list, model_str, propid2type):
         import copy
         # first check everything is compatible
         if (len(factors_list) != self.dim):
