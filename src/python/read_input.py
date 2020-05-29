@@ -97,8 +97,30 @@ def initialize_from_input (input_file, bool_legacy):
                         if 'potential' not in protocol.properties:
                             protocol.properties.append('potential')
                         protocol.properties.append('polcorr')
+                elif (propRead == 'ced') or (propRead == 'gced'):
+                    nameLiq = line.split()[3]
+                    nameGas = line.split()[4]
+                    corr    = float(line.split()[5])
+                    output_protocolsHash[propId] = [nameLiq, nameGas]
+                    # find protocol with name given - Liq
+                    protocols = filter (lambda x: x.name == nameLiq, output_protocols)
+                    for protocol in protocols:
+                        protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
+                        protocol.add_surrogate_model(surrModel, 'volume', bool_legacy)                         
+                        if 'potential' not in protocol.properties:
+                            protocol.properties.append('potential')
+                        if 'volume' not in protocol.properties:
+                            protocol.properties.append('volume')
+                    # find protocol with name given - Gas
+                    protocols = filter (lambda x: x.name == nameGas, output_protocols)
+                    for protocol in protocols:
+                        protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
+                        protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
+                        if 'potential' not in protocol.properties:
+                            protocol.properties.append('potential')
+                        protocol.properties.append('polcorr')
                         protocol.set_other_corrections(corr)
-
+                        protocol.set_other_corrections(corr)
                 elif (propRead == 'gamma'):
                     # find protocol with name given
                     output_protocolsHash[propId] = [nameRead]

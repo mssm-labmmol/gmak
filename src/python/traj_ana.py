@@ -51,6 +51,8 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
         prop = "Potential"
     if name == "pV":
         prop = "pV"
+    if name == "volume":
+        prop = "Volume"
     os.system("echo " + prop + " | gmx energy -f " + edr + " -s " + tpr + " -o " + output_file)
 
 def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0, bin=0.002):

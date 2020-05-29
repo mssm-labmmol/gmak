@@ -502,7 +502,7 @@ class ParameterGrid:
             # first, ignore potential and pV
             if (prop == 'potential') or (prop == 'pV'):
                 continue
-            elif (prop == 'density') or (prop == 'polcorr'):
+            elif (prop == 'density') or (prop == 'polcorr') or (prop == 'volume'):
                 # same for all states
                 for gp in self.get_samples():
                     id = gp.id
@@ -550,6 +550,42 @@ class ParameterGrid:
             for gp in self.grid_points:
                 estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],
                                        estimateErrLiq[gp.id], estimateErrGas[gp.id], estimateErrPol[gp.id], corr, nmols, temp)
+                gp.add_property_estimate (prop_id, prop, estimateObj)
+        if (prop == 'ced'):
+            estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
+            nmols            = protocolObjs[0].nmols
+            #
+            estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
+            #
+            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
+            corr             = protocolObjs[1].other_corrections
+            temp             = protocolObjs[1].get_temperature()
+            #
+            estimateValueVol, estimateErrVol = protocolObjs[0].get_avg_err_estimate_of_property('volume', kind)
+            #
+            for gp in self.grid_points:
+                estimateObj   = CohesiveEnergyDensity (estimateValueLiq[gp.id], estimateValueGas[gp.id],
+                                                       estimateValueVol[gp.id], estimateValuePol[gp.id],
+                                                       estimateErrLiq[gp.id], estimateErrGas[gp.id],
+                                                       estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
+                gp.add_property_estimate (prop_id, prop, estimateObj)
+        if (prop == 'gced'):
+            estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
+            nmols            = protocolObjs[0].nmols
+            #
+            estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
+            #
+            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
+            corr             = protocolObjs[1].other_corrections
+            temp             = protocolObjs[1].get_temperature()
+            #
+            estimateValueVol, estimateErrVol = protocolObjs[0].get_avg_err_estimate_of_property('volume', kind)
+            #
+            for gp in self.grid_points:
+                estimateObj   = GammaViaCohesiveEnergyDensity (estimateValueLiq[gp.id], estimateValueGas[gp.id],
+                                                       estimateValueVol[gp.id], estimateValuePol[gp.id],
+                                                       estimateErrLiq[gp.id], estimateErrGas[gp.id],
+                                                       estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
 
     def save_property_values_to_file (self, prop, filename):
@@ -619,7 +655,9 @@ class ParameterGrid:
         limits = {\
                 'density': 20,\
                 'dhvap': 4,\
-                'gamma': 10}
+                  'gamma': 10, \
+                  'ced': 10 * 1e-4, \
+                  'gced': 10}
         cbox_limits = (-limits[propname], limits[propname])
         title = "$\\Delta^\\mathrm{exp}$" + self.grid_points[0].estimated_properties[prop].get_label()
         # plot
