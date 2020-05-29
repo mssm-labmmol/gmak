@@ -155,9 +155,9 @@ if __name__ == "__main__":
             subgrid.plot_property_err_to_file (prop, subgridOutputs + "/" + prop + "_dEA_k.pdf")
             subgrid.plot_property_diff_to_file (prop, properties[prop], referenceValue, subgridOutputs + "/" + prop + "_diff.pdf")
             #
-            optimizer.fillWithScores (subgrid)
-            optimizer.printToFile (subgrid, subgridOutputs + "/optimizer_data.dat")
-            optimizer.plotToPdf (subgrid, subgridOutputs + "/optimizer_score.pdf")
+        optimizer.fillWithScores (subgrid)
+        optimizer.printToFile (subgrid, subgridOutputs + "/optimizer_data.dat")
+        optimizer.plotToPdf (subgrid, subgridOutputs + "/optimizer_score.pdf")
                 
                 
     ## set things
