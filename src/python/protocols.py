@@ -60,7 +60,8 @@ class BaseProtocol:
         """Returns a tuple (EA_k, dEA_k) for atomic property 'prop' estimated via 'kind' surrogate model for all states."""
         if (kind == 'mbar'):
             model = self.get_mbar_model()
-            index = self.get_nonreweighting_properties().index(prop)
+            index = self.get_reweighting_properties().index(prop)
+            print(self.get_reweighting_properties())
         else:
             index = 0
             for m, p in self.surrogate_models:

@@ -32,8 +32,18 @@ class gridOptimizer:
                 splittedLine = line.split()
                 propertyName = splittedLine[0]
                 self.referenceValues[propertyName] = float(splittedLine[1])
+                if (self.referenceValues[propertyName] == 0):
+                    raise ValueError("Reference values for properties cannot be zero!")
                 self.referenceWeights[propertyName] = float(splittedLine[2])
                 self.referenceTolerances[propertyName] = float(splittedLine[3])
+
+    def pushNearest(self, smHash):
+        names = list(self.referenceValues.keys())
+        for name in names:
+            if (smHash[name] != 'mbar'):
+                self.referenceValues[name + '_nearest'] = self.referenceValues[name]
+                self.referenceWeights[name + '_nearest'] = 0.00
+                self.referenceTolerances[name + '_nearest'] = 1.0e+23
 
     def rankScores (self):
         self.stateScores.sort(key=lambda x: x[1])  
@@ -47,7 +57,8 @@ class gridOptimizer:
             for prop_id in self.referenceTolerances.keys():
                 gPValue = gP.get_property_estimate(prop_id)
                 weightSum += self.referenceWeights[prop_id]
-                gPScore += self.referenceWeights[prop_id] * ((gPValue - self.referenceValues[prop_id]) / self.referenceValues[prop_id]) ** 2
+                sumValue = self.referenceWeights[prop_id] * ((gPValue - self.referenceValues[prop_id]) / self.referenceValues[prop_id]) ** 2
+                gPScore += sumValue
             gPScore = np.sqrt(gPScore / weightSum)
             self.stateScores.append((gP.id, gPScore))
         self.rankScores()
@@ -89,7 +100,7 @@ class gridOptimizer:
             warnings.warn("Can only plot scores for 2-D grid.")
             return
 
-    def determineNextSample (self, grid):
+    def determineNextSample (self, grid, smHash):
         nTested = 0
         properties = self.referenceTolerances.keys()
         for x in self.stateScores:
@@ -100,7 +111,13 @@ class gridOptimizer:
             if (nTested > self.percentCutoff * grid.linear_size):
                 return -1
             for prop in properties:
-                propErr = grid[x[0]].get_property_err(prop)
+                # skip properties without weight - this includes those ending with '_nearest'
+                if (self.referenceWeights[prop] == 0.0):
+                    continue
+                if (smHash[prop] == 'mbar'):
+                    propErr = grid[x[0]].get_property_err(prop)
+                else:
+                    propErr = np.abs(grid[x[0]].get_property_estimate(prop) - grid[x[0]].get_property_estimate(prop + '_nearest'))
                 if (propErr > self.referenceTolerances[prop]):
                     return x[0]
             nTested += 1

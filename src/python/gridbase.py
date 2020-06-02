@@ -526,7 +526,7 @@ class ParameterGrid:
             for prot in protocols:
                 if prot.name == desiredProt:
                     protocolObjs.append(prot)
-      
+
         if (prop == 'density'):
             estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(prop, kind)
             for gp in self.grid_points:
@@ -756,11 +756,12 @@ class ParameterGrid:
         I_s = self.get_samples_id()
         # estimate properties
         for p, (model, prop) in enumerate(interp_models_props):
-            model.computeExpectations([A_psn[p]], I_s, tuple(self.size))
-            os.system("mkdir -p %s/%s/estimated_properties" % (workdir, model.kind))
-            fn_avg = "%s/%s/estimated_properties/%s_EA_k.dat" % (workdir, model.kind, prop)
-            fn_err = "%s/%s/estimated_properties/%s_dEA_k.dat" % (workdir, model.kind, prop)
-            model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
+            for kind in [model.kind, 'nearest']:
+                model.computeExpectations([A_psn[p]], I_s, tuple(self.size))
+                os.system("mkdir -p %s/%s/estimated_properties" % (workdir, kind))
+                fn_avg = "%s/%s/estimated_properties/%s_EA_k.dat" % (workdir, kind, prop)
+                fn_err = "%s/%s/estimated_properties/%s_dEA_k.dat" % (workdir, kind, prop)
+                model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            

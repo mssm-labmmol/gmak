@@ -9,7 +9,7 @@ ana_rw_lib = -lm -fopenmp
 ana_rw_source = $(srcdir)/ana_rw/ana_rw.c
 python_source = $(wildcard $(srcdir)/python/*.py)
 
-all: prepare ana_rw python
+all: prepare ana_rw_compile
 
 prepare:
 	mkdir -p $(bindir)
@@ -17,8 +17,11 @@ prepare:
 prepare_tests:
 	cp -r $(testdir) .
 
-ana_rw: $(ana_rw_source)
-	gcc $(ana_rw_cpp) $(ana_rw_source) -o $(bindir)/ana_rw_quiet $(ana_rw_lib)
+ana_rw_compile: $(ana_rw_source)
+	gcc $(ana_rw_cpp) $(ana_rw_source) -o ana_rw_quiet $(ana_rw_lib)
+
+ana_rw_install:
+	cp ana_rw_quiet $(bindir)/ana_rw_quiet
 
 python: $(python_source)
 	cp $^ $(bindir)/
@@ -27,3 +30,8 @@ test_surrogate_model:
 	cd tests/surrogate_model/ && $(pythoncmd) tests.py 
 
 test: prepare_tests test_surrogate_model
+	
+install: python ana_rw_install
+
+clean:
+	rm -rf $(bindir)/*

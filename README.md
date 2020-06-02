@@ -26,4 +26,5 @@
 
 - [DONE] Filtering seems to be filtering too much!
     - Actually, it is not - my test is actually at a low temperature, so auto-correlations are bigger in this case.
-- [TODO] Using tolerance for Interpolation makes no sense!
+- [DONE ter jun  2 17:45:02 -03 2020] Using tolerance for Interpolation makes no sense!
+    - Now, tolerance of interpolation is compared to difference to value of nearest-sampled point 

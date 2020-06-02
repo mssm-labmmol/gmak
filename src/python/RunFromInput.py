@@ -109,6 +109,9 @@ if __name__ == "__main__":
                 grid.make_grid_for_protocol (protocol, workdir + "/" + protocol.name, reweightHash)
                 
             # remember: properties is a dict where keys are property id's and values are property types (e.g. properties['some-dens'] = 'density')
+            # push nearest copies into optimizer
+            optimizer.pushNearest(surrogateModelHash)
+
             for prop in properties:
                 referenceValue = optimizer.referenceValues[prop]
                 kind = surrogateModelHash[prop]
@@ -125,7 +128,7 @@ if __name__ == "__main__":
             optimizer.fillWithScores (grid)
             optimizer.printToFile (grid, thisRunOutputs + "/optimizer_data.dat")
             optimizer.plotToPdf (grid, thisRunOutputs + "/optimizer_score.pdf")
-            nextSample = optimizer.determineNextSample (grid)
+            nextSample = optimizer.determineNextSample (grid, surrogateModelHash)
             print ("Next sample is %d"  % nextSample)
             if (nextSample == -1):
                 break

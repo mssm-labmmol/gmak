@@ -63,77 +63,87 @@ def initialize_from_input (input_file, bool_legacy):
                 surrModel = line.split()[1]
                 propRead = line.split()[2]
                 nameRead = line.split()[3]
-                output_surrogateModel[propId] = surrModel
-                output_properties[propId] = propRead
-                if (propRead == 'density'):
-                    output_protocolsHash[propId] = [nameRead]
-                    # find protocol with name given
-                    protocols = filter (lambda x: x.name == nameRead, output_protocols)
-                    # actually no list -- this is only one protocol
-                    for protocol in protocols:
-                        protocol.add_surrogate_model(surrModel, 'density', bool_legacy)
-                        protocol.properties.append('density') 
-                        # always add potential for safety
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                elif (propRead == 'dhvap'):
-                    nameLiq = line.split()[3]
-                    nameGas = line.split()[4]
-                    corr    = float(line.split()[5])
 
-                    output_protocolsHash[propId] = [nameLiq, nameGas]
-                    # find protocol with name given - Liq
-                    protocols = filter (lambda x: x.name == nameLiq, output_protocols)
-                    for protocol in protocols:
-                        protocol.add_surrogate_model(surrModel, 'potential', bool_legacy) 
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-
-                    # find protocol with name given - Gas
-                    protocols = filter (lambda x: x.name == nameGas, output_protocols)
-                    for protocol in protocols:
-                        protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                        protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                        protocol.properties.append('polcorr')
-                elif (propRead == 'ced') or (propRead == 'gced'):
-                    nameLiq = line.split()[3]
-                    nameGas = line.split()[4]
-                    corr    = float(line.split()[5])
-                    output_protocolsHash[propId] = [nameLiq, nameGas]
-                    # find protocol with name given - Liq
-                    protocols = filter (lambda x: x.name == nameLiq, output_protocols)
-                    for protocol in protocols:
-                        protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                        protocol.add_surrogate_model(surrModel, 'volume', bool_legacy)                         
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                        if 'volume' not in protocol.properties:
-                            protocol.properties.append('volume')
-                    # find protocol with name given - Gas
-                    protocols = filter (lambda x: x.name == nameGas, output_protocols)
-                    for protocol in protocols:
-                        protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                        protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
-                        protocol.properties.append('polcorr')
-                        protocol.set_other_corrections(corr)
-                        protocol.set_other_corrections(corr)
-                elif (propRead == 'gamma'):
-                    # find protocol with name given
-                    output_protocolsHash[propId] = [nameRead]
-                    protocols = filter (lambda x: x.name == nameRead, output_protocols)
-                    for protocol in protocols:
-                        protocol.add_surrogate_model(surrModel, 'gamma', bool_legacy)           
-                        protocol.properties.append('gamma')
-                        # potential ALWAYS
-                        if 'potential' not in protocol.properties:
-                            protocol.properties.append('potential')
+                if (surrModel == 'linear') or (surrModel == 'cubic'):
+                    propIds = [propId, propId + '_nearest']
+                    surrModels = [surrModel, 'nearest']
                 else:
-                    print ("ERROR: Property \"%s\" is not supported.\n" % typeRead)
-                    exit()
+                    # mbar
+                    propIds = [propId]
+                    surrModels = [surrModel]
+
+                for propId, surrModel in zip(propIds, surrModels):
+                    output_surrogateModel[propId] = surrModel
+                    output_properties[propId] = propRead
+                    if (propRead == 'density'):
+                        output_protocolsHash[propId] = [nameRead]
+                        # find protocol with name given
+                        protocols = filter (lambda x: x.name == nameRead, output_protocols)
+                        # actually no list -- this is only one protocol
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel, 'density', bool_legacy)
+                            protocol.properties.append('density') 
+                            # always add potential for safety
+                            if 'potential' not in protocol.properties:
+                                protocol.properties.append('potential')
+                    elif (propRead == 'dhvap'):
+                        nameLiq = line.split()[3]
+                        nameGas = line.split()[4]
+                        corr    = float(line.split()[5])
+
+                        output_protocolsHash[propId] = [nameLiq, nameGas]
+                        # find protocol with name given - Liq
+                        protocols = filter (lambda x: x.name == nameLiq, output_protocols)
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy) 
+                            if 'potential' not in protocol.properties:
+                                protocol.properties.append('potential')
+
+                        # find protocol with name given - Gas
+                        protocols = filter (lambda x: x.name == nameGas, output_protocols)
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
+                            protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
+                            if 'potential' not in protocol.properties:
+                                protocol.properties.append('potential')
+                            protocol.properties.append('polcorr')
+                    elif (propRead == 'ced') or (propRead == 'gced'):
+                        nameLiq = line.split()[3]
+                        nameGas = line.split()[4]
+                        corr    = float(line.split()[5])
+                        output_protocolsHash[propId] = [nameLiq, nameGas]
+                        # find protocol with name given - Liq
+                        protocols = filter (lambda x: x.name == nameLiq, output_protocols)
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
+                            protocol.add_surrogate_model(surrModel, 'volume', bool_legacy)                         
+                            if 'potential' not in protocol.properties:
+                                protocol.properties.append('potential')
+                            if 'volume' not in protocol.properties:
+                                protocol.properties.append('volume')
+                        # find protocol with name given - Gas
+                        protocols = filter (lambda x: x.name == nameGas, output_protocols)
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
+                            protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
+                            if 'potential' not in protocol.properties:
+                                protocol.properties.append('potential')
+                            protocol.properties.append('polcorr')
+                            protocol.set_other_corrections(corr)
+                            protocol.set_other_corrections(corr)
+                    elif (propRead == 'gamma'):
+                        # find protocol with name given
+                        output_protocolsHash[propId] = [nameRead]
+                        protocols = filter (lambda x: x.name == nameRead, output_protocols)
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel, 'gamma', bool_legacy)           
+                            protocol.properties.append('gamma')
+                            # potential ALWAYS
+                            if 'potential' not in protocol.properties:
+                                protocol.properties.append('potential')
+                    else:
+                        print ("ERROR: Property \"%s\" is not supported.\n" % typeRead)
+                        exit()
         if (line.rstrip() == '$optimize'):
             output_optimizer.readFromStream (fp)
         if (line.rstrip() == '$parameters'):
