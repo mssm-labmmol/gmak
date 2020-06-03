@@ -44,7 +44,7 @@ def initialize_from_input (input_file, bool_legacy):
                     new_protocol.read_from_stream (fp)
                     output_protocols.append(new_protocol)
                 elif (typeRead == 'slab'):
-                    new_protocol = SlabProtocol("",[],5.0,[])
+                    new_protocol = SlabProtocol("",[],5.0,[],-1)
                     new_protocol.read_from_stream (fp)
                     output_protocols.append(new_protocol)
                 else:

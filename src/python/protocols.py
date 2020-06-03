@@ -111,12 +111,14 @@ class SlabProtocol(BaseProtocol):
         self.type = "slab"
         self.mdps = []
         self.box_size = 0.0
+        self.nprocs = -1
 
-    def __init__ (self, name, mdps, factor, properties):
+    def __init__ (self, name, mdps, factor, properties, nprocs):
         self.name = name
         self.type = "slab"
         self.mdps = mdps
         self.properties = properties
+        self.nprocs = int(nprocs)
 
     def read_from_stream (self, stream):
         for line in stream:
@@ -130,6 +132,8 @@ class SlabProtocol(BaseProtocol):
                 self.mdps = line.split()[1:]
             if line.split()[0] == 'follow':
                 self.follow = line.split()[1]
+            if line.split()[0] == 'nprocs':
+                self.nprocs = int(line.split()[1])
 
     def set_follow (self, pro_name):
         self.follow = pro_name
@@ -138,8 +142,7 @@ class SlabProtocol(BaseProtocol):
         labels   =  [str(x) for x in range(len(self.mdps))]
         conf     =  gridpoint.protocol_outputs[self.follow]['gro']
         top      =  gridpoint.protocol_outputs[self.follow]['top']
-        out_slab = simulate_protocol_slab (conf, top, self.mdps, labels,\
-                workdir)
+        out_slab = simulate_protocol_slab (conf, top, self.mdps, labels, workdir, self.nprocs)
         gridpoint.add_protocol_output (self, out_slab)
         return
 

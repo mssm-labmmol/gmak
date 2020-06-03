@@ -7,7 +7,7 @@ from traj_ana import get_box
 
 # Functions.
 #
-def simulate_something (conf, top, mdp, label, workdir):
+def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     conf = os.path.abspath(conf)
     top = os.path.abspath(top)
     mdp = os.path.abspath(mdp)
@@ -21,7 +21,11 @@ def simulate_something (conf, top, mdp, label, workdir):
         command = "gmx grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (mdp, conf, top, workdir, label, label)
         print ("COMMAND: " + command)
         os.system(command)
-        command = "gmx mdrun -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (workdir, label, label, workdir, label, label)
+        if (nprocs == -1):
+            command = "gmx mdrun -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (workdir, label, label, workdir, label, label)
+        else:
+            command = "gmx mdrun -nt %d -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (nprocs, workdir, label, label, workdir, label, label)
+
         print ("COMMAND: " + command)
         os.system(command)
 
@@ -201,7 +205,7 @@ def dummy_protocol_gas (conf, itp, mdps, labels, workdir):
     #
     return output_dict
 
-def simulate_protocol_slab (conf, top, mdps, labels, workdir):
+def simulate_protocol_slab (conf, top, mdps, labels, workdir, nprocs):
     conf = os.path.abspath(conf)
     top = os.path.abspath(top)
     workdir = os.path.abspath(workdir)
@@ -215,10 +219,10 @@ def simulate_protocol_slab (conf, top, mdps, labels, workdir):
     os.system("gmx editconf -f %s -box %f %f %f -o %s" % (conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
     for i in range(len(mdps)):
         if i == 0:
-            simulate_something (extended_conf, top, mdps[i], labels[i], workdir)
+            simulate_something (extended_conf, top, mdps[i], labels[i], workdir, nprocs)
         else:
             previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
-            simulate_something (previous_conf, top, mdps[i], labels[i], workdir)
+            simulate_something (previous_conf, top, mdps[i], labels[i], workdir, nprocs)
     # create output dictionary 
     output_dict['xtc'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".xtc"
     output_dict['tpr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".tpr"
