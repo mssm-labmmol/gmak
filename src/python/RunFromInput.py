@@ -127,7 +127,8 @@ if __name__ == "__main__":
             #
             optimizer.fillWithScores (grid)
             optimizer.printToFile (grid, thisRunOutputs + "/optimizer_data.dat")
-            optimizer.plotToPdf (grid, thisRunOutputs + "/optimizer_score.pdf")
+            if not ('--noplot' in sys.argv):
+                optimizer.plotToPdf (grid, thisRunOutputs + "/optimizer_score.pdf")
             nextSample = optimizer.determineNextSample (grid, surrogateModelHash)
             print ("Next sample is %d"  % nextSample)
             if (nextSample == -1):
