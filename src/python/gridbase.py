@@ -330,6 +330,11 @@ class ParameterGrid:
         np.savetxt(fn, sp, fmt='%d')
         return
 
+    def read_samples_from_file(self, fn):
+        sp = np.loadtxt(fn, dtype=int)
+        self.set_samples(sp)
+        return
+
     def set_dim (self, dim):
         self.dim = dim
         return
@@ -593,6 +598,12 @@ class ParameterGrid:
         data = [x.estimated_properties[prop].value for x in self.grid_points]
         data = np.array(data)
         np.savetxt(filename, data)
+
+    def read_property_values_err_from_file (self, prop, propType, filename_value, filename_err):
+        values = np.loadtxt(filename_value)
+        err = np.loadtxt(filename_err)
+        for i,x in enumerate(self.grid_points):
+            x.estimated_properties[prop] = init_property_from_string(propType, values[i], err[i])
 
     def save_property_err_to_file (self, prop, filename):
         # make data
