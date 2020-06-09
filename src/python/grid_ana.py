@@ -88,8 +88,7 @@ def plot_grid_to_file (filename, title, x_label, y_label, cbox_label, cbox_limit
     mtp.rcParams['font.family'] = 'serif'
     mtp.rcParams['font.serif'] = 'cm'
 
-    fig = plt.figure()
-    ax = fig.gca()
+    fig, ax = plt.subplots(1)
 
     put_grid_into_axis (ax, title, x_label, y_label, cbox_label, cbox_limits, cbox_limits_colors, data)
 
@@ -101,6 +100,7 @@ def plot_grid_to_file (filename, title, x_label, y_label, cbox_label, cbox_limit
 
     plt.tight_layout(True)
     fig.savefig(filename)
+    plt.close(fig)
 
 
 
