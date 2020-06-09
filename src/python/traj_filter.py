@@ -2,6 +2,7 @@
 
 import numpy as np
 import os 
+from pymbar.timeseries import statisticalInefficiency
 
 # assumes that the propfiles are standard Gromacs xvg files
 def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
@@ -16,7 +17,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
     skips = []
     for propfile in propfiles:
         x = np.loadtxt(propfile, comments=['@','#'], usecols=(1,))
-        [ac, skip] = truncated_autocorr_with_skip(x)
+        skip = statisticalInefficiency(x)
         skips.append(skip)
 
     actual_skip = np.max(skips)
