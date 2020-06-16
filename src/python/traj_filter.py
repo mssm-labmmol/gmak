@@ -20,7 +20,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
         skip = statisticalInefficiency(x)
         skips.append(skip)
 
-    actual_skip = np.max(skips)
+    actual_skip = int(np.max(skips))
     print("FILTER: Skip is {}".format(actual_skip))
 
     os.system("echo 0 | gmx trjconv -f %s -s %s -skip %d -o %s" % (xtc,tpr,actual_skip,oxtc))
