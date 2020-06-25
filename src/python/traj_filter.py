@@ -4,6 +4,18 @@ import numpy as np
 import os 
 from pymbar.timeseries import statisticalInefficiency
 
+# Wrapper for statisticalIneffiency calculation.
+# pymbar.timeseries.statisticalInefficiency fails if auto-covariance is zero.
+# However, there are cases when the auto-covariance can be zero, e.g. if the series is constant.
+# This wrapper prevents errors in these cases.
+def wrapperStatisticalInefficiency(data):
+    dataMean = np.mean(data)
+    dataStd  = np.std(data)
+    # rigorous case
+    if (np.std(data) == 0.0):
+        return 1
+    return statisticalInefficiency(data)
+
 # assumes that the propfiles are standard Gromacs xvg files
 def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
     xtc = os.path.abspath(xtc)
@@ -17,7 +29,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
     skips = []
     for propfile in propfiles:
         x = np.loadtxt(propfile, comments=['@','#'], usecols=(1,))
-        skip = statisticalInefficiency(x)
+        skip = wrapperStatisticalInefficiency(x)
         skips.append(skip)
 
     actual_skip = int(np.max(skips))
