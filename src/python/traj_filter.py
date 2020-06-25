@@ -9,9 +9,6 @@ from pymbar.timeseries import statisticalInefficiency
 # However, there are cases when the auto-covariance can be zero, e.g. if the series is constant.
 # This wrapper prevents errors in these cases.
 def wrapperStatisticalInefficiency(data):
-    dataMean = np.mean(data)
-    dataStd  = np.std(data)
-    # rigorous case
     if (np.std(data) == 0.0):
         return 1
     return statisticalInefficiency(data)
