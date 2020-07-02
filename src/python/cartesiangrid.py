@@ -15,6 +15,22 @@ class CartesianGrid:
     def getVolume(self):
         return np.prod(self.lens)
 
+    def getCenterAsLinear(self):
+        tot = self.getVolume()
+        if (tot % 2) == 0:
+            return int(tot/2)
+        else:
+            return int((tot - 1)/2)
+
+    def getCenterAsTuple(self):
+        return self.linear2tuple(self.getCenterAsLinear())
+
+    def getDisplacement(self, i, j):
+        tuple_i = self.linear2tuple(i)
+        tuple_j = self.linear2tuple(j)
+        displ   = tuple([y - x for x,y in zip(tuple_i, tuple_j)])
+        return displ
+
     def linear2tuple(self, linpos):
         """Returns tuple position for linear position."""
         count = 0

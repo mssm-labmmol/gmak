@@ -1,221 +1,352 @@
-from math import sqrt
-import re
+import  numpy       as      np
+from    variations  import  DomainSpace
+from    math        import  sqrt
+from    copy        import  deepcopy
+import  re
+
+# -----------------------------------------------------------------------------
+# base classes for parameters
+# -----------------------------------------------------------------------------
+
+# Interface for NonbondedParameter
+class NonbondedParameter:
+    def value(self): 
+        return self._value
+    def label(self):
+        return self._label
+    def alter(self, value):
+        self._value = value
+
+# Special for mixing parameters.
+#
+# This abstraction ensures that these specific types of nb parameters
+# are altered when the composing parameters are altered.
+class NonbondedParameterMix:
+    def __init__(self, label, nb_factory, par_i, par_j, comb_func):
+        self.par_i = par_i
+        self.par_j = par_j
+        self.nbpar = nb_factory.create(comb_func(par_i.value(), par_j.value()), label)
+        self.comb_func = comb_func
+
+    def label(self):
+        return self.nbpar.label()
+
+    def value(self):
+        self.nbpar.alter(self.comb_func( self.par_i.value(), self.par_j.value() ))
+        return self.nbpar.value()
+    
+# Subtypes
+class C6(NonbondedParameter):
+    def __init__(self, value, label):
+        self._value = value
+        self._label = label
+class CS6(NonbondedParameter):
+    def __init__(self, value, label):
+        self._value = value
+        self._label = label
+class C12(NonbondedParameter):
+    def __init__(self, value, label):
+        self._value = value
+        self._label = label
+class CS12(NonbondedParameter):
+    def __init__(self, value, label):
+        self._value = value
+        self._label = label
+
+class NonbondedParameterFactory:
+    @staticmethod
+    def create(value, typeString):
+        if (typeString == 'c6'):
+            return C6(value, typeString)
+        if (typeString == 'cs6'):
+            return CS6(value, typeString)
+        if (typeString == 'c12'):
+            return C12(value, typeString)
+        if (typeString == 'cs12'):
+            return CS12(value, typeString)
+
+class NonbondedParameters:
+    def __init__(self, factory, labels, values):
+        self.parameters = {}
+        for value, label in zip(values, labels): 
+            self.parameters[label] = factory.create(value, label)
+    def alter(self, labels, values):
+        for value, label in zip(values, labels):
+            self.parameters[label].alter(value)
+    def getNonbondedParameterReference(self, label):
+        return self.parameters[label]
+    def getValue(self, label):
+        return self.parameters[label].value()
+    def debugPrint(self):
+        for x in NonbondedParametersIterator(self):
+            print(x)
+
+class NonbondedParametersMix(NonbondedParameters):
+    def __init__(self, factory, labels, pars_i, pars_j, comb_matrix, comb_funcs):
+        self.parameters = {}
+        labels = comb_matrix.keys()
+        for l in labels:
+            nbmix = NonbondedParameterMix(l, factory, pars_i.getNonbondedParameterReference(comb_matrix[l][0]),
+                      pars_j.getNonbondedParameterReference(comb_matrix[l][1]), comb_funcs[l])
+            
+            self.parameters[l] = nbmix
+        
+
+class NonbondedParametersIterator:
+    def __init__(self, nb):
+        self.curr = -1
+        self.keys = list(nb.parameters.keys())
+        self.nb   = nb
+    def __iter__(self):
+        return self
+    def __next__(self):
+        self.curr += 1
+        if self.curr >= len(self.nb.parameters):
+            raise StopIteration
+        return (self.nb.parameters[self.keys[self.curr]].label(), self.nb.parameters[self.keys[self.curr]].value())
+
+# -----------------------------------------------------------------------------
+# Atomtype
+# -----------------------------------------------------------------------------
 
 class Atomtype:
 
-    def __init__ (self, typestring=""):
-        self.type = typestring
-        self.parameters = {'c6': 0.00, 'c12': 0.00, 'cs6': 0.00, 'cs12': 0.00}
+    def __init__(self, typeString, nonbondedParameters):
+        self.type = typeString
+        self.nonbondedParameters = nonbondedParameters
 
-    def set_parameters (self, c6, c12, cs6, cs12):
-        self.parameters['c6'] = c6
-        self.parameters['c12'] = c12
-        self.parameters['cs6'] = cs6
-        self.parameters['cs12'] = cs12
+    def getLabel(self):
+        return self.type
 
-    def alter_parameter (self, parameterName, newValue):
-        self.parameters[parameterName] = newValue
+    def getNonbondedParameters(self):
+        return [x for x in NonbondedParametersIterator(self.nonbondedParameters)]
 
-    def decouple (self, parameterName):
-        self.alter_parameter (parameterName, 0.0)
+    def getNonbondedParameterValue(self, label):
+        return self.nonbondedParameters.getValue(label)
 
-    def __eq__ (self, other):
+    def alterNonbondedParameters(self, labels, values):
+        self.nonbondedParameters.alter(labels, values)
+
+    def getNonbondedParameterReference(self, label):
+        return self.nonbondedParameters.getNonbondedParameterReference(label)
+
+    def getNonbondedParametersObject(self):
+        return self.nonbondedParameters
+
+    def decoupleNonbondedParameter(self, label):
+        self.alter([label], [0.0])
+
+    def __eq__(self, other):
         return (self.type == other.type)
 
-class LoopData:
+    def debugPrint(self):
+        print("atom {}".format(self.type))
+        self.nonbondedParameters.debugPrint()
+
+# -----------------------------------------------------------------------------
+# ParameterReference
+# -----------------------------------------------------------------------------
+
+class NonbondedParameterReference(NonbondedParameter):
+    """A reference to a particular parameter of an atomtype.
+    Useful to directly alter this parameter."""
+    def __init__(self, atomtypes, typeString, parString):
+        for at in atomtypes:
+            if (at.type == typeString):
+                self.reference = at.getNonbondedParameterReference(parString)
+                return
+        raise ValueError("Trying to reference an Atomtype/NonbondedParameter which does not exist.")
     
-    def __init__ (self):
-        self.atomtype = Atomtype ()
-        self.start = {}
-        self.step = {}
-        self.size = {}
-        self.start['c6']  = 0.00
-        self.step['c6']   = 0.00
-        self.size['c6']   = 0
-        self.start['c12'] = 0.00
-        self.step['c12']  = 0.00
-        self.size['c12']  = 0
+    def dereference(self):
+        return self.reference
 
-    def get_linear_size (self):
-        return self.size['c6'] * self.size['c12']
+# -----------------------------------------------------------------------------
+# ParameterSpaceGenerator
+# -----------------------------------------------------------------------------
 
-    def get_size(self):
-        return (int(self.size['c6']), int(self.size['c12']))
+class ParameterSpaceGenerator:
+    """Contains tuples of (DomainSpace, [NonbondedParameterReference]).
+    Handles connecting data from DomainSpace with parameter values."""
+    def __init__(self):
+        self.members = []
 
-    def set_members (self, atomtype, c6start, c6step, c6size, c12start, c12step, c12size):
-        # this is an Atomtype instance
-        self.atomtype = atomtype
-        self.start['c6'] = c6start
-        self.step['c6']  = c6step
-        self.size['c6']  = c6size
-        self.start['c12'] = c12start
-        self.step['c12']  = c12step
-        self.size['c12']  = c12size
+    def addMember(self, domainSpace, nbParRefList):
+        """Add a (domainSpace, list<NonbondedParameterReference>) tuple."""
+        # check compatibility of number of states
+        for ds, pl in self.members:
+            if (ds.get_linear_size() != domainSpace.get_linear_size()):
+                raise ValueError("Trying to add a DomainSpace with non-matching linear size.")
+        # check compatibility of dimension
+        if (domainSpace.get_dim() != len(nbParRefList)):
+            raise ValueError("Trying to associate DomainSpace of dimension {} to {} parameters.".format(
+                domainSpace.get_dim(), len(nbParRefList)))
+        self.members.append( (domainSpace, nbParRefList) )
 
-    def calc_at_linear_position (self, position):
-        c6_position = int(position / self.size['c12'])
-        c12_position = position % self.size['c12']
-        this_c6 = self.start['c6'] + c6_position * self.step['c6']
-        this_c12 = self.start['c12'] + c12_position * self.step['c12']
-        return (this_c6, this_c12)
+    def setState(self, i):
+        """Applies DomainSpace values at state 'i' to the parameters referenced by the object."""
+        for domainSpace, parList in self.members:
+            values = domainSpace.get(i)
+            for j, parRef in enumerate(parList):
+                par = parRef.dereference()
+                par.alter( values[j] )
 
-    def set_at_linear_position (self, position):
-        (this_c6, this_c12) = self.calc_at_linear_position (position)
-        self.atomtype.alter_parameter ('c6', this_c6)
-        self.atomtype.alter_parameter ('c12', this_c12)
+# -----------------------------------------------------------------------------
+# NonbondedForcefield
+# -----------------------------------------------------------------------------
 
-    def write_parameter_grid_to_file (self, fn):
-        fp = open(fn, 'w')
-        for i in range(self.size['c6']):
-            for j in range(self.size['c12']):
-                c6 = self.start['c6'] + i * self.step['c6']
-                c12 = self.start['c12'] + j * self.step['c12']
-                fp.write("%18.7e%18.7e\n" % (c6,c12))
-        fp.close()
+class BasePairtype:
 
-    def set_new_center (self, new_center_linear_position):
-        if (self.size['c6'] % 2 == 0) or (self.size['c12'] % 2 == 0):
-            print ("Error: Grid sizes must be odd.")
-            exit()
-        (oldc6, oldc12) = self.calc_at_linear_position ( int((self.get_linear_size() - 1)/2) )
-        (newc6, newc12) = self.calc_at_linear_position ( new_center_linear_position )
-        shiftc6 = newc6 - oldc6
-        shiftc12 = newc12 - oldc12
-        self.start['c6'] += shiftc6
-        self.start['c12'] += shiftc12
+    def __init__(self, atomtype_i, atomtype_j, nb_factory, comb_matrix, comb_funcs):
+        """Parameters:
+        atomtype_i: <Atomtype>
+        atomtype_j: <Atomtype>
+        nb_factory: NonbondedParameterFactory
+        comb_matrix: dict of tuples, e.g. {'c6': ('c6', 'c6'), 'c12': ('c12', 'c12')}
+        comb_funcs:  dict of functions, e.g. {'c6': lambda x,y : np.sqrt(x*y), 'c12': lambda x,y : np.sqrt(x*y)} 
+        """
 
-    def create_refined (self, factor_c6, factor_c12):
-        import copy
-        refined_loop = copy.deepcopy(self)
-        # alter what is needed
-        refined_loop.step['c6'] /= factor_c6
-        refined_loop.step['c12'] /= factor_c12
-        refined_loop.size['c6'] = refined_loop.size['c6'] * factor_c6 - factor_c6 + 1
-        refined_loop.size['c12'] = refined_loop.size['c12'] * factor_c12 - factor_c12 + 1
-        return refined_loop
+        self.type_i = atomtype_i
+        self.type_j = atomtype_j
 
-class ParameterLoop:
+        labels  = comb_matrix.keys()
+        pars_i  = atomtype_i.getNonbondedParametersObject()
+        pars_j  = atomtype_j.getNonbondedParametersObject()
 
-    def __init__ (self):
-        self.basic_itp = "/dev/null"
-        # list of Atomtypes
-        self.atomtypes = []
-        # loop data
-        self.loop = LoopData ()
+        self.nonbondedParameters = NonbondedParametersMix(nb_factory, labels, pars_i, pars_j, comb_matrix, comb_funcs)
 
-    # Writes FF parameters to stream.
-    # Decouple flag:
-    #
-    #       0: no decoupling
-    #       1: decouple c12 of self-interactions
-    #       2: 1 + decouple sqrt(c12) in non-self-interactions
-    #       3: 2 + decouple c6 of self-interactions
-    #       4: 3 + decouple sqrt(c6) in non-self-interactions
-    #
-    # The modified atomtype is inferred from self.loop.atomtype.
-    def write_ff_header_to_stream (self, stream, decoupleFlag):
-        stream.write("[ defaults ]\n")
-        stream.write("; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ\n")
-        stream.write("       1                1              no           1.0     1.0\n")
-        stream.write("[ atomtypes ]\n")
+    def getParameter(self, label):
+        return self.nonbondedParameters.getValue(label)
+
+    def getParameters(self):
+        return [x for x in NonbondedParametersIterator(self.nonbondedParameters)]
+
+    def __eq__(self, other):
+        return ((self.type_i == other.type_i) and (self.type_j == other.type_j)) or ((self.type_i == other.type_j) and (self.type_j == other.type_i))
+
+    def getLabel(self):
+        return (self.type_i.getLabel(), self.type_j.getLabel())
+    
+    def debugPrint(self):
+        print("pair {}-{}".format(self.type_i.type, self.type_j.type))
+        print("interaction parameters")
+        self.nonbondedParameters.debugPrint()
+
+class StandardLJPairtype(BasePairtype):
+    """
+    Facilitates initialization of a BasePairType in case of standard LJ interaction
+    with geometric-mean combination rule.
+    """
+    def __init__(self, atomtype_i, atomtype_j, nb_factory):
+        geometric_mean = lambda x,y : np.sqrt(x*y)
+        comb_matrix = {'c6': ('c6', 'c6'), 'c12': ('c12', 'c12'), 'cs6': ('cs6', 'cs6'), 'cs12': ('cs12', 'cs12')}
+        comb_funcs  = {'c6': geometric_mean, 'c12': geometric_mean, 'cs6': geometric_mean, 'cs12': geometric_mean}
+        super().__init__(atomtype_i, atomtype_j, nb_factory, comb_matrix, comb_funcs)
+
+class PairtypeFactory:
+    @staticmethod
+    def createFromAtomtypes(ffType, atomtypes):
+        natoms = len(atomtypes)
+        pairtypes = []
+        if ffType == 'standard':
+            # standard LJ force-field
+            for i in range(natoms):
+                for j in range(i, natoms):
+                    thisPairtype = StandardLJPairtype(atomtypes[i], atomtypes[j], NonbondedParameterFactory)
+                    pairtypes.append(thisPairtype)
+        else:
+            raise ValueError("Forcefield type {} is not supported.".format(ffType))
+        
+        return pairtypes
+
+class NonbondedForcefield:
+    """This is the main API through which the program accesses parameter values and
+    atomtype names and writes it to disk. Note that parameter values are not copied
+    into this class, so any alteration in the dependencies will reflect in the values
+    you can access via this class."""
+    
+    def __init__(self, atomtypes, pairtypes):
+        """Parameters:
+        atomtypes:     list of <Atomtype> objects that compose the forcefield
+        pairtypes:     list of <Pairtype> objects for 1-4 interactions that compose the forcefield
+        """
+        self.atomtypes = atomtypes
+        self.pairtypes = pairtypes
+        
+    def getPairtypeParams(self):
+        """Return example: 
+        [ (('CH2','CH2'), [('c6', 1.2e-03), ('c12', 1.7e-06)]), 
+          (('CH2','CH3'), [('c6', 1.6e-03), ('c12', 1.1e-06)]), 
+          ...
+        ]
+        """        
+        return [(x.getLabel(), x.getParameters()) for x in self.pairtypes]
+
+    def getAtomtypeParams(self):
+        """Return example: 
+        [ ('CH2', [('c6', 1.2e-03), ('c12', 1.7e-06)]), 
+          ('CH3', [('c6', 1.6e-03), ('c12', 1.1e-06)]), 
+          ...
+        ]
+        """        
+        return [(x.getLabel(), x.getNonbondedParameters()) for x in self.atomtypes]
+        
+    def debugPrint(self):
         for at in self.atomtypes:
-            selfc6  = at.parameters['c6']
-            selfc12 = at.parameters['c12']
-            if (at == self.loop.atomtype):
-                if (decoupleFlag > 0):
-                    selfc12 = 0
-                if (decoupleFlag > 2):
-                    selfc6   = 0
-            stream.write("%-20s%10d%10.2f%10.2f%10s%18.7e%18.7e\n" % (at.type, 6, 0.0, 0.0, "A", selfc6, selfc12))
-        stream.write("\n[ nonbond_params ]\n")
-        for at in self.atomtypes:
-            selfc6  = at.parameters['c6']
-            selfc12 = at.parameters['c12']
-            if (at == self.loop.atomtype):
-                if (decoupleFlag > 1):
-                    selfc12 = 0
-                if (decoupleFlag > 3):
-                    selfc6   = 0
-            for ato in self.atomtypes:
-                if (ato != at):
-                    selfc6_o  = ato.parameters['c6']
-                    selfc12_o = ato.parameters['c12']
-                    c6 = sqrt(selfc6 * selfc6_o)
-                    c12 = sqrt(selfc12 * selfc12_o)
-                    stream.write("%-20s%-20s%10d%18.7e%18.7e\n" % (at.type, ato.type, 1, c6, c12))
-        stream.write("\n[ pairtypes ]\n")
-        for at in self.atomtypes:
-            selfc6  = at.parameters['cs6']
-            selfc12 = at.parameters['cs12']
-            for ato in self.atomtypes:
-                if (ato != at):
-                    selfc6_o  = ato.parameters['cs6']
-                    selfc12_o = ato.parameters['cs12']
-                    c6 = sqrt(selfc6 * selfc6_o)
-                    c12 = sqrt(selfc12 * selfc12_o)
-                    stream.write("%-20s%-20s%10d%18.7e%18.7e\n" % (at.type, ato.type, 1, c6, c12))
-        stream.write("\n")
+            at.debugPrint()
+        for pt in self.pairtypes:
+            pt.debugPrint()
+    
+class NonbondedForcefieldFactory:
 
-    # create a itp with the given decoupleFlag
-    def create_itp (self, output, decoupleFlag):
-        fp = open(output, 'w')
-        self.write_ff_header_to_stream (fp, decoupleFlag)
-        # also copy itp file into it
-        with open(self.basic_itp, 'r') as fpi:
-            fp.write(fpi.read())
-        fp.close()
-
-    # Move loop to position and create all itp files based on this position.
-    def create_full_itp_for_position (self, linear_position, output_preffix):
-        self.loop.set_at_linear_position (linear_position)
-        self.create_itp (output_preffix + ".itp", 0)
-        self.create_itp (output_preffix + "_0.itp", 0)
-        for i in range(1,5):
-            self.create_itp (output_preffix + "_%d.itp" % i, i)
-
-    # This assumes a stream is given.
-    #
-    # It will read from stream until line with terminating string '$end' is 
-    # found.
-    #
-    def readFromStream (self, stream):
-        starts = []
-        steps  = []
-        sizes  = []
-        pars   = []
-        for line in stream:
+    @staticmethod
+    def createFromStream(fp):
+        # assumes a line "$atomtypes" has just been read
+        ffType    = 'undefined'
+        atomtypes = []
+        for line in fp:
             if line[0] == '#':
                 continue
-            if (re.match(r"^\$end.*",line)):
-                # before ending, set loop members
-                idx_c6 = pars.index('c6')
-                idx_c12 = pars.index('c12')
-                self.loop.set_members (self.atomtypes[index_of_atomtype], \
-                        starts[idx_c6], steps[idx_c6], sizes[idx_c6],\
-                        starts[idx_c12], steps[idx_c12], sizes[idx_c12])
-                return
-            splitted = line.split()
-            if (line.split()[0] == 'itp'):
-                self.basic_itp = splitted[1]
-            if (line.split()[0] == 'make_top'):
-                self.make_top_path = os.path.abspath(splitted[1])
-            if (line.split()[0] == 'atomtypes'):
-                for at in splitted[1:]:
-                    new_at = Atomtype (at)
-                    self.atomtypes.append(new_at)
-            if (splitted[0] in ['c6','c12','cs6','cs12']):
-                for i,par in enumerate(splitted[1:]):
-                    self.atomtypes[i].alter_parameter(splitted[0], float(par))
-            if (splitted[0] == 'loop'):
-                # first, set the reference to the atomtype in the loop
-                dummy_atomtype     = Atomtype (splitted[1])
-                index_of_atomtype  = self.atomtypes.index(dummy_atomtype)
-                # now set pars 
-                pars = splitted[2:]
-            if (splitted[0] == 'start'):
-                starts = [float(x) for x in splitted[1:]]
-            if (splitted[0] == 'step'):
-                steps = [float(x) for x in splitted[1:]]
-            if (splitted[0] == 'size'):
-                sizes = [int(x) for x in splitted[1:]]
+            if line.rstrip() == '$end':
+                break
+            # This if clause is only relevant for the first
+            # non-commented line, and sets the forcefield
+            # type.
+            if (ffType == 'undefined'):
+                ffType = line.rstrip()
+                continue
 
+            # Create parameters for atomtype.
+            if (ffType == 'standard'):
+                nb = NonbondedParameters(NonbondedParameterFactory, ['c6', 'c12', 'cs6', 'cs12'], [float(x) for x in line.split()[1:]])
+            else:
+                raise ValueError("Forcefield type {} is not supported.".format(ffType))
+
+            # Create atomtype.
+            at = Atomtype(line.split()[0], nb)
+            atomtypes.append(at)
+            
+        # After break.
+        # Create pairtypes (standard and 1-4) based on the atomtypes.
+        pts = PairtypeFactory.createFromAtomtypes(ffType, atomtypes)
+        return NonbondedForcefield(atomtypes, pts)
+
+if __name__ == '__main__':
+    
+    #pars1 = NonbondedParameters(NonbondedParameterFactory, ['c6', 'c12', 'cs6', 'cs12'], [4,9,16,25])
+    #pars2 = NonbondedParameters(NonbondedParameterFactory, ['c6', 'c12', 'cs6', 'cs12'], [1,1,1,1])
+    #at1  = Atomtype('xxx', pars1)
+    #at2  = Atomtype('yyy', pars2)
+    #pt   = StandardLJPairtype(at1, at2, NonbondedParameterFactory)
+    #pt.debugPrint()
+    #ff = NonbondedForcefield([at1, at2])
+    from io import StringIO
+
+    txt = "standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"
+    strio = StringIO(txt)
+    ff = NonbondedForcefieldFactory.createFromStream(strio)
+    ref = NonbondedParameterReference(ff.atomtypes, "CH2", 'cs12')
+
+    ff.debugPrint()
+    print("--------------------")
+    ref.dereference().alter(1.0e+10)
+    ff.debugPrint()

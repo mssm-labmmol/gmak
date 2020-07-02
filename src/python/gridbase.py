@@ -304,6 +304,13 @@ class ParameterGrid:
                     itp_file = prefix + "%d.itp" % i
                     self.put_itp_at_position (itp_file, i)
 
+    def get_square_size(self):
+        firstSize = self.size[0]
+        for s in self.size:
+            if s != firstSize:
+                raise ValueError("Can't get square size of non-square grid.")
+        return int(firstSize)
+
     def get_number_of_samples (self):
         num = 0
         for x in self.grid_points:

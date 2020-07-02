@@ -77,7 +77,7 @@ if __name__ == "__main__":
         the 'nostart' directive, skip this for the initial grid.
         """
         if (nshifts > 0) or not (gaCoverInterface.noStart):
-            gaCoverInterface.prepareForRun(grid.get_samples_id(), grid.size[0])
+            gaCoverInterface.prepareForRun(grid.get_samples_id(), grid.get_square_size())
             gaNewSamples = gaCoverInterface.run()            
             if (len(gaNewSamples) > 0):
                 for x in gaNewSamples:

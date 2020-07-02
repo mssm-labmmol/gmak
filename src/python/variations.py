@@ -1,6 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod, abstractproperty
 from copy import deepcopy
+from cartesiangrid import *
 
 class AbstractVariationFunction(ABC):
     """
@@ -57,14 +58,22 @@ class VariationFunctionCartesian(AbstractVariationFunction):
         self.lens   = lens
         self.domain_dim = len(starts)
         self.image_dim  = len(starts)
-        # internal data to save computation time
-        self._axs  = [starts[i] + np.arange(lens[i]) * steps[i] for i in range(len(lens))]
-        self._meshgrid = np.meshgrid(*self._axs,  indexing='ij')
-        self._raveled  = [np.ravel(x) for x in self._meshgrid]
+        self._cartesianGrid = CartesianGrid(lens)
+        self._core_calcs()
+    def _core_calcs(self):
+        self._raveled = np.zeros((self.domain_dim, self._cartesianGrid.getVolume()))
+        for i, pt in enumerate(CartesianGridIterator(self._cartesianGrid)):
+            arr = np.array(pt)
+            self._raveled[:,i] = np.array(self.starts) + self.steps * arr
     def apply(self, args):
-        return [self._raveled[i][args] for i in range(len(self.lens))]
+        return self._raveled[:,args]
     def set_new_center(self, i):
-        pass
+        currentCenter      = self._cartesianGrid.getCenterAsLinear()
+        centerDisplacement = self._cartesianGrid.getDisplacement(currentCenter, i)
+        newStarts          = np.array(self.starts) + self.steps * np.array(centerDisplacement)
+        # update data
+        self.starts        = newStarts
+        self._core_calcs()
         
 class AbstractVariation(ABC):
     """
@@ -179,8 +188,10 @@ class DomainSpace:
         return data.shape[1]
 
     def set_new_center(self, i):
-        self.generator.set_new_center(i) 
+        for gen in self.generators:
+            gen.set_new_center(i) 
         self.update_data()
 
     def write_to_file(self, fn):
         np.savetxt(fn, self.data)
+
