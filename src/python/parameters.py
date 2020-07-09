@@ -160,35 +160,70 @@ class NonbondedParameterReference(NonbondedParameter):
     def dereference(self):
         return self.reference
 
+class ParameterReferenceFactory:
+
+    def __init__(self, nonbondedForcefield, bondedForcefield, topologies):
+        self.nbff             = nonbondedForcefield
+        self.bff              = bondedForcefield
+        self.topos            = topologies
+        self.bondedStrings    = ['q', 'm']
+        
+    def create(self, typestring, parameter):
+        """
+        str typestring : string identifying atomtype (e.g. 'OW') or bondedtype (e.g. 'CH2-OW' for bond)
+        str parameter  : string identifying parameter (e.g. 'c6', 'q')
+        """
+        if ('-' in typestring):
+            raise NotImplementedError("Creation of bonded types is not implemented.")
+        else:
+            if parameter in self.bondedStrings:
+                raise NotImplementedError("Creation of bonded types is not implemented.")
+            else:
+                return NonbondedParameterReference(self.nbff.getAtomtypeObjects(),
+                                                   typestring, parameter)
+    
 # -----------------------------------------------------------------------------
 # ParameterSpaceGenerator
 # -----------------------------------------------------------------------------
 
 class ParameterSpaceGenerator:
-    """Contains tuples of (DomainSpace, [NonbondedParameterReference]).
+    """Contains tuples of (DomainSpace, [NonbondedParameterReference]) indexed in a dictionary.
     Handles connecting data from DomainSpace with parameter values."""
     def __init__(self):
-        self.members = []
+        self.members = {}
 
-    def addMember(self, domainSpace, nbParRefList):
+    def addMember(self, name, domainSpace, nbParRefList):
         """Add a (domainSpace, list<NonbondedParameterReference>) tuple."""
         # check compatibility of number of states
-        for ds, pl in self.members:
+        for ds, pl in self.members.values():
             if (ds.get_linear_size() != domainSpace.get_linear_size()):
                 raise ValueError("Trying to add a DomainSpace with non-matching linear size.")
         # check compatibility of dimension
         if (domainSpace.get_dim() != len(nbParRefList)):
             raise ValueError("Trying to associate DomainSpace of dimension {} to {} parameters.".format(
                 domainSpace.get_dim(), len(nbParRefList)))
-        self.members.append( (domainSpace, nbParRefList) )
+        self.members[name] = (domainSpace, nbParRefList)
 
     def setState(self, i):
         """Applies DomainSpace values at state 'i' to the parameters referenced by the object."""
-        for domainSpace, parList in self.members:
+        for domainSpace, parList in self.members.values():
             values = domainSpace.get(i)
             for j, parRef in enumerate(parList):
                 par = parRef.dereference()
                 par.alter( values[j] )
+
+    def getNumberOfStates(self):
+        return self.members.values()[0][0].get_linear_size()
+
+    def getDomainSpace(self, name):
+        return self.members[name][0]
+
+    def debugPrint(self):
+        from sys import stderr
+        outputStream = stderr
+        for name in self.members:
+            print("; domain space {}".format(name), file=outputStream)
+            self.members[name][0].write_to_stream(outputStream)
 
 # -----------------------------------------------------------------------------
 # NonbondedForcefield
@@ -272,7 +307,7 @@ class NonbondedForcefield:
         self.atomtypes = atomtypes
         self.pairtypes = pairtypes
         
-    def getPairtypeParams(self):
+    def getPairtypes(self):
         """Return example: 
         [ (('CH2','CH2'), [('c6', 1.2e-03), ('c12', 1.7e-06)]), 
           (('CH2','CH3'), [('c6', 1.6e-03), ('c12', 1.1e-06)]), 
@@ -281,7 +316,7 @@ class NonbondedForcefield:
         """        
         return [(x.getLabel(), x.getParameters()) for x in self.pairtypes]
 
-    def getAtomtypeParams(self):
+    def getAtomtypes(self):
         """Return example: 
         [ ('CH2', [('c6', 1.2e-03), ('c12', 1.7e-06)]), 
           ('CH3', [('c6', 1.6e-03), ('c12', 1.1e-06)]), 
@@ -289,13 +324,20 @@ class NonbondedForcefield:
         ]
         """        
         return [(x.getLabel(), x.getNonbondedParameters()) for x in self.atomtypes]
+
+    def getAtomtypeObjects(self):
+        return self.atomtypes
         
     def debugPrint(self):
         for at in self.atomtypes:
             at.debugPrint()
         for pt in self.pairtypes:
             pt.debugPrint()
-    
+
+class EmptyNonbondedForcefield(NonbondedForcefield):
+    def __init__(self):
+        super().__init__([], [])
+
 class NonbondedForcefieldFactory:
 
     @staticmethod
@@ -329,6 +371,30 @@ class NonbondedForcefieldFactory:
         # Create pairtypes (standard and 1-4) based on the atomtypes.
         pts = PairtypeFactory.createFromAtomtypes(ffType, atomtypes)
         return NonbondedForcefield(atomtypes, pts)
+
+# ---------------------------------------------------------------------
+# BondedForcefield
+# ---------------------------------------------------------------------
+
+class BondedForcefield:
+    def getBondtypes(self):
+        return self.bondtypes
+
+    def getAngletypes(self):
+        return self.angletypes
+
+    def getDihedraltypes(self):
+        return self.dihedraltypes
+
+    def getImpropertypes(self):
+        return self.impropertypes
+
+class EmptyBondedForcefield(BondedForcefield):
+    def __init__(self):
+        self.bondtypes     = []
+        self.angletypes    = []
+        self.dihedraltypes = []
+        self.impropertypes = []
 
 if __name__ == '__main__':
     

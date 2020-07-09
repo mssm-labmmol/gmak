@@ -1,12 +1,123 @@
-from RunFromInput import ParameterGrid
+#from RunFromInput import ParameterGrid
 from gridoptimizer import gridOptimizer
 from gridshifter import GridShifter
-from parameters import ParameterLoop
+from parameters import *
+from variations import *
+from topology import * 
 from coverage import coverInterface
 from protocols import LiquidProtocol, GasProtocol, SlabProtocol
 
 import os
+import sys 
 
+class ParameterIO:
+    def __init__(self, stream, parRefFactory, domainSpaceFactory):
+        self.stream             = stream
+        self.using              = None
+        self.names              = []
+        self.types              = []
+        self.parRefs            = []
+        self.parRefFactory      = parRefFactory
+        self.domainSpaceFactory = domainSpaceFactory
+        self.parSpaceGen        = ParameterSpaceGenerator()
+
+    def getParameterSpaceGenerator(self):
+        # This is called after all '$variation' blocks are read.
+        # This knowledge is not the responsibility of this class.
+        return self.parSpaceGen
+
+    def _addName(self, options):
+        self.names.append( options[0] )
+        return True
+
+    def _updateUsing(self, options):
+        usingString = options[0]
+        self.using = self.parSpaceGen.getDomainSpace(usingString)
+        return True
+
+    def _addParameterReferences(self, options):
+        _theseParameters = []
+        for refstring in options:
+            [atom, parameter] = refstring.split('/')
+            newReference = self.parRefFactory.create(atom, parameter)
+            _theseParameters.append(newReference)
+        # Add list of parameter references to list of list of parameter references.
+        self.parRefs.append(_theseParameters)
+        return True
+
+    def _addTypeAndDelegateRest(self, options):
+        self.types.append( options[0] )
+        # Create domain space and add to ParameterSpaceGenerator.
+        ds = self.domainSpaceFactory.readFromTypeAndStream(self.types[-1], self.stream, self.using)
+        self.parSpaceGen.addMember(self.names[-1], ds, self.parRefs[-1])
+        return False
+    
+    def read(self):
+        # Dictionary of behaviors based on identifiers.
+        funct_dict   = {
+            'name': self._addName,
+            'pars': self._addParameterReferences,
+            'type': self._addTypeAndDelegateRest,
+            'using': self._updateUsing,
+        }
+        for line in self.stream:
+            if line[0] == '#':
+                continue
+            # Assumes the given stream has just read a '$variations' line.
+            splittedLine = line.split()
+            identifier   = splittedLine[0]
+            options      = splittedLine[1:]
+            # Execute behavior - funct_dict returns False after '$end' is reached in behavior.
+            if not funct_dict[identifier](options):
+                break
+        return
+
+class TestParameterIO:
+    def __init__(self):
+        from io import StringIO
+        dsfac = DomainSpaceFactory
+
+        # for forcefield
+        txt = "standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"
+        strio = StringIO(txt)
+        nbff = NonbondedForcefieldFactory.createFromStream(strio)
+        parreffac = ParameterReferenceFactory(nbff, EmptyBondedForcefield(), [EmptyTopology()])
+
+        # for variations
+        txt = "$variation\n"
+        txt += "name        main\n"
+        txt += "pars        CH3/c6           CH3/c12\n"
+        txt += "type        cartesian\n"
+        txt += "start       9.3471353e-03    2.6266240e-05\n"
+        txt += "step        2.336783825e-05  6.566559999999999e-08\n"
+        txt += "size        33               33\n"
+        txt += "$end\n"
+        txt += "\n"
+        txt += "$variation\n"
+        txt += "name     ties\n"
+        txt += "pars     CH2/c6  CH2/c12\n"
+        txt += "using    main\n"
+        txt += "type     scale\n"
+        txt += "factors  0.1      20\n"
+        txt += "$end\n"
+        strio = StringIO(txt)
+        self.pario = ParameterIO(strio, parreffac, dsfac)
+
+    def run(self):
+        # set at first variation
+        self.pario.stream.readline()
+        # do the thing
+        self.pario.read()
+        # set at next variation
+        self.pario.stream.readline()
+        self.pario.stream.readline()
+        # do the thing
+        self.pario.read()
+        # end
+        psgen = self.pario.getParameterSpaceGenerator()
+        # debug
+        psgen.debugPrint()
+        
 def initialize_from_input (input_file, bool_legacy):
     output_grid = ParameterGrid ()
     output_protocols = []
@@ -179,3 +290,8 @@ def initialize_from_input (input_file, bool_legacy):
             output_protocolsHash, output_optimizer, output_gridshifter,\
             output_paramLoop, output_gaCoverInterface, output_surrogateModel, output_subgrid,
             output_reweightHash)
+
+
+if __name__ == '__main__':
+    test = TestParameterIO()
+    test.run()

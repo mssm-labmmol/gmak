@@ -157,6 +157,56 @@ class VariationFromVariationScale(VariationFromVariation):
         func = VariationFunctionScale(factors)
         super().__init__(dim, size, variation, func)
 
+class AbstractVariationFactory:
+
+    @staticmethod
+    def parseTillEnd(stream):
+        options_dict = {}
+        for line in stream:
+            if line[0] == '#':
+                continue
+            if line.rstrip() == '$end':
+                break
+            splittedLine             = line.split()
+            identifier               = splittedLine[0]
+            options                  = splittedLine[1:]
+            options_dict[identifier] = options
+        return options_dict
+    
+    @staticmethod
+    def _createCartesian(stream, used):
+        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        dim          = len(options_dict['size'])
+        starts       = np.array(options_dict['start'], dtype=float)
+        steps        = np.array(options_dict['step'], dtype=float)
+        lens         = np.array(options_dict['size'], dtype=int)
+        size         = np.prod(lens)
+        return VariationCartesian(dim, size, starts, steps, lens)
+
+    @staticmethod
+    def _createScale(stream, used):
+        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        variation    = used.generators[0]
+        factors      = np.array(options_dict['factors'], dtype=float)
+        dim          = len(options_dict['factors'])
+        size         = used.get_linear_size()
+        return VariationFromVariationScale(dim, size, variation, factors) 
+        
+    @staticmethod
+    def readFromTypeAndStream(typestring, stream, used):
+        func_dict = {
+            'cartesian' : AbstractVariationFactory._createCartesian,
+            'scale'     : AbstractVariationFactory._createScale
+        }
+        try:
+            return func_dict[typestring](stream, used)
+        except KeyError:
+            raise NotImplementedError("VariationFactory for {} is not implemented.".format(typestring))
+
+# ----------------------------------------------------------------------
+# DomainSpace
+# ----------------------------------------------------------------------
+        
 class DomainSpace:
     """
     Attributes:
@@ -182,16 +232,29 @@ class DomainSpace:
         return self.data[i,:]
 
     def get_linear_size(self):
-        return data.shape[0]
+        return self.data.shape[0]
 
     def get_dim(self):
-        return data.shape[1]
+        return self.data.shape[1]
 
     def set_new_center(self, i):
         for gen in self.generators:
             gen.set_new_center(i) 
         self.update_data()
 
+    def write_to_stream(self, stream):
+        m, n = self.data.shape
+        for i in range(m):
+            for j in range(n):
+                stream.write("%18.7e" % self.data[i,j])
+            stream.write('\n')
+        
     def write_to_file(self, fn):
         np.savetxt(fn, self.data)
 
+class DomainSpaceFactory:
+
+    @staticmethod
+    def readFromTypeAndStream(typestring, stream, used):
+        variation = AbstractVariationFactory.readFromTypeAndStream(typestring, stream, used)
+        return DomainSpace([variation])
