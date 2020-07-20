@@ -6,13 +6,19 @@ from cartesiangrid import *
 class AbstractVariationFunction(ABC):
     """
     Contract attributes: domain_dim, image_dim
-    Contract methods: apply, set_new_center
+    Contract methods: apply, set_new_center, rescale
     """
     @abstractmethod
     def apply(self, list_of_args): pass
 
     @abstractmethod
     def set_new_center(self, i): pass
+
+    @abstractmethod
+    def rescale(self, factors): pass
+    
+    @abstractmethod
+    def get_sizes(self): pass
 
 class VariationFunctionReadFromFile(AbstractVariationFunction):
     def __init__(self, dim, size, fn):
@@ -30,6 +36,10 @@ class VariationFunctionReadFromFile(AbstractVariationFunction):
         return self._data[args]
     def set_new_center(self, i):
         raise NotImplementedError("Can't shift VariationFunctionReadFromFile.")
+    def rescale(self, factors):
+        raise NotImplementedError("Can't rescale VariationFunctionReadFromFile.")
+    def get_sizes(self):
+        return None
 
 class VariationFunctionConstant(AbstractVariationFunction):
     def __init__(self, constants):
@@ -40,6 +50,10 @@ class VariationFunctionConstant(AbstractVariationFunction):
         return self.constants
     def set_new_center(self, i):
         return
+    def rescale(self, factors):
+        return
+    def get_sizes(self):
+        return None
 
 class VariationFunctionScale(AbstractVariationFunction):
     def __init__(self, factors):
@@ -50,6 +64,10 @@ class VariationFunctionScale(AbstractVariationFunction):
         return np.array(args) * self.factors
     def set_new_center(self, i):
         raise NotImplementedError("Can't shift VariationFunctionScale.")
+    def rescale(self, factors):
+        return
+    def get_sizes(self):
+        return None
 
 class VariationFunctionCartesian(AbstractVariationFunction):
     def __init__(self, starts, steps, lens):
@@ -74,6 +92,19 @@ class VariationFunctionCartesian(AbstractVariationFunction):
         # update data
         self.starts        = newStarts
         self._core_calcs()
+    def rescale(self, factors):
+        if (len(factors) != self.domain_dim):
+            raise ValueError("len(factors) != self.domain_dim")
+        for f in factors:
+            if not isinstance(f, int):
+                raise ValueError("Subgrid factors must be integers.")
+        # update defining data
+        newLens  = [f*(l-1) + 1 for f,l in zip(factors, self.lens)]
+        newSteps = [s/float(f) for s,f in zip(self.steps, factors)]
+        self.__init__(self.starts, newSteps, newLens)
+
+    def get_sizes(self):
+        return self.lens
         
 class AbstractVariation(ABC):
     """
@@ -84,6 +115,8 @@ class AbstractVariation(ABC):
     int size()
     2D (size x dim) np.ndarray gen_data()
     void set_new_center(int)
+    void rescale(list<int>)
+    list<int> get_sizes()
 
     """
     def dim(self): return self.dim
@@ -95,6 +128,12 @@ class AbstractVariation(ABC):
 
     @abstractmethod
     def set_new_center(self, i): pass
+
+    @abstractmethod
+    def rescale(self, factors): pass
+
+    @abstractmethod
+    def get_sizes(self): pass
 
 class VariationFromFunction(AbstractVariation):
     
@@ -111,6 +150,13 @@ class VariationFromFunction(AbstractVariation):
 
     def set_new_center(self, i):
         self.func.set_new_center(i)
+
+    def rescale(self, factors):
+        self.func.rescale(factors)
+        self.size = np.prod(self.func.get_sizes())
+
+    def get_sizes(self):
+        return self.func.get_sizes()
 
 class VariationFromFile(VariationFromFunction):
     def __init__(self, dim, size, fn):
@@ -149,8 +195,15 @@ class VariationFromVariation(AbstractVariation):
             _data[i, :] = self.func.apply( self.variation.func.apply(i) )
         return _data
 
+    def rescale(self, factors):
+        self.variation.rescale(factors)
+        self.size = self.variation.size
+
     def set_new_center(self, i):
         self.variation.set_new_center(i)
+
+    def get_sizes(self):
+        return self.variation.get_sizes()
 
 class VariationFromVariationScale(VariationFromVariation):
     def __init__(self, dim, size, variation, factors):
@@ -237,9 +290,27 @@ class DomainSpace:
     def get_dim(self):
         return self.data.shape[1]
 
+    def get_sizes(self):
+        """This method returns the sizes along each dimension when this makes
+        sense.  For a cartesian 33x33 grid, for instance, it will
+        return [33, 33].  Note that the lenght of the return list is
+        not necessarily equal to the dimension.  For instance, we can
+        have a N-lines file representing an arbitrary change in two
+        parameters where get_sizes() = [N]."""
+        for gen in self.generators:
+            thisSizes = gen.get_sizes()
+            if thisSizes is not None:
+                return thisSizes
+        raise ValueError("Could not find generator with appropriate get_sizes() method.")
+
     def set_new_center(self, i):
         for gen in self.generators:
             gen.set_new_center(i) 
+        self.update_data()
+
+    def rescale(self, factors):
+        for gen in self.generators:
+            gen.rescale(factors)
         self.update_data()
 
     def write_to_stream(self, stream):

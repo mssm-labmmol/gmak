@@ -212,8 +212,14 @@ class ParameterSpaceGenerator:
                 par = parRef.dereference()
                 par.alter( values[j] )
 
+    def getDimension(self, name):
+        return self.members[name][0].get_dim()
+
+    def getSizes(self, name):
+        return self.members[name][0].get_sizes()
+
     def getNumberOfStates(self):
-        return self.members.values()[0][0].get_linear_size()
+        return list(self.members.values())[0][0].get_linear_size()
 
     def getDomainSpace(self, name):
         return self.members[name][0]
@@ -224,6 +230,16 @@ class ParameterSpaceGenerator:
         for name in self.members:
             print("; domain space {}".format(name), file=outputStream)
             self.members[name][0].write_to_stream(outputStream)
+
+    def copy(self):
+        newObject = ParameterSpaceGenerator()
+        for name in self.members:
+            newObject.addMember(name, deepcopy(self.members[name][0]), self.members[name][1])
+        return newObject
+
+    def rescale(self, factors):
+        for name in self.members:
+            self.members[name][0].rescale(factors)
 
 # -----------------------------------------------------------------------------
 # NonbondedForcefield

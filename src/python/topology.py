@@ -1,6 +1,7 @@
 # import base force-field classes
 from parameters import *
-from variations import * 
+from variations import *
+import os 
 from abc import ABC, abstractmethod, abstractproperty
 
 class TopologyInfo:
@@ -120,6 +121,9 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         if name[0] == 'N':
             return 7
 
+    def _alterFile(self, newFile):
+        self.fn = newFile
+
     def _writeBonded(self, topology):
         self.fp.write("; placeholder for bondedtypes\n")
         self.fp.write("\n")
@@ -225,22 +229,44 @@ class TopologyTestGromacsWithVariations:
             topo.updateNonbondedForcefield(self.nonbonded)
             outputwriter.writeToFiles(topo)
 
+# ----------------------------------------------------------------------
+# Bundle things
+# ----------------------------------------------------------------------
+
+# Setter
+class AbstractTopologyOutputSetter(ABC):
+
+    @abstractmethod
+    def setState(self, abstractTopologyOutput, state):
+        pass
+
+class GromacsDummyTopologyOutputSetter(AbstractTopologyOutputSetter):
+
+    def __init__(self, itpOutputPrefix):
+        self.prefix = itpOutputPrefix
+
+    def setState(self, abstractTopologyOutput, state):
+        newFile = "{}_{}.itp".format(self.prefix, state)
+        newFile = os.path.abspath(newFile)
+        abstractTopologyOutput._alterFile(newFile)
+
+# Bundle
 class TopologyBundle:
 
     def __init__(self, topology, topologyOutput, topologyOutputSetter):
         self.topology = topology
         self.topologyOutput = topologyOutput
-        self.topologyOutputSetter = topologyOutputSetter # TODO: Setter comment
+        self.topologyOutputSetter = topologyOutputSetter 
 
     def getTopology(self):
         return self.topology
 
     def writeFilesForStatepath(self, state):
-        self.topologyOutputSetter.setState(self.topologyOutput, state)  # TODO: Setter comment
-        self.topologyOutput.writeFiles()
+        self.topologyOutputSetter.setState(self.topologyOutput, state)  
+        self.topologyOutput.writeToFiles(self.topology)
 
     def getPathsForStatepath(self, state):
-        self.topologyOutputSetter.setState(self.topologyOutput, state) # TODO: Setter comment
+        self.topologyOutputSetter.setState(self.topologyOutput, state) 
         self.topologyOutput.getFiles()
 
 class TopologyBundleFactory:
@@ -254,10 +280,10 @@ class TopologyBundleFactory:
         # Initialize objects.
         _inp = GromacsDummyTopologyInput(itpPath)
         _top = _inp.getTopology()
-        _set = GromacsDummyTopologyOutputSetter(itpOutputPrefix) # TODO: Setter comment
+        _set = GromacsDummyTopologyOutputSetter(itpOutputPrefix) 
         _out = GromacsDummyTopologyOutput(itpPath, '')
         # By default, set output to state zero.
-        _set.setState(_out, 0) # TODO: Setter comment
+        _set.setState(_out, 0) 
         # Update forcefield elements.
         _top.updateBondedForcefield(bondedForcefield)
         _top.updateNonbondedForcefield(nonbondedForcefield)
@@ -267,9 +293,20 @@ class TopologyBundleFactory:
     @staticmethod
     def createBundle(ctrlString, inputObject, outputObject, nonbondedForcefield, bondedForcefield):
         funct_dict = {
-            'gromacs': TopologyBundleFactory.createBundleGromacs,
+            'gromacs': TopologyBundleFactory._createBundleGromacs,
         }
         return funct_dict[ctrlString](inputObject, outputObject, nonbondedForcefield, bondedForcefield)
+
+class TestTopologyBundleGromacs:
+    def __init__(self, itpFile, itpPrefix, nonbondedForcefield, bondedForcefield, spacegen):
+        self.bundle = TopologyBundleFactory.createBundle('gromacs', itpFile, itpPrefix, nonbondedForcefield, bondedForcefield)
+        self.spaceGen = spacegen
+        self.nstates = spacegen.getNumberOfStates()
+
+    def run(self):
+        for i in range(self.nstates):
+            self.spaceGen.setState(i)
+            self.bundle.writeFilesForStatepath(i)
 
 if __name__ == '__main__':
     from io import StringIO
@@ -278,12 +315,17 @@ if __name__ == '__main__':
     parameter_reference = NonbondedParameterReference(nonbonded.atomtypes, 'CH1', 'cs6')
     parameter_domain    = DomainSpace([VariationCartesian(1, 5, [0.0], [0.1], [5])])
     space_gen = ParameterSpaceGenerator()
-    space_gen.addMember( parameter_domain, [parameter_reference] )
+    space_gen.addMember( 'main', parameter_domain, [parameter_reference] )
     
     test_1 = TopologyTestGromacsNoForcefield("/home/yan/programs/gridmaker/debug/abstr/et.itp", "/home/yan/programs/gridmaker/debug/abstr/et-output.itp")
     test_2 = TopologyTestGromacs("/home/yan/programs/gridmaker/debug/abstr/et.itp", "/home/yan/programs/gridmaker/debug/abstr/et-output-forcefield.itp", nonbonded)
     test_3 = TopologyTestGromacsWithVariations("/home/yan/programs/gridmaker/debug/abstr/et.itp", "/home/yan/programs/gridmaker/debug/abstr/et-varied", nonbonded, space_gen)
-    
-    test_1.run()
-    test_2.run()
-    test_3.run()
+    test_4 = TestTopologyBundleGromacs("/home/yan/programs/gridmaker/debug/abstr/et.itp",
+                                       "/home/yan/programs/gridmaker/debug/abstr/et_bundle",
+                                       nonbonded,
+                                       EmptyBondedForcefield,
+                                       space_gen)
+    #test_1.run()
+    #test_2.run()
+    #test_3.run()
+    test_4.run()

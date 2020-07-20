@@ -55,6 +55,13 @@ class CartesianGrid:
                 return False
         return True
 
+    def getCornersAsLinear(self):
+        iter_arg = [(0, n-1) for n in np.prod(self.lens)]
+        iter_obj = itertools.product(*iter_arg)
+        points   = [p for p in iter_obj]
+        expanded_points = [self.tuple2linear(p) for p in points]
+        return expanded_points
+
 class CartesianGridIterator:
 
     def __init__(self, cartesianGrid):
@@ -70,6 +77,21 @@ class CartesianGridIterator:
             return self.src.linear2tuple(self.curr)
         raise StopIteration
 
+class CartesianGridLinearIterator:
+
+    def __init__(self, cartesianGrid):
+        self.src = cartesianGrid
+        self.curr = -1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.curr += 1
+        if self.curr < self.src.getVolume():
+            return self.curr
+        raise StopIteration
+    
 class CartesianGridMask:
 
     def __init__(self, srcGrid, destGrid, shiftTuple):

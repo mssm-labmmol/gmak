@@ -13,7 +13,15 @@ def get_box (gro):
         continue
     box = line.split()
     return box
-    
+
+def analyzeWrapper(inputData, prop, out):
+    xtc = inputData['xtc']
+    edr = inputData['edr']
+    gro = inputData['gro']
+    tpr = inputData['tpr']
+    obtain_property(xtc, edr, gro, tpr, prop, out)
+    return np.loadtxt(out, comments=['@','#'])
+
 def obtain_property (xtc, edr, gro, tpr, name, output_file):
     xtc = os.path.abspath(xtc)
     edr = os.path.abspath(edr)

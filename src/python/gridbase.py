@@ -1,15 +1,18 @@
-import re
-import numpy as np
-import shlex
-import os
-from traj_ana import *
-from traj_filter import *
-from reweight import *
-import multiprocessing
-from property import * 
-from grid_ana import *
-import warnings
-from surrogate_model import *
+import  re
+import  os
+import  shlex
+import  numpy           as     np
+from    reweightbase    import *
+from    traj_ana        import *
+from    traj_filter     import *
+from    reweight        import *
+import  multiprocessing
+from    property        import * 
+from    grid_ana        import *
+import  warnings
+from    surrogate_model import *
+from    cartesiangrid   import *
+import  copy
 
 def reweightItpChanger (inputTopology, index, outputTopology):
     fp = open(inputTopology, 'r')
@@ -24,7 +27,6 @@ def reweightItpChanger (inputTopology, index, outputTopology):
             fp_out.write(line)
     fp_out.close()
     fp.close()
-
 
 # This function must have global scope for Pool.map.
 def core_parallel_clean_reweight_i_at_j (aux_input_list):
@@ -79,10 +81,10 @@ class GridPoint:
 
     members:
 
+        baseGrid: A reference to the ParameterGrid.
+
         id: A number identifying this gridpoint. This is necessary to
             use gridpoints as keys in dictionaries.
-
-        itp_path: Path of itp file corresponding to this point.
 
         is_sample: Flag which determines if this grid point is in
             samples list. Note that we assume all protocols for a grid
@@ -106,10 +108,11 @@ class GridPoint:
         estimated_properties: dictionary of estimated_properties
             e.g. estimated_propeties['gamma'] should be a
             PropertyBase::Gamma
+
     """
-    def __init__ (self, itp, idx):
+    def __init__ (self, baseGrid, idx):
+        self.baseGrid = baseGrid
         self.id = idx
-        self.itp_path = itp
         self.is_sample = False
         self.protocol_outputs = {}
         self.atomic_properties = {}
@@ -120,21 +123,20 @@ class GridPoint:
 
     def reset(self, idx=-1):
         self.id = idx
-        self.itp_path = ""
         self.is_sample = False
         self.protocol_outputs = {}
         self.atomic_properties = {}
         self.rw_outputs = {}
         self.estimated_properties = {}
 
+    def getTopologyPath(self, molecule):
+        return self.baseGrid.topologyBundles[molecule].getPathsForStatePath(self.id)
+
     def get_property_estimate(self, prop):
         return self.estimated_properties[prop].value
 
     def get_property_err(self, prop):
         return self.estimated_properties[prop].err
-
-    def add_itp (self, itp):
-        self.itp_path = itp
 
     def prepare_with_protocol_at_dir (self, protocol, workdir):
         protocol.prepare_gridpoint_at_dir (self, workdir)
@@ -263,50 +265,78 @@ class GridPoint:
 
 class ParameterGrid:
 
-    def __init__ (self):
-        self.dim = 0
-        self.size = []
-        self.linear_size = 0
-        self.grid_points = []
-        # indexed by protocol
-        self.hashOfMBAR = {}
-        self.xlabel = "$X$"
-        self.ylabel = "$Y$"
-        return
+    self._mainString = 'main'
 
-    def __getitem__ (self, i):
-        return self.grid_points[i]
+    def __init__ (self, parSpaceGen, topologyBundles, reweighter):
+        """
+        Parameters:
+          ParameterSpaceGenerator   parSpaceGen
+          dict<TopologyBundle>      topologyBundles
+          ReweighterInterface       reweighter
+        """
+        self.parSpaceGen     = parSpaceGen
+        self.topologyBundles = topologyBundles
+        self.grid_points     = []
+        self.indexGrid       = CartesianGrid(self.get_size())
+        self.reweighter      = reweighter
+        
+        """
+        plotting stuff that I do not wish to alter right now.
+        yMHG ter jul 14 14:40:02 -03 2020
+        """
+        self.xlabel     = "$X$"
+        self.ylabel     = "$Y$"
 
-    # This assumes a stream is given.
-    #
-    # It will read from stream until line with terminating string '$end' is 
-    # found.
-    #
-    def read_from_stream (self, stream):
+        # Initialize GridPoints
+        for i in range(self.get_linear_size()):
+            self.grid_points.append( GridPoint(self, i) ) 
+
+    @staticmethod
+    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory):
+        parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter())
+        parameterGrid.xlabel = xlabel
+        parameterGrid.ylabel = ylabel
+        parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
+        parameterGrid.set_samples(samples)
+        
+    @staticmethod
+    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory):
+        samples       = []
+        # Assumes last line read was '$grid'.
         for line in stream:
             if line[0] == '#':
                 continue
             if (re.match(r"^\$end.*",line)):
                 return
-            if (line.split()[0] == 'size'):
-                # also sets dimension and linear_size
-                self.set_size ([int(x) for x in line.split()[1:]])
             if (line.split()[0] == 'samples'):
-                self.set_samples ([int(x) for x in line.split()[1:]])
+                samples = [int(x) for x in line.split()[1:]]
+            if (line.split()[0] == 'reweight'):
+                reweighterType = line.split()[1]
             if (line.split()[0] == 'labels'):
                 splitted = shlex.split(line)
-                self.xlabel = splitted[1]
-                self.ylabel = splitted[2]
-            if (line.split()[0] == 'start'):
-                # do loop
-                prefix = line.split()[1][:-5]
-                for i in range(self.linear_size):
-                    itp_file = prefix + "%d.itp" % i
-                    self.put_itp_at_position (itp_file, i)
+                xlabel = splitted[1]
+                ylabel = splitted[2]
+        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory) 
+
+    def get_molecules(self):
+        return list(self.topologyBundles.keys())
+
+    def get_dim(self):
+        return self.parSpaceGen.getDimension(self._mainString)
+
+    def get_size(self):
+        return self.parSpaceGen.getSizes(self._mainString)
+
+    def get_linear_size(self):
+        return self.parSpaceGen.getNumberOfStates()
+        
+    def __getitem__(self, i):
+        return self.grid_points[i]
 
     def get_square_size(self):
-        firstSize = self.size[0]
-        for s in self.size:
+        allSizes  = self.get_size()
+        firstSize = allSizes[0]
+        for s in allSizes:
             if s != firstSize:
                 raise ValueError("Can't get square size of non-square grid.")
         return int(firstSize)
@@ -342,23 +372,6 @@ class ParameterGrid:
         self.set_samples(sp)
         return
 
-    def set_dim (self, dim):
-        self.dim = dim
-        return
-
-    def set_size (self, size):
-        self.dim = len(size)
-        self.size = size
-        self.linear_size = 1
-        for x in size:
-            self.linear_size *= x
-        for i in range(self.linear_size):
-            new_gp = GridPoint("", i)
-            self.grid_points.append(new_gp)
-        # important warning
-        if (self.dim != 2):
-            raise ValueError("With the current implementation, only bi-dimensional grids are allowed.")      
-
     def set_samples (self, samples_list):
         for x in samples_list:
             self.grid_points[x].set_as_sample()
@@ -368,169 +381,156 @@ class ParameterGrid:
 
     def linear2tuple(self, linpos):
         """Returns tuple position for linear position."""
-        count = 0
-        for n in np.ndindex(tuple(self.size)):
-            if (count == linpos):
-                return n
-            count += 1
-        raise ValueError("Linear position {} not found.".format(linpos))
+        self.indexGrid.linear2tuple(linpos)
 
     def tuple2linear(self, pos):
         """Returns linear position for tuple position."""
-        linpos = 0
-        for n in np.ndindex(tuple(self.size)):
-            if (n == pos):
-                return linpos
-            linpos += 1
-        raise ValueError("Position {} not found.".format(pos))
+        self.indexGrid.tuple2linear(pos)
 
     def add_corners(self):
         """Add corners as sampling points. Useful when interpolation is used, to
         guarantee that all points of the grid are estimated."""
-        import itertools
-        iter_arg = [(0, n-1) for n in self.size]
-        iter_obj = itertools.product(*iter_arg)
-        points   = [p for p in iter_obj]
-        expanded_points = [self.tuple2linear(p) for p in points]        
-        for p in expanded_points:
+        for p in self.indexGrid.getCornersAsLinear():
             self.add_sample(p)
-        return
-
-    def put_itp_at_position (self, itp, pos):
-        self.grid_points[pos].add_itp(itp)
 
     def simulate_with_protocol_at_dir (self, protocol, workdir):
         for i,gp in enumerate(self.grid_points):
             # run 
             if gp.is_sample:
                 # simulate
-                gp.simulate_with_protocol_at_dir (protocol, \
-                        workdir + "/" + str(i) + "/")
+                gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
                 # filter
                 if (protocol.type == 'slab'):
-                    gp.filter_trr_in_protocol (protocol, \
-                            protocol.get_filtering_properties(), \
-                            workdir + "/" + str(i) + "/")
+                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
                 else:
-                    gp.filter_xtc_in_protocol (protocol, \
-                            protocol.get_filtering_properties(), \
-                            workdir + "/" + str(i) + "/")
+                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
             # only prepare
             else:
-                gp.prepare_with_protocol_at_dir (protocol, \
-                        workdir + "/" + str(i) + "/")
+                gp.prepare_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
 
-    # standard reweight + potential/pV recalculation
-    def parallel_clean_reweight_with_protocol_at_dir (self, protocol, workdir, workdir_mbar):
-        properties = protocol.get_properties()
-        ncpus_per_process = 2 
-        nprocesses = multiprocessing.cpu_count() / ncpus_per_process
-        pool = multiprocessing.Pool(nprocesses)
-        pool_arg_list = []
-        for i,gp in enumerate(self.grid_points):
-            if gp.is_sample:
-                for j,gp_other in enumerate(self.grid_points):
-                    pool_arg_list.append([i,gp,j,gp_other,protocol,workdir,workdir_mbar,properties])
-        pool.map(core_parallel_clean_reweight_i_at_j, pool_arg_list)
+    def reweight(self, protocol, workdir):
+        self.reweighter.run(protocol, workdir)
+
+    def retrieveReweightProperty(self, prop):
+        return self.reweighter.getPropertyMatrix(prop)
+        
+    def retrieveReweightProperties(self):
+        return self.reweighter.getFullPropertyMatrix()
+
+    def retrieveReweightNumberOfConfigurations(self):
+        return self.reweighter.getConfigurationMatrix()
+
+    # # standard reweight + potential/pV recalculation
+    # def parallel_clean_reweight_with_protocol_at_dir (self, protocol, workdir, workdir_mbar):
+    #     properties = protocol.get_properties()
+    #     ncpus_per_process = 2 
+    #     nprocesses = multiprocessing.cpu_count() / ncpus_per_process
+    #     pool = multiprocessing.Pool(nprocesses)
+    #     pool_arg_list = []
+    #     for i,gp in enumerate(self.grid_points):
+    #         if gp.is_sample:
+    #             for j,gp_other in enumerate(self.grid_points):
+    #                 pool_arg_list.append([i,gp,j,gp_other,protocol,workdir,workdir_mbar,properties])
+    #     pool.map(core_parallel_clean_reweight_i_at_j, pool_arg_list)
     
-    # fast reweight + potential/pV recalculation
-    def fast_clean_reweight_with_protocol_at_dir (self, protocol, reweightHash, workdir, workdir_mbar):
-        properties = protocol.get_properties()
-        for i,gp in enumerate(self.grid_points):
-            if (gp.is_sample):
-                # Clean this list.
-                preReweightOutputs = []
-                listOfPotentialFiles = []
-                # Before reweighting, rerun the trajectory progressively
-                # deactivating the energy components associated to each parameter.
-                numberOfRuns = 2 * int( reweightHash['npars']) + 1
-                for j in range(numberOfRuns):
-                    # Modify the topology of the original simulation to refer to
-                    # the proper *.itp file. Only 'j' is needed, as the names of
-                    # the files are hard-coded.
-                    os.system("mkdir -p %s/decouple_%d_at_%d" % (workdir, i, j))
-                    topologyName = "%s/decouple_%d_at_%d/topol.top" % (workdir, i, j)
-                    reweightItpChanger (gp.protocol_outputs[protocol.name]['top'], j,\
-                            topologyName)
-                    # Run the reweighting.
-                    if (protocol.type == 'slab'):
-                        preReweightOutput = reweight (gp.protocol_outputs[protocol.name]['trr'],\
-                                gp.protocol_outputs[protocol.name]['gro'],\
-                                topologyName,\
-                                protocol.mdps[-1],\
-                                "%s/decouple_%d_at_%d" % (workdir, i, j))
-                    else:
-                        preReweightOutput = reweight (gp.protocol_outputs[protocol.name]['xtc'],\
-                                gp.protocol_outputs[protocol.name]['gro'],\
-                                topologyName,\
-                                protocol.mdps[-1],\
-                                "%s/decouple_%d_at_%d" % (workdir, i, j))
-                    # Save.
-                    xtc = preReweightOutput['xtc']
-                    edr = preReweightOutput['edr']
-                    gro = preReweightOutput['gro']
-                    tpr = preReweightOutput['tpr']
-                    outPotential =  "%s/decouple_%d_at_%d/potential.xvg" % (workdir, i, j)
-                    preReweightOutputs.append(preReweightOutput)
-                    listOfPotentialFiles.append(outPotential)
-                    # Get the potential energy of the reweighted trajectory.
-                    obtain_property (xtc, edr, gro, tpr, 'potential', outPotential)
-                # Run the reweighing program to obtain the reweighted potential
-                # energies. This will always be necessary for MBAR.
-                filesArg = " ".join(listOfPotentialFiles)
-                fileGrid = reweightHash['parameters']
-                anaRwBinary = reweightHash['program']
-                command  = "%s -f %s -p %s -r %d -o %s/reweighted_properties/potential_%d_%%d.xvg -time" % (anaRwBinary, filesArg, fileGrid, i, workdir_mbar, i)
-                print ("ANA_RW: %s" % command )
-                # Create containing directory.
-                os.system("mkdir -p %s/reweighted_properties/" % workdir_mbar)
-                os.system(command)
-                # Reweight other properties.
-                # Redefine variables.
-                # Note that rw = 0 corresponds to reweighting in the original state.
-                xtc = preReweightOutputs[0]['xtc']
-                edr = preReweightOutputs[0]['edr']
-                tpr = preReweightOutputs[0]['tpr']
-                gro = preReweightOutputs[0]['gro']
-                gi  = gp
-                # Calculate pV if necessary -- it is the same for all reweighted states.
-                # In practice, this means COPYING the (filtered) pV data of the original simulation.
-                if (protocol.has_pv()):
-                    for gj in self.grid_points:
-                        gj_id = gj.id 
-                        out_file = workdir_mbar + \
-                            "/reweighted_properties/pV_%d_%d.xvg" % \
-                            (gi.id, gj_id)
-                        # If file already exists, no need to create it again, just set the variable.
-                        if not (os.path.isfile(out_file)):
-                            # copy from original trajectory
-                            original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
-                            print("Copying pV: {} -> {}".format(original_file, out_file))
-                            os.system("cp {} {}".format(original_file, out_file))
+    # # fast reweight + potential/pV recalculation
+    # def fast_clean_reweight_with_protocol_at_dir (self, protocol, reweightHash, workdir, workdir_mbar):
+    #     properties = protocol.get_properties()
+    #     for i,gp in enumerate(self.grid_points):
+    #         if (gp.is_sample):
+    #             # Clean this list.
+    #             preReweightOutputs = []
+    #             listOfPotentialFiles = []
+    #             # Before reweighting, rerun the trajectory progressively
+    #             # deactivating the energy components associated to each parameter.
+    #             numberOfRuns = 2 * int( reweightHash['npars']) + 1
+    #             for j in range(numberOfRuns):
+    #                 # Modify the topology of the original simulation to refer to
+    #                 # the proper *.itp file. Only 'j' is needed, as the names of
+    #                 # the files are hard-coded.
+    #                 os.system("mkdir -p %s/decouple_%d_at_%d" % (workdir, i, j))
+    #                 topologyName = "%s/decouple_%d_at_%d/topol.top" % (workdir, i, j)
+    #                 reweightItpChanger (gp.protocol_outputs[protocol.name]['top'], j,\
+    #                         topologyName)
+    #                 # Run the reweighting.
+    #                 if (protocol.type == 'slab'):
+    #                     preReweightOutput = reweight (gp.protocol_outputs[protocol.name]['trr'],\
+    #                             gp.protocol_outputs[protocol.name]['gro'],\
+    #                             topologyName,\
+    #                             protocol.mdps[-1],\
+    #                             "%s/decouple_%d_at_%d" % (workdir, i, j))
+    #                 else:
+    #                     preReweightOutput = reweight (gp.protocol_outputs[protocol.name]['xtc'],\
+    #                             gp.protocol_outputs[protocol.name]['gro'],\
+    #                             topologyName,\
+    #                             protocol.mdps[-1],\
+    #                             "%s/decouple_%d_at_%d" % (workdir, i, j))
+    #                 # Save.
+    #                 xtc = preReweightOutput['xtc']
+    #                 edr = preReweightOutput['edr']
+    #                 gro = preReweightOutput['gro']
+    #                 tpr = preReweightOutput['tpr']
+    #                 outPotential =  "%s/decouple_%d_at_%d/potential.xvg" % (workdir, i, j)
+    #                 preReweightOutputs.append(preReweightOutput)
+    #                 listOfPotentialFiles.append(outPotential)
+    #                 # Get the potential energy of the reweighted trajectory.
+    #                 obtain_property (xtc, edr, gro, tpr, 'potential', outPotential)
+    #             # Run the reweighing program to obtain the reweighted potential
+    #             # energies. This will always be necessary for MBAR.
+    #             filesArg = " ".join(listOfPotentialFiles)
+    #             fileGrid = reweightHash['parameters']
+    #             anaRwBinary = reweightHash['program']
+    #             command  = "%s -f %s -p %s -r %d -o %s/reweighted_properties/potential_%d_%%d.xvg -time" % (anaRwBinary, filesArg, fileGrid, i, workdir_mbar, i)
+    #             print ("ANA_RW: %s" % command )
+    #             # Create containing directory.
+    #             os.system("mkdir -p %s/reweighted_properties/" % workdir_mbar)
+    #             os.system(command)
+    #             # Reweight other properties.
+    #             # Redefine variables.
+    #             # Note that rw = 0 corresponds to reweighting in the original state.
+    #             xtc = preReweightOutputs[0]['xtc']
+    #             edr = preReweightOutputs[0]['edr']
+    #             tpr = preReweightOutputs[0]['tpr']
+    #             gro = preReweightOutputs[0]['gro']
+    #             gi  = gp
+    #             # Calculate pV if necessary -- it is the same for all reweighted states.
+    #             # In practice, this means COPYING the (filtered) pV data of the original simulation.
+    #             if (protocol.has_pv()):
+    #                 for gj in self.grid_points:
+    #                     gj_id = gj.id 
+    #                     out_file = workdir_mbar + \
+    #                         "/reweighted_properties/pV_%d_%d.xvg" % \
+    #                         (gi.id, gj_id)
+    #                     # If file already exists, no need to create it again, just set the variable.
+    #                     if not (os.path.isfile(out_file)):
+    #                         # copy from original trajectory
+    #                         original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
+    #                         print("Copying pV: {} -> {}".format(original_file, out_file))
+    #                         os.system("cp {} {}".format(original_file, out_file))
 
-    def reweight_mechanical_properties_for_protocol (self, protocol, mbar_dir):
-        """Reweight mechanical properties for_protocol and stores results in rw_dir."""
-        for prop in protocol.get_reweighting_properties():
-            # first, ignore potential and pV
-            if (prop == 'potential') or (prop == 'pV'):
-                continue
-            elif (prop == 'density') or (prop == 'polcorr') or (prop == 'volume'):
-                # same for all states
-                for gp in self.get_samples():
-                    id = gp.id
-                    input_file = gp.retrieve_atomic_property_from_protocol(prop, protocol)
-                    for gpo in self.grid_points:
-                        id_j = gpo.id
-                        out_file = "%s/reweighted_properties/%s_%d_%d.xvg" % (mbar_dir, prop, id, id_j)
-                        print("Copying density: {} -> {}".format(input_file, out_file))
-                        os.system("cp %s %s" % (input_file, out_file))
-            elif (prop == 'gamma'):
-                # something needs to be done
-                print ("ERROR: Reweighting of property " + prop + " is not implemented.")
-                exit()                
-            else:
-                print ("ERROR: Reweighting of property " + prop + " is not implemented.")
-                exit()
+    # def reweight_mechanical_properties_for_protocol (self, protocol, mbar_dir):
+    #     """Reweight mechanical properties for_protocol and stores results in rw_dir."""
+    #     for prop in protocol.get_reweighting_properties():
+    #         # first, ignore potential and pV
+    #         if (prop == 'potential') or (prop == 'pV'):
+    #             continue
+    #         elif (prop == 'density') or (prop == 'polcorr') or (prop == 'volume'):
+    #             # same for all states
+    #             for gp in self.get_samples():
+    #                 id = gp.id
+    #                 input_file = gp.retrieve_atomic_property_from_protocol(prop, protocol)
+    #                 for gpo in self.grid_points:
+    #                     id_j = gpo.id
+    #                     out_file = "%s/reweighted_properties/%s_%d_%d.xvg" % (mbar_dir, prop, id, id_j)
+    #                     print("Copying density: {} -> {}".format(input_file, out_file))
+    #                     os.system("cp %s %s" % (input_file, out_file))
+    #         elif (prop == 'gamma'):
+    #             # something needs to be done
+    #             print ("ERROR: Reweighting of property " + prop + " is not implemented.")
+    #             exit()                
+    #         else:
+    #             print ("ERROR: Reweighting of property " + prop + " is not implemented.")
+    #             exit()
 
     def compute_final_properties (self, prop_id, prop, propProtocols, protocols, kind):
         protocolObjs = []
@@ -625,13 +625,13 @@ class ParameterGrid:
         np.savetxt(filename, data)
 
     def plot_property_to_file (self, prop, filename):
-        if (self.dim != 2):
+        if (self.get_dim() != 2):
             warnings.warn("Can only plot 2-D grids.")
             return
         # make data
         data = [x.estimated_properties[prop].value for x in self.grid_points]
         data = np.array(data)
-        data = data.reshape (self.size[0], self.size[1])
+        data = data.reshape (self.get_size())
         cbox_label = ""
         cbox_limits_colors = ()
         cbox_limits = ()
@@ -642,13 +642,13 @@ class ParameterGrid:
                     cbox_limits, cbox_limits_colors, data, self.get_samples_id())
 
     def plot_property_err_to_file (self, prop, filename):
-        if (self.dim != 2):
+        if (self.get_dim() != 2):
             warnings.warn("Can only plot 2-D grids.")
             return
         # make data
         data = [x.estimated_properties[prop].err for x in self.grid_points]
         data = np.array(data)
-        data = data.reshape (self.size[0], self.size[1])
+        data = data.reshape (self.get_size())
         cbox_label = ""
         cbox_limits_colors = ('white', 'blue')
         cbox_limits = (0.0, np.max(data))
@@ -659,13 +659,13 @@ class ParameterGrid:
                     cbox_limits, cbox_limits_colors, data, self.get_samples_id())
 
     def plot_property_diff_to_file (self, prop, propname, ref, filename):
-        if (self.dim != 2):
+        if (self.get_dim() != 2):
             warnings.warn("Can only plot 2-D grids.")
             return
         # make data
         data = [x.estimated_properties[prop].value - ref for x in self.grid_points]
         data = np.array(data)
-        data = data.reshape (self.size[0], self.size[1])
+        data = data.reshape (self.get_size())
         cbox_label = ""
         # hard-coded preferences
         cbox_limits_colors = ('red', 'white', 'blue')
@@ -707,49 +707,59 @@ class ParameterGrid:
         if (protocol.requires_reweight()):
             rw_dir = workdir + "/rw"
             mbar_dir = workdir + "/mbar"
-            # standard reweight -- using 'rerun'
-            if (reweightHash['type'] == 'standard'):
-                self.parallel_clean_reweight_with_protocol_at_dir (protocol, rw_dir, mbar_dir)
-            # fast reweight -- linear-basis function approach
-            elif (reweightHash['type'] == 'fast'):
-                self.fast_clean_reweight_with_protocol_at_dir (protocol, reweightHash, rw_dir, mbar_dir)
-            else:
-                raise ValueError("Reweight type must be 'standard' or 'fast'.")
-            # reweight mechanical properties besides 'potential' and 'pV'
-            self.reweight_mechanical_properties_for_protocol(protocol, mbar_dir)
-            # mount matrix with reweighted properties for all configurations
-            A_pkn = []
-            for p, rw_prop in enumerate(protocol.get_reweighting_properties()):
-                A_pkn.append([])
-                for k in range(self.linear_size):
-                    A_pkn[p].append([])
-                    for s in self.get_samples_id():
-                        prop_file = "%s/reweighted_properties/%s_%d_%d.xvg" % (mbar_dir, rw_prop, s, k)
-                        A_pkn[p][k] = np.append(A_pkn[p][k], np.loadtxt(prop_file, usecols=(1,)))
-            A_pkn = np.array(A_pkn)
-            # mount u and pV matrixes
-            u_kn = []
-            for k in range(self.linear_size):
-                u_kn.append([])
-                for s in self.get_samples_id():
-                    prop_file = "%s/reweighted_properties/potential_%d_%d.xvg" % (mbar_dir, s, k)
-                    u_kn[k] = np.append(u_kn[k], np.loadtxt(prop_file, usecols=(1,)))
-            u_kn = np.array(u_kn)
-            # sum pV if protocol requires it 
-            if (protocol.has_pv()):
-                pv_kn = []
-                for k in range(self.linear_size):
-                    pv_kn.append([])
-                    for s in self.get_samples_id():
-                        prop_file = "%s/reweighted_properties/potential_%d_%d.xvg" % (mbar_dir, s, k)
-                        pv_kn[k] = np.append(pv_kn[k], np.loadtxt(prop_file, usecols=(1,)))
-                pv_kn = np.array(pv_kn)
-                u_kn += pv_kn
-            # mount N_k
-            N_k = []
-            for k, gp in enumerate(self.grid_points):
-                N_k.append(gp.get_number_of_configurations_for_protocol(protocol))
-            N_k = np.array(N_k)
+            # BEGIN_OF_OLD_CODE
+            # # standard reweight -- using 'rerun'
+            # if (reweightHash['type'] == 'standard'):
+            #     self.parallel_clean_reweight_with_protocol_at_dir (protocol, rw_dir, mbar_dir)
+            # # fast reweight -- linear-basis function approach
+            # elif (reweightHash['type'] == 'fast'):
+            #     self.fast_clean_reweight_with_protocol_at_dir (protocol, reweightHash, rw_dir, mbar_dir)
+            # else:
+            #     raise ValueError("Reweight type must be 'standard' or 'fast'.")
+            # # reweight mechanical properties besides 'potential' and 'pV'
+            # self.reweight_mechanical_properties_for_protocol(protocol, mbar_dir)
+            # END_OF_OLD_CODE
+            self.reweight(protocol, rw_dir)
+            # BEGIN_OF_OLD_CODE
+            # # mount matrix with reweighted properties for all configurations
+            # A_pkn = []
+            # for p, rw_prop in enumerate(protocol.get_reweighting_properties()):
+            #     A_pkn.append([])
+            #     for k in range(self.get_linear_size()):
+            #         A_pkn[p].append([])
+            #         for s in self.get_samples_id():
+            #             prop_file = "%s/reweighted_properties/%s_%d_%d.xvg" % (mbar_dir, rw_prop, s, k)
+            #             A_pkn[p][k] = np.append(A_pkn[p][k], np.loadtxt(prop_file, usecols=(1,)))
+            # A_pkn = np.array(A_pkn)
+            # # mount u and pV matrixes
+            # u_kn = []
+            # for k in range(self.get_linear_size()):
+            #     u_kn.append([])
+            #     for s in self.get_samples_id():
+            #         prop_file = "%s/reweighted_properties/potential_%d_%d.xvg" % (mbar_dir, s, k)
+            #         u_kn[k] = np.append(u_kn[k], np.loadtxt(prop_file, usecols=(1,)))
+            # u_kn = np.array(u_kn)
+            # # sum pV if protocol requires it 
+            # if (protocol.has_pv()):
+            #     pv_kn = []
+            #     for k in range(self.get_linear_size()):
+            #         pv_kn.append([])
+            #         for s in self.get_samples_id():
+            #             prop_file = "%s/reweighted_properties/potential_%d_%d.xvg" % (mbar_dir, s, k)
+            #             pv_kn[k] = np.append(pv_kn[k], np.loadtxt(prop_file, usecols=(1,)))
+            #     pv_kn = np.array(pv_kn)
+            #     u_kn += pv_kn
+            # # mount N_k
+            # N_k = []
+            # for k, gp in enumerate(self.grid_points):
+            #     N_k.append(gp.get_number_of_configurations_for_protocol(protocol))
+            # N_k = np.array(N_k)
+            # END_OF_OLD_CODE
+            A_pkn = self.retrieveReweightProperties()
+            u_kn  = self.retrieveReweightProperty('potential')
+            pv_kn = self.retrieveReweightProperty('pV')
+            u_kn  = (u_kn + pv_kn) / (0.83144626 * protocol.get_temperature())
+            N_k   = self.retrieveReweightNumberOfConfigurations()
             # estimate properties
             estimate_dir = "%s/estimated_properties/" % mbar_dir
             os.system("mkdir -p " + estimate_dir)
@@ -775,7 +785,7 @@ class ParameterGrid:
         # estimate properties
         for p, (model, prop) in enumerate(interp_models_props):
             for kind in [model.kind, 'nearest']:
-                model.computeExpectations([A_psn[p]], I_s, tuple(self.size))
+                model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()))
                 os.system("mkdir -p %s/%s/estimated_properties" % (workdir, kind))
                 fn_avg = "%s/%s/estimated_properties/%s_EA_k.dat" % (workdir, kind, prop)
                 fn_err = "%s/%s/estimated_properties/%s_dEA_k.dat" % (workdir, kind, prop)
@@ -784,7 +794,6 @@ class ParameterGrid:
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            
     def create_refined_subgrid(self, factors_list, model_str, propid2type):
-        import copy
         # first check everything is compatible
         if (len(factors_list) != self.dim):
             raise ValueError

@@ -1,4 +1,5 @@
 #from RunFromInput import ParameterGrid
+from reweightbase import ReweighterFactory
 from gridoptimizer import gridOptimizer
 from gridshifter import GridShifter
 from parameters import *
@@ -9,6 +10,17 @@ from protocols import LiquidProtocol, GasProtocol, SlabProtocol
 
 import os
 import sys 
+
+def block2dict(stream, endString, comment):
+    out_dict = {}
+    for line in stream:
+        if line[0] == comment:
+            continue
+        if line.rstrip() == endString:
+            break
+        splittedLine = line.split()
+        out_dict[splittedLine[0]] = splittedLine[1:]
+    return out_dict
 
 class ParameterIO:
     def __init__(self, stream, parRefFactory, domainSpaceFactory):
@@ -129,9 +141,17 @@ def initialize_from_input (input_file, bool_legacy):
     output_paramLoop = ParameterLoop ()
     output_gaCoverInterface = coverInterface ()
     output_surrogateModel = {}
-    output_reweightHash = {}
     output_subgrid = {'method': 'cubic', 'factors': [1, 1]}
     fp = open(input_file, "r")
+
+    # NEW
+    outputNonbondedForcefield = EmptyNonbondedForcefield()
+    outputBondedForcefield    = EmptyBondedForcefield()
+    parameterIO               = None
+    moleculesDict             = {}
+    outputTopoBundles         = {}
+    # END_NEW
+    
     for line in fp:
         if line[0] == '#':
             continue
@@ -140,8 +160,28 @@ def initialize_from_input (input_file, bool_legacy):
             continue
         if (line.split()[0] == "workdir"):
             output_workdir = os.path.abspath(line.split()[1])
+        if (line.rstrip() == "$atomtypes"):
+            outputNonbondedForcefield = NonbondedForcefieldFactory.createFromStream(fp)
+        if (line.rstrip() == "$variation"):
+            if parameterIO is None:
+                parameterIO = ParameterIO(fp, ParameterReferenceFactory(outputNonbondedForcefield, outputBondedForcefield, [EmptyTopology()]), DomainSpaceFactory)
+            else:
+                parameterIO.read()
+        if (line.rstrip() == '$molecules'):
+            blockDict     = block2dict(fp, '$end', '#')
+            for i, name in enumerate(blockDict['names']):
+                prefix                     = "{}/{}".format(output_workdir, name)
+                moleculesDict[name]        = {}
+                moleculesDict[name]['itp'] = blockDict['itp'][i]
+                #moleculesDict[name]['gro'] = blockDict['gro'][i]
+                outputTopoBundles[name]    = TopologyBundleFactory.createBundle('gromacs', blockDict['itp'][i], prefix,
+                                                outputNonbondedForcefield, outputBondedForcefield)
+                                                                                
         if (line.rstrip() == "$grid"):
-            output_grid.read_from_stream (fp)
+            # This also signifies that no more $variation blocks exist
+            # beyond this point.
+            outputParameterSpaceGen = parameterIO.getParameterSpaceGenerator()
+            output_grid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory)
         if (line.rstrip() == "$protocol"):
             line = next(fp)
             if (line.split()[0] == 'type'):
@@ -264,6 +304,8 @@ def initialize_from_input (input_file, bool_legacy):
                 if line[0] == '#':
                     continue
                 if line.rstrip() == '$end':
+                    output_subgrid['parspacegen'] = outputParameterSpaceGen.copy()
+                    output_subgrid['parspacegen'].rescale(output_subgrid['factors'])
                     break
                 option = line.split()[0]
                 if (option == 'method'):
@@ -274,24 +316,14 @@ def initialize_from_input (input_file, bool_legacy):
             output_gridshifter.readFromStream (fp)
         if (line.rstrip() == '$gacover'):
             output_gaCoverInterface.readFromStream (fp)
-        if (line.rstrip() == '$reweight'):
-            for line in fp:
-                if line[0] == '#':
-                    continue
-                if line.rstrip() == '$end':
-                    break
-                option = line.split()[0]
-                value  = line.split()[1]
-                output_reweightHash[option] = value
-
     fp.close()
-    output_reweightHash['npars'] = int(output_reweightHash['npars'])
+
     return (output_workdir, output_grid, output_protocols, output_properties, \
             output_protocolsHash, output_optimizer, output_gridshifter,\
-            output_paramLoop, output_gaCoverInterface, output_surrogateModel, output_subgrid,
-            output_reweightHash)
+            output_paramLoop, output_gaCoverInterface, output_surrogateModel, output_subgrid)
 
 
 if __name__ == '__main__':
     test = TestParameterIO()
     test.run()
+

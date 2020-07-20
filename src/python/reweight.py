@@ -3,6 +3,12 @@
 import os
 import sys
 
+def reweightWrapper(inputData, workdir):
+    xtc     = inputData['xtc']
+    gro     = inputData['gro']
+    top     = inputData['top']
+    mdp     = inputData['mdp']
+    reweight(xtc, gro, top, mdp, workdir)
 
 def reweight (xtc, gro, top, mdp, workdir):
     xtc = os.path.abspath(xtc)

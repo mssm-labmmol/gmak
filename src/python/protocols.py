@@ -1,5 +1,6 @@
 from simulate import *
 from surrogate_model import * 
+import re
 
 class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
@@ -14,7 +15,7 @@ class BaseProtocol:
     
     def get_properties (self):
         return self.properties
-
+    
     def get_temperature (self):
         temp = 0.0
         fp = open(self.mdps[-1], "r")
@@ -128,6 +129,8 @@ class SlabProtocol(BaseProtocol):
                 return
             if line.split()[0] == 'name':
                 self.name = line.split()[1]
+            if line.split()[0] == 'molecule':
+                self.molecule = line.split()[1]
             if line.split()[0] == 'mdps':
                 self.mdps = line.split()[1:]
             if line.split()[0] == 'follow':
@@ -186,6 +189,8 @@ class LiquidProtocol(BaseProtocol):
                 return
             if line.split()[0] == 'name':
                 self.name = line.split()[1]
+            if line.split()[0] == 'molecule':
+                self.molecule = line.split()[1]
             if line.split()[0] == 'mdps':
                 self.mdps = line.split()[1:]
             if line.split()[0] == 'coords':
@@ -202,14 +207,14 @@ class LiquidProtocol(BaseProtocol):
     def run_gridpoint_at_dir (self, gridpoint, workdir):
         labels = [str(x) for x in range(len(self.mdps))]
         out_liquid = simulate_protocol_liquid (self.coords, self.nmols,\
-                self.box_size, gridpoint.itp_path, self.mdps, labels, workdir)
+                self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, labels, workdir)
         gridpoint.add_protocol_output (self, out_liquid)
         return
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
         labels = [str(x) for x in range(len(self.mdps))]
         out_liquid = dummy_protocol_liquid (self.coords, self.nmols, \
-                self.box_size, gridpoint.itp_path, self.mdps, labels, workdir)
+                self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, labels, workdir)
         gridpoint.add_protocol_output (self, out_liquid)
         return
     
@@ -240,6 +245,8 @@ class GasProtocol(BaseProtocol):
                 return
             if line.split()[0] == 'name':
                 self.name = line.split()[1]
+            if line.split()[0] == 'molecule':
+                self.molecule = line.split()[1]
             if line.split()[0] == 'mdps':
                 self.mdps = line.split()[1:]
             if line.split()[0] == 'coords':
@@ -257,14 +264,14 @@ class GasProtocol(BaseProtocol):
 
     def run_gridpoint_at_dir (self, gridpoint, workdir):
         labels = [str(x) for x in range(len(self.mdps))]
-        out_gas = simulate_protocol_gas (self.coords, gridpoint.itp_path,\
+        out_gas = simulate_protocol_gas (self.coords, gridpoint.getTopologyPath(self.molecule),\
                 self.mdps, labels, workdir)
         gridpoint.add_protocol_output (self, out_gas)
         return
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
         labels = [str(x) for x in range(len(self.mdps))]
-        out_gas = dummy_protocol_gas (self.coords, gridpoint.itp_path,\
+        out_gas = dummy_protocol_gas (self.coords, gridpoint.getTopologyPath(self.molecule),\
                 self.mdps, labels, workdir)
         gridpoint.add_protocol_output (self, out_gas)
         return
