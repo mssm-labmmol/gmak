@@ -240,11 +240,22 @@ class AbstractTopologyOutputSetter(ABC):
     def setState(self, abstractTopologyOutput, state):
         pass
 
+    @abstractmethod
+    def incrementPrefix(self):
+        pass
+
 class GromacsDummyTopologyOutputSetter(AbstractTopologyOutputSetter):
 
     def __init__(self, itpOutputPrefix):
         self.prefix = itpOutputPrefix
 
+    def incrementPrefix(self):
+        indexOfUnderscore = self.prefix.rfind('_')
+        number            = int(self.prefix[indexOfUnderscore+1:])
+        front             = self.prefix[:indexOfUnderscore]
+        number           += 1
+        self.prefix       = "{}_{}".format(front, number)
+        
     def setState(self, abstractTopologyOutput, state):
         newFile = "{}_{}.itp".format(self.prefix, state)
         newFile = os.path.abspath(newFile)
@@ -261,6 +272,9 @@ class TopologyBundle:
     def getTopology(self):
         return self.topology
 
+    def incrementPrefix(self):
+        self.topologyOutputSetter.incrementPrefix()
+
     def writeFilesForStatepath(self, state):
         self.topologyOutputSetter.setState(self.topologyOutput, state)  
         self.topologyOutput.writeToFiles(self.topology)
@@ -268,6 +282,8 @@ class TopologyBundle:
     def getPathsForStatepath(self, state):
         self.topologyOutputSetter.setState(self.topologyOutput, state) 
         self.topologyOutput.getFiles()
+
+    
 
 class TopologyBundleFactory:
 

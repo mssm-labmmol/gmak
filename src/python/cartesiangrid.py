@@ -117,6 +117,12 @@ class CartesianGridMask:
     def getSourceMask(self):
         return self.srcMask
 
+    def getSourceMaskLinear(self):
+        return self.srcMask.flatten()
+
     def getDestMask(self):
         return self.destMask
+
+    def getDestMaskLinear(self):
+        return self.destMask.flatten()
 

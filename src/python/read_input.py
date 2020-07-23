@@ -1,7 +1,7 @@
 #from RunFromInput import ParameterGrid
 from reweightbase import ReweighterFactory
 from gridoptimizer import gridOptimizer
-from gridshifter import GridShifter
+from gridshifter import *
 from parameters import *
 from variations import *
 from topology import * 
@@ -170,18 +170,19 @@ def initialize_from_input (input_file, bool_legacy):
         if (line.rstrip() == '$molecules'):
             blockDict     = block2dict(fp, '$end', '#')
             for i, name in enumerate(blockDict['names']):
-                prefix                     = "{}/{}".format(output_workdir, name)
+                prefix                     = "{}/{}/{}_0".format(output_workdir, name, name)
                 moleculesDict[name]        = {}
                 moleculesDict[name]['itp'] = blockDict['itp'][i]
                 #moleculesDict[name]['gro'] = blockDict['gro'][i]
                 outputTopoBundles[name]    = TopologyBundleFactory.createBundle('gromacs', blockDict['itp'][i], prefix,
                                                 outputNonbondedForcefield, outputBondedForcefield)
+                system("mkdir -p {}/{}".format(output_workdir, name))
                                                                                 
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist
             # beyond this point.
             outputParameterSpaceGen = parameterIO.getParameterSpaceGenerator()
-            output_grid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory)
+            output_grid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter)
         if (line.rstrip() == "$protocol"):
             line = next(fp)
             if (line.split()[0] == 'type'):
@@ -313,14 +314,13 @@ def initialize_from_input (input_file, bool_legacy):
                 if (option == 'factors'):
                     output_subgrid[option] = [int(x) for x in line.split()[1:]]
         if (line.rstrip() == '$gridshift'):
-            output_gridshifter.readFromStream (fp)
+            output_gridshifter = block2dict(fp, '$end', '#')
         if (line.rstrip() == '$gacover'):
             output_gaCoverInterface.readFromStream (fp)
     fp.close()
 
     return (output_workdir, output_grid, output_protocols, output_properties, \
-            output_protocolsHash, output_optimizer, output_gridshifter,\
-            output_paramLoop, output_gaCoverInterface, output_surrogateModel, output_subgrid)
+            output_protocolsHash, output_optimizer, output_gaCoverInterface, output_surrogateModel, output_subgrid)
 
 
 if __name__ == '__main__':

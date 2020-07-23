@@ -78,6 +78,14 @@ def put_markers_into_axis (ax, marker_ids, shape):
         y.append ( int(m) % int(shape[1]) )
     ax.scatter( x,y, color='black' )
 
+def put_1d_markers_into_axis(ax, data, marker_ids):
+    x = []
+    y = []
+    for m in marker_ids:
+        x.append( int(m) )
+        y.append(data[m])
+    ax.scatter( x,y, color='black')
+
 # This function plots a grid to a file.
 # See function 'put_grid_into_axis' for an overview of the parameters.
 def plot_grid_to_file (filename, title, x_label, y_label, cbox_label, cbox_limits, \
@@ -102,15 +110,22 @@ def plot_grid_to_file (filename, title, x_label, y_label, cbox_label, cbox_limit
     fig.savefig(filename)
     plt.close(fig)
 
+def plot_1d_to_file (filename, title, xlabel, data, samples):
+    mtp.rcParams['text.usetex'] = True
+    mtp.rcParams['font.size'] = 20
+    mtp.rcParams['font.family'] = 'serif'
+    mtp.rcParams['font.serif'] = 'cm'
+    fig, ax = plt.subplots(1)
 
+    put_1d_markers_into_axis(ax, data, samples)
+    ax.plot(range(len(data)), data)
 
-# This is only for testing purposes.
-if __name__ == '__main__':
+    for axs in fig.get_axes():
+        axs.xaxis.set_tick_params(direction='out')
+        axs.yaxis.set_tick_params(direction='out')
 
-    data = np.loadtxt('tmp_data.dat')
+    plt.tight_layout(True)
+    fig.savefig(filename)
+    plt.close(fig)
 
-    plot_grid_to_file ("grid-image.pdf", "$\\rho_\\mathrm{liq}$", "$x$", "$y$",\
-            "$\Delta \\rho_\\mathrm{liq}$", (0,8), ('red','blue') , data)
-#def put_grid_into_axis (ax, title, x_label, y_label, cbox_label, cbox_limits, \
-#       cbox_limits_colors, x_limits, y_limits, data):
 

@@ -1,168 +1,130 @@
 import os
-from parameters import * 
+from parameters import *
+from cartesiangrid import * 
 
-# creates (soft) symbolic link from target to link_name
-def create_symbolic_link (target, link_name):
-    if not (os.path.isdir(link_name)):
-        print ("Linking: ln -s %s %s" % (target, link_name))
-        os.system ("ln -s %s %s" % (target, link_name))
-    else:
-        print ("Warning: Link %s already exists.\n" % link_name)
+# # creates (soft) symbolic link from target to link_name
+# def create_symbolic_link (target, link_name):
+#     if not (os.path.isdir(link_name)):
+#         print ("Linking: ln -s %s %s" % (target, link_name))
+#         os.system ("ln -s %s %s" % (target, link_name))
+#     else:
+#         print ("Warning: Link %s already exists.\n" % link_name)
 
 class GridShifter:
 
-    def __init__ (self):
+    def __init__ (self, grid, maxshifts, margins, ncut):
 
         # Margins delimiting the border region.  self.margins = {}
-        self.maxshifts = 0
+        self.grid      = grid
+        self.maxshifts = maxshifts
         self.nshifts   = 0
-        self.margins = {}
-        self.margins['left'] = 0.10
-        self.margins['right'] = 0.90
-        self.margins['bottom'] = 0.10
-        self.margins['top'] = 0.90
+        # # Default values means no shifting
+        # self.margins = [[0.0, 1.0] for i in range(grid.get_dim())]
+        self.margins = margins
 
         # Fraction of the best points which, if inside the border region,
         # trigger the shifting of the grid.
-        self.ncut = 0.10
+        self.ncut = ncut
 
         # Stores the CG.
-        self.cg = (0,0)
+        self.cg = tuple([0 for i in range(grid.get_dim())])
 
+        # Check
+        if (self.grid.get_dim() > 2):
+            raise ValueError("Can't shift grid of dimension > 2.")
+
+    def getCurrentNumberOfShifts(self):
+        return self.nshifts
+
+    def getCGasLinear(self):
+        return self.grid.tuple2linear(self.cg)
+            
     # Calculates CG of the best ncut percent points.
     # Returns it as a tuple.
     # Store in internal variables.
-    def calcCG (self, optimizer, grid):
+    def calcCG (self, optimizer):
+
+        thr = int(self.ncut * grid.get_linear_size())
+        cg  = [0 for i in range(self.grid.get_dim())]
         
-        if (len(grid.size) != 2):
-            print ("Error: GridShifter expects a bi-dimensional grid.")
-            exit()
-
-        nx = grid.size[0]
-        ny = grid.size[1]
-
-        cg_x = 0
-        cg_y = 0
-        n    = 0
-        thr  = int (self.ncut * grid.linear_size)
-
         for k in range(thr):
             idx = optimizer.stateScores[k][0]
-            i   = int(idx / ny)
-            j   = idx % ny
-            cg_x += i
-            cg_y += j
+            point = self.grid.linear2tuple(idx)
+            for i, x in enumerate(cg):
+                cg[i] += point[i]
 
-        cg_x /= thr
-        cg_y /= thr
+        for i, x in enumerate(cg):
+            cg[i] /= thr
 
-        self.cg = (cg_x, cg_y)
-        print ("Note: CG is %d, %d" % (cg_x, cg_y))
-
-        return (cg_x, cg_y)
+        print ("Note: CG is {}".format(cg))
+        self.cg = tuple(cg)
+        return self.cg
 
     # With CG calculated, verify if we need to shift.
     def doWeShift (self, grid):
-        if (self.nshifts == self.maxshifts):
+        if (self.nshifts >= self.maxshifts):
             return False
-        x = self.cg[0]
-        y = self.cg[1]
-        real_left = int(self.margins['left'] * grid.size[0])
-        real_right = int(self.margins['right'] * grid.size[0])
-        real_top = int(self.margins['top'] * grid.size[1])
-        real_bottom = int(self.margins['bottom'] * grid.size[1])
-        if (x <= real_left) or (x >= real_right):
-            return True
-        if (y <= real_bottom) or (y >= real_top):
-            return True
+
+        grid_size = self.grid.get_size()
+        dimension = self.grid.get_dim()
+        for i in range(dimension):
+            dim_min = int(self.margins[i][0] * grid_size[0])
+            dim_max = int(self.margins[i][1] * grid_size[0])
+            cg_i    = self.cg[i]
+            if (cg_i < dim_min) or (cg_i > dim_max):
+                return True
+       
         return False
 
-    # Performs shifting operations.
-    def shift (self, grid, paramLoop, old_workdir, new_workdir):
-        from RunFromInput import GridPoint
-        # Create directory of new grid.
-        os.system("mkdir -p " + new_workdir)
-
-        # Move paramLoop.
-        paramLoop.loop.set_new_center (self.cg[0]*grid.size[1] + self.cg[1])
-
-        # Create a grid file containing the parameters.
-        paramLoop.loop.write_parameter_grid_to_file (new_workdir + "/grid.dat")
-
-        # Clean MBAR results.
-        grid.hashOfMBAR = {}
-
-        # New gridpoints.
-        new_gridpoints = [0] * grid.linear_size
-
-        for gp in grid.grid_points:
-            # Clean properties and reweight outputs.
-            gp.rw_outputs = {}
-            gp.estimated_properties = {}
-            gp.atomic_properties = {}
-            i_center = int((grid.size[0] - 1)//2)
-            j_center = int((grid.size[1] - 1)//2)
-            i = int(gp.id // grid.size[1])
-            j = gp.id % grid.size[1]
-            new_i = i - (self.cg[0] - i_center)
-            new_j = j - (self.cg[1] - j_center)
-            new_id = int(new_i * grid.size[1] + new_j) 
-            # Link from the directories of the old simulation results to 
-            # new simulation results. There is no need to change the 
-            # itp path, I think.
-            if (new_i >= 0) and (new_i < grid.size[0]) and (new_j >= 0) and (new_j < grid.size[1]):
-                # loop over protocols
-                for prot in gp.protocol_outputs:
-                    # create a link for each protocol
-                    old_dir = old_workdir + ("/%s/simu/%d" % (prot,gp.id))
-                    new_dir = new_workdir + ("/%s/simu/%d" % (prot,new_id))
-                    os.system("mkdir -p " + new_workdir + ("/%s/simu/" % prot))
-                    create_symbolic_link(old_dir, new_dir)
-                # after linking, I can now change the id 
-                gp.id = new_id
-                # and put in the new list
-                new_gridpoints[gp.id] = gp
-        
-        # For the rest of the list, create gridpoints.
-        for i in range(grid.linear_size):
-            if (new_gridpoints[i] == 0):
-                itp_path = new_workdir + "grid.dat"
-                new_gridpoints[i] = GridPoint(itp_path, i)
-        
-        # Substitute the grid's gridpoints.
-        grid.grid_points = new_gridpoints
-
-        # Now everything should be working.
-        return
-
-
-    # Apply shifter, which means: shift if necessary, do nothing if not.
-    def apply (self, optimizer, paramLoop, grid, old_workdir, new_workdir):
+    def checkShift (self, optimizer, paramLoop, grid, old_workdir, new_workdir):
         self.calcCG(optimizer, grid)
         if not (self.doWeShift(grid)):
             print ("Note: No need to shift the grid.")
             return False
         print ("Note: We are shifting the grid.")
-        self.shift(grid, paramLoop, old_workdir, new_workdir)
+        # self.shift(grid, paramLoop, old_workdir, new_workdir)
         self.nshifts += 1
         return True
 
+    def shift(self):
+        if not(self.checkShift()):
+            return False
 
-    def readFromStream (self, stream):
-        for line in stream:
-            if line[0] == '#':
-                continue
-            if (re.match(r"^\$end.*",line)):
-                return
-            splitted = line.split()
-            if (splitted[0] == 'margins'):
-                self.margins['left'] = float(splitted[1])
-                self.margins['right'] = float(splitted[2])
-                self.margins['bottom'] = float(splitted[3])
-                self.margins['top'] = float(splitted[4])
-            if (splitted[0] == 'ncut'):
-                self.ncut = float(splitted[1])
-            if (splitted[0] == 'maxshifts'):
-                self.maxshifts = int(splitted[1])
+        linearCG = self.getCGasLinear()
+        tupleCG  = self.cg
+        cartesianGrid = self.grid.getCartesianGrid()
+        
+        # Alter parameter space
+        self.grid.setNewCenterForParameters(linearCG)
+        
+        # Write new topologies 
+        self.grid.incrementPrefixOfTopologies()
+        self.grid.writeTopologies()
+
+        shiftTuple = cartesianGrid.getDisplacement(cartesianGrid.getCenterAsTuple(), tupleCG)
+        
+        # New gridpoints.
+        newGridpoints = [None for i in range(grid.get_linear_size())]
+        mask = CartesianGridMask(self.grid.getCartesianGrid(), self.grid.getCartesianGrid(), shiftTuple)
+        maskArray = mask.getDestMaskLinear()
+
+        # Set new gridpoints.
+        for i, m in enumerate(maskArray):
+            if (m != -1):
+                newGridpoints[i] = self.grid[m]
+                newGridpoints[i].resetWithNewId(i)
+            else:
+                newGridpoints[i] = GridPoint(self.grid, i)
+
+        # Put new gridpoints in grid
+        self.grid.setGridpoints(newGridpoints)
+        return
+
+    @staticmethod
+    def createFromGridAndDict (grid, dictargs):
+        maxshifts = int(dictargs['maxshifts'])
+        margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
+        ncut      = float(dictargs['ncut'])
+        return GridShifter(grid, maxshifts, margins, ncut)
 
 

@@ -109,7 +109,7 @@ if __name__ == "__main__":
                 grid.make_grid_for_protocol (protocol, workdir + "/" + protocol.name, reweightHash)
                 
             # remember: properties is a dict where keys are property id's and values are property types (e.g. properties['some-dens'] = 'density')
-            # push nearest copies into optimizer
+            # push nearest copies into optimizer --
             optimizer.pushNearest(surrogateModelHash)
 
             for prop in properties:
