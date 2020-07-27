@@ -863,8 +863,11 @@ class ParameterGrid:
             # END_OF_OLD_CODE
             A_pkn = self.retrieveReweightProperties()
             u_kn  = self.retrieveReweightProperty('potential')
-            pv_kn = self.retrieveReweightProperty('pV')
-            u_kn  = (u_kn + pv_kn) / (0.83144626 * protocol.get_temperature())
+            if (protocol.has_pv()):
+                pv_kn = self.retrieveReweightProperty('pV')
+                u_kn  = (u_kn + pv_kn) / (0.83144626 * protocol.get_temperature())
+            else:
+                u_kn  = u_kn / (0.83144626 * protocol.get_temperature())                
             N_k   = self.retrieveReweightNumberOfConfigurations()
             # retrieve MBAR model (one model for all properties!)
             mbar_model = protocol.get_mbar_model()
