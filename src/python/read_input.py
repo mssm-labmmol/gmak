@@ -260,6 +260,7 @@ def initialize_from_input (input_file, bool_legacy):
                             if 'potential' not in protocol.properties:
                                 protocol.properties.append('potential')
                             protocol.properties.append('polcorr')
+                            protocol.set_other_corrections(corr)
                     elif (propRead == 'ced') or (propRead == 'gced'):
                         nameLiq = line.split()[3]
                         nameGas = line.split()[4]
@@ -282,7 +283,6 @@ def initialize_from_input (input_file, bool_legacy):
                             if 'potential' not in protocol.properties:
                                 protocol.properties.append('potential')
                             protocol.properties.append('polcorr')
-                            protocol.set_other_corrections(corr)
                             protocol.set_other_corrections(corr)
                     elif (propRead == 'gamma'):
                         # find protocol with name given
