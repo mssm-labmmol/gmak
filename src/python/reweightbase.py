@@ -5,20 +5,21 @@ import traj_ana
 from shutil import copyfile
 import os
 
-class GromacsReweighterAdapter(ReweighterAdapter):
+class GromacsReweighterAdapter:
     @staticmethod
     def getInputData(originGridpoint, destGridpoint, protocol):
         properties = protocol.get_reweighting_properties()
         outputDict = {}
         for prop in properties:
             outputDict[prop] = originGridpoint.retrieve_atomic_property_from_protocol(prop, protocol)
-        outputDict['gro'] = originGridpoint.protocol_outputs[protocol]['gro']
-        outputDict['top'] = originGridpoint.protocol_outputs[protocol]['top']
-        outputDict['mdp'] = originGridpoint.protocol_outputs[protocol]['mdp']
+        outputDict['gro'] = originGridpoint.protocol_outputs[protocol.name]['gro']
+        outputDict['top'] = destGridpoint.protocol_outputs[protocol.name]['top'] # This is really destGridpoint!
+        outputDict['mdp'] = protocol.mdps[-1]
         if (protocol.type == 'slab'):
-            outputDict['xtc'] = originGridpoint.protocol_outputs[protocol]['trr']
+            outputDict['xtc'] = originGridpoint.protocol_outputs[protocol.name]['trr']
         else:
-            outputDict['xtc'] = originGridpoint.protocol_outputs[protocol]['xtc']
+            outputDict['xtc'] = originGridpoint.protocol_outputs[protocol.name]['xtc']
+        return outputDict
                 
 class ReweighterInterface(ABC):
 
@@ -40,7 +41,7 @@ class ReweighterInterface(ABC):
     def run(self, protocol, workdir):
         self.runSimulations(protocol, workdir)
         self.calculateProperties(protocol, workdir)
-        self._cleanFiles()
+        #self._cleanFiles()
 
 class EmptyReweighter(ReweighterInterface):
     def __init__(self):
@@ -63,21 +64,23 @@ class StandardReweighterInterface(ReweighterInterface):
     def __init__(self, parameterGrid, rerunFunction, analyzeFunction, reweightAdapter):
         # State that can not be directly altered by mehods. 
        self.parameterGrid = parameterGrid
-        self.rerun         = rerunFunction
-        self.analyze       = analyzeFunction
-        self.adapter       = reweightAdapter
-        # State that can be altered by methods.
-        self._outputFiles         = [[None for j in range(parameterGrid.get_linear_size())]
-                                     for i in range(parameter_grid.get_linear_size())]
-        self._configurationMatrix = [0 for i in range(parameterGrid.get_linear_size())]
+       self.rerun         = rerunFunction
+       self.analyze       = analyzeFunction
+       self.adapter       = reweightAdapter
+       # State that can be altered by methods.
+       self._outputFiles         = [[None for j in range(parameterGrid.get_linear_size())]
+                                    for i in range(parameterGrid.get_linear_size())]
+       self._configurationMatrix = [0 for i in range(parameterGrid.get_linear_size())]
 
     def _initProperties(self, protocol):
         self.properties = protocol.get_reweighting_properties()
         self._propertyMatrix = {}
-        # for prop in properties:
-        #     self._propertyMatrix[prop] = [[] for i in range(parameterGrid.get_linear_size())]
+        for prop in self.properties:
+            self._propertyMatrix[prop] = [[] for i in range(self.parameterGrid.get_linear_size())]
 
     def _cleanFiles(self):
+        # TODO: This function needs to be fixed before using.
+        #       'xj' is a dict, not a string
         for xi in self._outputFiles:
             for xj in xi:
                 if (xj is not None):
@@ -85,7 +88,7 @@ class StandardReweighterInterface(ReweighterInterface):
 
     def runSimulations(self, protocol, workdir):
         for stateOrigin in self.parameterGrid.get_samples_id():
-            for stateDest in self.parameterGrid.get_linear_size():
+            for stateDest in range(self.parameterGrid.get_linear_size()):
                 pointOrigin = self.parameterGrid[stateOrigin]
                 pointDest   = self.parameterGrid[stateDest]
                 _input      = self.adapter.getInputData(pointOrigin, pointDest, protocol)
@@ -93,15 +96,15 @@ class StandardReweighterInterface(ReweighterInterface):
                 _output     = self.rerun(_input, _dir)
                 self._outputFiles[stateOrigin][stateDest] = _output
 
-    def _calculatePropertiesError(self, inputData, prop, out):
+    def _calculatePropertiesError(self, inputData, rwData, prop, out):
         raise NotImplemented("You are trying to reweight a property that has no strategy to be reweighted.")
 
-    def _calculatePropertiesCopy(self, inputData, prop, out):
+    def _calculatePropertiesCopy(self, inputData, rwData, prop, out):
         copyfile(inputData[prop], out)
-        return np.loadtxt(out, comments=['@','#'])
+        return list(np.loadtxt(out, comments=['@','#'], usecols=(1,)))
                 
-    def _calculatePropertiesAnalyze(self, inputData, prop, out):
-        return self.analyze(self._outputFiles[stateOrigin][stateDest], prop, out)
+    def _calculatePropertiesAnalyze(self, inputData, rwData, prop, out):
+        return list(self.analyze(rwData, prop, out))
     
     def calculateProperties(self, protocol, workdir):
         func_dict = {
@@ -114,15 +117,15 @@ class StandardReweighterInterface(ReweighterInterface):
         
         self._initProperties(protocol)
         for prop in self.properties:
-            self._propertyMatrix[prop] = []
             for stateOrigin in self.parameterGrid.get_samples_id():
-                for stateDest in self.parameterGrid.get_linear_size():
+                for stateDest in range(self.parameterGrid.get_linear_size()):
                     pointOrigin  = self.parameterGrid[stateOrigin]
                     pointDest    = self.parameterGrid[stateDest]
                     _input       = self.adapter.getInputData(pointOrigin, pointDest, protocol)
-                    _out         = "{}/{}_{}/{}.dat".format(workdir, stateOrigin, stateDest, prop)
-                    propertyData = func_dict(_input, prop, _out)
-                    self._configurationMatrix[stateOrigin] = propertyData.shape[0]
+                    _rwdata      = self._outputFiles[stateOrigin][stateDest]
+                    _out         = "{}/{}_{}/{}.xvg".format(workdir, stateOrigin, stateDest, prop)
+                    propertyData = func_dict[prop](_input, _rwdata, prop, _out)
+                    self._configurationMatrix[stateOrigin] = len(propertyData)
                     self._propertyMatrix[prop][stateDest] += propertyData
 
 class GromacsStandardReweighter(StandardReweighterInterface):

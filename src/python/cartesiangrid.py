@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 class CartesianGrid:
 
@@ -56,7 +57,7 @@ class CartesianGrid:
         return True
 
     def getCornersAsLinear(self):
-        iter_arg = [(0, n-1) for n in np.prod(self.lens)]
+        iter_arg = [(0, n-1) for n in self.lens]
         iter_obj = itertools.product(*iter_arg)
         points   = [p for p in iter_obj]
         expanded_points = [self.tuple2linear(p) for p in points]

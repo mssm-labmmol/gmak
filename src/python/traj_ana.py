@@ -20,7 +20,7 @@ def analyzeWrapper(inputData, prop, out):
     gro = inputData['gro']
     tpr = inputData['tpr']
     obtain_property(xtc, edr, gro, tpr, prop, out)
-    return np.loadtxt(out, comments=['@','#'])
+    return np.loadtxt(out, comments=['@','#'], usecols=(1,))
 
 def obtain_property (xtc, edr, gro, tpr, name, output_file):
     xtc = os.path.abspath(xtc)

@@ -105,6 +105,10 @@ class AbstractTopologyOutput(ABC):
     def writeToFiles(self, topology):
         pass
 
+    @abstractmethod
+    def getFiles(self):
+        pass
+
 class GromacsDummyTopologyOutput(AbstractTopologyOutput):
 
     def __init__(self, itp_input, itp_fn):
@@ -135,7 +139,7 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         self.fp.write("[ atomtypes ]\n")
         for label, pars in atomtypes:
             parameters = dict(pars)
-            self.fp.write("%-5s%4d%6.3f%6.3f%3s%18.7f%18.7f\n" % (label, self._l2z(label), 0.0, 0.0, "A",
+            self.fp.write("%-5s%4d%6.3f%6.3f%3s%18.7e%18.7e\n" % (label, self._l2z(label), 0.0, 0.0, "A",
                                                              parameters['c6'], parameters['c12']))
         self.fp.write('\n')
 
@@ -144,7 +148,7 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         for label, pars in pairtypes:
             parameters = dict(pars)
             if (label[0] != label[1]):            
-                self.fp.write("%-6s%-6s%6d%18.7f%18.7f\n" % (label[0], label[1], 1,
+                self.fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
                             parameters['c6'], parameters['c12']))
         self.fp.write('\n')
 
@@ -152,7 +156,7 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         self.fp.write("[ pairtypes ]\n")
         for label, pars in pairtypes:
             parameters = dict(pars)
-            self.fp.write("%-6s%-6s%6d%18.7f%18.7f\n" % (label[0], label[1], 1,
+            self.fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
                             parameters['cs6'], parameters['cs12']))
         self.fp.write('\n')
 
@@ -161,6 +165,9 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         for line in _fp:
             self.fp.write(line)
         _fp.close()
+
+    def getFiles(self):
+        return self.fn
     
     def writeToFiles(self, topology):
         self.fp = open(self.fn, 'w')
@@ -281,9 +288,7 @@ class TopologyBundle:
 
     def getPathsForStatepath(self, state):
         self.topologyOutputSetter.setState(self.topologyOutput, state) 
-        self.topologyOutput.getFiles()
-
-    
+        return self.topologyOutput.getFiles()
 
 class TopologyBundleFactory:
 

@@ -4,6 +4,7 @@ from gridoptimizer import gridOptimizer
 from gridshifter import *
 from parameters import *
 from variations import *
+from gridbase import *
 from topology import * 
 from coverage import coverInterface
 from protocols import LiquidProtocol, GasProtocol, SlabProtocol
@@ -131,14 +132,13 @@ class TestParameterIO:
         psgen.debugPrint()
         
 def initialize_from_input (input_file, bool_legacy):
-    output_grid = ParameterGrid ()
+    output_grid = None
+    output_gridshifter = None
     output_protocols = []
     output_properties = {}
     output_protocolsHash = {}
     output_workdir = ""
     output_optimizer = gridOptimizer ()
-    output_gridshifter = GridShifter ()
-    output_paramLoop = ParameterLoop ()
     output_gaCoverInterface = coverInterface ()
     output_surrogateModel = {}
     output_subgrid = {'method': 'cubic', 'factors': [1, 1]}
@@ -165,6 +165,7 @@ def initialize_from_input (input_file, bool_legacy):
         if (line.rstrip() == "$variation"):
             if parameterIO is None:
                 parameterIO = ParameterIO(fp, ParameterReferenceFactory(outputNonbondedForcefield, outputBondedForcefield, [EmptyTopology()]), DomainSpaceFactory)
+                parameterIO.read()
             else:
                 parameterIO.read()
         if (line.rstrip() == '$molecules'):
@@ -176,13 +177,13 @@ def initialize_from_input (input_file, bool_legacy):
                 #moleculesDict[name]['gro'] = blockDict['gro'][i]
                 outputTopoBundles[name]    = TopologyBundleFactory.createBundle('gromacs', blockDict['itp'][i], prefix,
                                                 outputNonbondedForcefield, outputBondedForcefield)
-                system("mkdir -p {}/{}".format(output_workdir, name))
+                os.system("mkdir -p {}/{}".format(output_workdir, name))
                                                                                 
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist
             # beyond this point.
             outputParameterSpaceGen = parameterIO.getParameterSpaceGenerator()
-            output_grid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter)
+            output_grid = ParameterGrid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter, output_workdir)
         if (line.rstrip() == "$protocol"):
             line = next(fp)
             if (line.split()[0] == 'type'):

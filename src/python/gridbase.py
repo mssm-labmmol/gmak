@@ -12,6 +12,7 @@ from    grid_ana        import *
 import  warnings
 from    surrogate_model import *
 from    cartesiangrid   import *
+from    gridshifter     import *
 import  copy
 
 def reweightItpChanger (inputTopology, index, outputTopology):
@@ -137,7 +138,7 @@ class GridPoint:
             self.is_simulated.append(protocol.name)
     
     def getTopologyPath(self, molecule):
-        return self.baseGrid.topologyBundles[molecule].getPathsForStatePath(self.id)
+        return self.baseGrid.topologyBundles[molecule].getPathsForStatepath(self.id)
 
     def get_property_estimate(self, prop):
         return self.estimated_properties[prop].value
@@ -276,15 +277,16 @@ class GridPoint:
 
 class ParameterGrid:
 
-    self._mainString = 'main'
+    _mainString = 'main'
 
-    def __init__ (self, parSpaceGen, topologyBundles, reweighter, shifter):
+    def __init__ (self, parSpaceGen, topologyBundles, reweighter, shifter, workdir):
         """
         Parameters:
           ParameterSpaceGenerator   parSpaceGen
           dict<TopologyBundle>      topologyBundles
           ReweighterInterface       reweighter
           GridShifter               shifter
+          string                    workdir
         """
         self.parSpaceGen     = parSpaceGen
         self.topologyBundles = topologyBundles
@@ -292,6 +294,7 @@ class ParameterGrid:
         self.indexGrid       = CartesianGrid(self.get_size())
         self.reweighter      = reweighter
         self.shifter         = shifter
+        self.workdir         = workdir
         
         """
         plotting stuff that I do not wish to alter right now.
@@ -305,24 +308,25 @@ class ParameterGrid:
             self.grid_points.append( GridPoint(self, i) ) 
 
     @staticmethod
-    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs):
-        parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter())
+    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir):
+        from gridshifter import EmptyGridShifter
+        parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter(), EmptyGridShifter(), workdir)
         parameterGrid.xlabel = xlabel
         parameterGrid.ylabel = ylabel
         parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
         parameterGrid.shifter    = shifterFactory(parameterGrid, shifterArgs)
         parameterGrid.set_samples(samples)
-        
+        return parameterGrid
         
     @staticmethod
-    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs):
+    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir):
         samples       = []
         # Assumes last line read was '$grid'.
         for line in stream:
             if line[0] == '#':
                 continue
             if (re.match(r"^\$end.*",line)):
-                return
+                break
             if (line.split()[0] == 'samples'):
                 samples = [int(x) for x in line.split()[1:]]
             if (line.split()[0] == 'reweight'):
@@ -331,7 +335,8 @@ class ParameterGrid:
                 splitted = shlex.split(line)
                 xlabel = splitted[1]
                 ylabel = splitted[2]
-        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs) 
+        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir)
+        return grid
 
     def setGridpoints(self, gridpoints):
         self.grid_points = gridpoints
@@ -343,12 +348,13 @@ class ParameterGrid:
         return list(self.topologyBundles.keys())
 
     def incrementPrefixOfTopologies(self):
-        for topoBundle in self.topologyBundles:
+        for topoBundle in self.topologyBundles.values():
             topoBundle.incrementPrefix()
 
     def writeTopologies(self):
-        for topoBundle in self.topologyBundles:
+        for topoBundle in self.topologyBundles.values():
             for i in range(self.get_linear_size()):
+                self.parSpaceGen.setState(i)
                 topoBundle.writeFilesForStatepath(i)
 
     def get_dim(self):
@@ -411,11 +417,11 @@ class ParameterGrid:
 
     def linear2tuple(self, linpos):
         """Returns tuple position for linear position."""
-        self.indexGrid.linear2tuple(linpos)
+        return self.indexGrid.linear2tuple(linpos)
 
     def tuple2linear(self, pos):
         """Returns linear position for tuple position."""
-        self.indexGrid.tuple2linear(pos)
+        return self.indexGrid.tuple2linear(pos)
 
     def add_corners(self):
         """Add corners as sampling points. Useful when interpolation is used, to
@@ -446,7 +452,7 @@ class ParameterGrid:
         
     def retrieveReweightProperties(self):
         return self.reweighter.getFullPropertyMatrix()
-
+        
     def retrieveReweightNumberOfConfigurations(self):
         return self.reweighter.getConfigurationMatrix()
 
@@ -636,7 +642,7 @@ class ParameterGrid:
     # Performs shifting operations.
     def shift (self, optimizer):
         optimizer.reset()
-        return self.shifter.shift()
+        return self.shifter.shift(optimizer)
 
     def read_property_values_err_from_file (self, prop, propType, filename_value, filename_err):
         values = np.loadtxt(filename_value)
@@ -644,28 +650,28 @@ class ParameterGrid:
         for i,x in enumerate(self.grid_points):
             x.estimated_properties[prop] = init_property_from_string(propType, values[i], err[i])
 
-    def save_property_values_to_file (self, prop):
+    def save_property_values_to_file (self, prop, optimizer):
         # make data
         data = [x.estimated_properties[prop].value for x in self.grid_points]
         data = np.array(data)
         filename = "{}/{}_EA_k.dat".format(self.makeStepPropertiesdir(optimizer), prop)
         np.savetxt(filename, data)
 
-    def save_property_err_to_file (self, prop):
+    def save_property_err_to_file (self, prop, optimizer):
         # make data
         data = [x.estimated_properties[prop].err for x in self.grid_points]
         data = np.array(data)
         filename = "{}/{}_dEA_k.dat".format(self.makeStepPropertiesdir(optimizer), prop)
         np.savetxt(filename, data)
 
-    def save_property_diff_to_file (self, prop, ref):
+    def save_property_diff_to_file (self, prop, ref, optimizer):
         # make data
         data = [x.estimated_properties[prop].value - ref for x in self.grid_points]
         data = np.array(data)
         filename = "{}/{}_diff.dat".format(self.makeStepPropertiesdir(optimizer), prop)
         np.savetxt(filename, data)
 
-    def plot_property_to_file (self, prop):
+    def plot_property_to_file (self, prop, optimizer):
         if (self.get_dim() > 2):
             warnings.warn("Can only plot 1-D or 2-D grids.")
             return
@@ -688,7 +694,7 @@ class ParameterGrid:
         else:
             return
 
-    def plot_property_err_to_file (self, prop):
+    def plot_property_err_to_file (self, prop, optimizer):
         if (self.get_dim() > 2):
             warnings.warn("Can only plot 1-D or 2-D grids.")
             return
@@ -711,7 +717,7 @@ class ParameterGrid:
         else:
             return
 
-    def plot_property_diff_to_file (self, prop, propname, ref):
+    def plot_property_diff_to_file (self, prop, propname, ref, optimizer):
         if (self.get_dim() > 2):
             warnings.warn("Can only plot 1-D or 2-D grids.")
             return
@@ -762,8 +768,8 @@ class ParameterGrid:
 
     def makeCurrentWorkdir(self):
         shifts = self.shifter.getCurrentNumberOfShifts()
-        workdir = "./grid_{}".format(shifts)
-        return self.makeDir(workdir)
+        outdir = "{}/grid_{}".format(self.workdir, shifts)
+        return self.makeDir(outdir)
 
     def makeProtocolWorkdir(self, protocol):
         return self.makeDir("{}/{}".format(self.makeCurrentWorkdir(), protocol.name))
@@ -798,7 +804,7 @@ class ParameterGrid:
         self.writeTopologies()
 
         # save samples to file
-        self.save_samples_to_file(self.makePathOfSamples())
+        self.save_samples_to_file(self.makePathOfSamples(optimizer))
 
         # simulate sampling points, filter trajectories and properties
         # gridpoints have access to the correct topology paths 
@@ -888,9 +894,12 @@ class ParameterGrid:
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
     def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
-        # push nearest copies into optimizer
-        optimizer.pushNearest(surrogateModelHash)
-        
+
+        for protocol in protocols:
+            if (protocol.requires_corners()):
+                self.add_corners()
+                break
+
         for protocol in protocols:
             self.make_grid_for_protocol(protocol, optimizer)
         
@@ -898,26 +907,26 @@ class ParameterGrid:
             referenceValue = optimizer.referenceValues[prop]
             kind = surrogateModelHash[prop]
             self.compute_final_properties(prop, properties[prop], protocolsHash[prop], protocols, kind)
-            self.save_property_values_to_file (prop)
-            self.save_property_err_to_file (prop)
-            self.save_property_diff_to_file (prop, referenceValue)
+            self.save_property_values_to_file (prop, optimizer)
+            self.save_property_err_to_file (prop, optimizer)
+            self.save_property_diff_to_file (prop, referenceValue, optimizer)
             #
             if (plotFlag):
-                grid.plot_property_to_file (prop)
-                grid.plot_property_err_to_file (prop)
-                grid.plot_property_diff_to_file (prop, properties[prop], referenceValue)
+                self.plot_property_to_file (prop, optimizer)
+                self.plot_property_err_to_file (prop, optimizer)
+                self.plot_property_diff_to_file (prop, properties[prop], referenceValue, optimizer)
         #
         optimizer.fillWithScores (self)
-        optimizer.printToFile (self, self.makeStepPropertiesdir() + "/optimizer_data.dat")
+        optimizer.printToFile (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_data.dat")
         if (plotFlag):
-            optimizer.plotToPdf (self, self.makeStepPropertiesdir() + "/optimizer_score.pdf")
+            optimizer.plotToPdf (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_score.pdf")
         nextSample = optimizer.determineNextSample (self, surrogateModelHash)
         print ("Next sample is %d"  % nextSample)
         if (nextSample == -1):
             if not self.shift(optimizer):
                 return
         else:
-            self.add_sample(newSample)
+            self.add_sample(nextSample)
         # Recursion
         self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
             

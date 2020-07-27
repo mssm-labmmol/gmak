@@ -8,7 +8,7 @@ def reweightWrapper(inputData, workdir):
     gro     = inputData['gro']
     top     = inputData['top']
     mdp     = inputData['mdp']
-    reweight(xtc, gro, top, mdp, workdir)
+    return reweight(xtc, gro, top, mdp, workdir)
 
 def reweight (xtc, gro, top, mdp, workdir):
     xtc = os.path.abspath(xtc)
@@ -39,7 +39,6 @@ def reweight (xtc, gro, top, mdp, workdir):
     output_files['tpr'] = rw_deffnm + ".tpr"
     output_files['trr'] = rw_deffnm + ".trr"
     output_files['gro'] = gro
-
     return output_files
 
 # main for testing if the function does what it is supposed to do 

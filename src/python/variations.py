@@ -94,7 +94,7 @@ class VariationFunctionCartesian(AbstractVariationFunction):
         self._core_calcs()
     def rescale(self, factors):
         if (len(factors) != self.domain_dim):
-            raise ValueError("len(factors) != self.domain_dim")
+            raise ValueError("({} != {}) len(factors) != self.domain_dim".format(len(factors), self.domain_dim))
         for f in factors:
             if not isinstance(f, int):
                 raise ValueError("Subgrid factors must be integers.")

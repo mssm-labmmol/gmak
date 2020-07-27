@@ -88,7 +88,9 @@ class BaseProtocol:
     def get_reweighting_properties (self):
         """Based on the surrogate models for each property, return a list
         with the atomic properties that need reweighting."""
-        output_list = []
+        output_list = ['potential']
+        if (self.has_pv()):
+            output_list.append('pV')
         for m, p in self.surrogate_models:
             if m.requiresReweight():
                 if p not in output_list:

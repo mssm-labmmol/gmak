@@ -1,6 +1,7 @@
 import os
 from parameters import *
-from cartesiangrid import * 
+from cartesiangrid import *
+from gridbase import *
 
 # # creates (soft) symbolic link from target to link_name
 # def create_symbolic_link (target, link_name):
@@ -44,7 +45,7 @@ class GridShifter:
     # Store in internal variables.
     def calcCG (self, optimizer):
 
-        thr = int(self.ncut * grid.get_linear_size())
+        thr = int(self.ncut * self.grid.get_linear_size())
         cg  = [0 for i in range(self.grid.get_dim())]
         
         for k in range(thr):
@@ -54,14 +55,14 @@ class GridShifter:
                 cg[i] += point[i]
 
         for i, x in enumerate(cg):
-            cg[i] /= thr
+            cg[i] = int(cg[i]/thr)
 
         print ("Note: CG is {}".format(cg))
         self.cg = tuple(cg)
         return self.cg
 
     # With CG calculated, verify if we need to shift.
-    def doWeShift (self, grid):
+    def doWeShift (self):
         if (self.nshifts >= self.maxshifts):
             return False
 
@@ -76,9 +77,9 @@ class GridShifter:
        
         return False
 
-    def checkShift (self, optimizer, paramLoop, grid, old_workdir, new_workdir):
-        self.calcCG(optimizer, grid)
-        if not (self.doWeShift(grid)):
+    def checkShift (self, optimizer):
+        self.calcCG(optimizer)
+        if not (self.doWeShift()):
             print ("Note: No need to shift the grid.")
             return False
         print ("Note: We are shifting the grid.")
@@ -86,8 +87,8 @@ class GridShifter:
         self.nshifts += 1
         return True
 
-    def shift(self):
-        if not(self.checkShift()):
+    def shift(self, optimizer):
+        if not(self.checkShift(optimizer)):
             return False
 
         linearCG = self.getCGasLinear()
@@ -101,10 +102,10 @@ class GridShifter:
         self.grid.incrementPrefixOfTopologies()
         self.grid.writeTopologies()
 
-        shiftTuple = cartesianGrid.getDisplacement(cartesianGrid.getCenterAsTuple(), tupleCG)
+        shiftTuple = cartesianGrid.getDisplacement(cartesianGrid.getCenterAsLinear(), linearCG)
         
         # New gridpoints.
-        newGridpoints = [None for i in range(grid.get_linear_size())]
+        newGridpoints = [None for i in range(self.grid.get_linear_size())]
         mask = CartesianGridMask(self.grid.getCartesianGrid(), self.grid.getCartesianGrid(), shiftTuple)
         maskArray = mask.getDestMaskLinear()
 
@@ -118,13 +119,18 @@ class GridShifter:
 
         # Put new gridpoints in grid
         self.grid.setGridpoints(newGridpoints)
-        return
+        return True
 
     @staticmethod
     def createFromGridAndDict (grid, dictargs):
-        maxshifts = int(dictargs['maxshifts'])
+        maxshifts = int(dictargs['maxshifts'][0])
         margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
-        ncut      = float(dictargs['ncut'])
+        ncut      = float(dictargs['ncut'][0])
         return GridShifter(grid, maxshifts, margins, ncut)
 
-
+class EmptyGridShifter(GridShifter):
+    def __init__(self):
+        return
+    def shift(self):
+        raise NotImplementedError("Using EmptyGridShifter for shifting.")
+    
