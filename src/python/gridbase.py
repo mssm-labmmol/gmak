@@ -439,7 +439,6 @@ class ParameterGrid:
                         gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
                 else:
                     print("MESSAGE: Gridpoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
-                    return
             # only prepare
             else:
                 gp.prepare_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
