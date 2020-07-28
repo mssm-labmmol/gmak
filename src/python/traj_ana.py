@@ -111,18 +111,19 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
     path_of_preffix = '/'.join(output_file.split('/')[0:-1])
     # create path if it does not exist
     os.system("mkdir -p " + path_of_preffix)
+    Mtotfn = path_of_preffix + '/Mtot.xvg'
 
     AVOGADRO = 6.02e23
     DEBYE = 3.336e-30
     COUL = 8.987551e9
 
     # obtain dipoles
-    os.system("echo 0 | gmx dipoles -f %s -s %s" % (xtc,tpr))
+    os.system("echo 0 | gmx dipoles -f %s -s %s -o %s" % (xtc,tpr,Mtotfn))
 
     # get dummy times
-    times = np.loadtxt("Mtot.xvg", comments=['@','#'], usecols=(0,))
+    times = np.loadtxt(Mtotfn, comments=['@','#'], usecols=(0,))
 
-    mu = np.loadtxt("Mtot.xvg", usecols=(4,), comments=['@','#'])
+    mu = np.loadtxt(Mtotfn, usecols=(4,), comments=['@','#'])
     corr = 0.5 * 1e-3 * AVOGADRO * DEBYE * DEBYE * (mu - gas_dipole) * (mu - gas_dipole) / (gas_polarizability * 1e-27 / COUL)
 
     outarray = np.column_stack ((times,corr))
@@ -131,7 +132,7 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
     np.savetxt(output_file, outarray)
 
     # remove all files at the end
-    os.system("rm Mtot.xvg epsilon.xvg dipdist.xvg aver.xvg")
+    os.system("rm epsilon.xvg dipdist.xvg aver.xvg")
 
 if __name__ == "__main__":
     xtc = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-gas/544/sd/sd.xtc"
