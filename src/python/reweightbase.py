@@ -4,6 +4,7 @@ import reweight
 import traj_ana
 from shutil import copyfile
 import os
+from collections import OrderedDict
 
 class GromacsReweighterAdapter:
     @staticmethod
@@ -74,7 +75,7 @@ class StandardReweighterInterface(ReweighterInterface):
 
     def _initProperties(self, protocol):
         self.properties = protocol.get_reweighting_properties()
-        self._propertyMatrix = {}
+        self._propertyMatrix = OrderedDict()
         for prop in self.properties:
             self._propertyMatrix[prop] = [[] for i in range(self.parameterGrid.get_linear_size())]
 
