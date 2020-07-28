@@ -150,11 +150,7 @@ class GridPoint:
         protocol.prepare_gridpoint_at_dir (self, workdir)
 
     def simulate_with_protocol_at_dir (self, protocol, workdir):
-        if (self.wasSimulatedWithProtocol(protocol)):
-            print("MESSAGE: Gridpoint {} has already been simulated with protocol {}!".format(self.id, protocol.name))
-        else:
             protocol.run_gridpoint_at_dir (self, workdir)
-            self.setProtocolAsSimulated(protocol)
 
     def reweight_with_protocol_at_other (self, protocol, gp_other, workdir):
         # from reweight.py
@@ -433,13 +429,17 @@ class ParameterGrid:
         for i,gp in enumerate(self.grid_points):
             # run 
             if gp.is_sample:
-                # simulate
-                gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
-                # filter
-                if (protocol.type == 'slab'):
-                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                if not (self.wasSimulatedWithProtocol(protocol)):
+                    gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
+                    self.setProtocolAsSimulated(protocol)
+                    # filter
+                    if (protocol.type == 'slab'):
+                        gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    else:
+                        gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
                 else:
-                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    print("MESSAGE: Gridpoint {} has already been simulated with protocol {}!".format(self.id, protocol.name))
+                    return
             # only prepare
             else:
                 gp.prepare_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
@@ -800,9 +800,6 @@ class ParameterGrid:
         workdir  = self.makeProtocolWorkdir(protocol)
         simu_dir = self.makeProtocolSimudir(protocol)
 
-        # create topology files
-        self.writeTopologies()
-
         # save samples to file
         self.save_samples_to_file(self.makePathOfSamples(optimizer))
 
@@ -898,6 +895,9 @@ class ParameterGrid:
 
     def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
 
+        # create topology files
+        self.writeTopologies()
+        
         for protocol in protocols:
             if (protocol.requires_corners()):
                 self.add_corners()
