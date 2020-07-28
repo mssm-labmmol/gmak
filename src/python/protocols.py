@@ -70,6 +70,10 @@ class BaseProtocol:
                     model = m
                     break         
         return model.EA_pk[index,:], model.dEA_pk[index,:]
+
+    def ignore_filtering (self):
+        """This is typically False, except for very particular protocols which override it."""
+        return False
         
     def requires_corners (self):
         """Checks if this protocol requires corners."""
@@ -258,6 +262,9 @@ class GasProtocol(BaseProtocol):
             if line.split()[0] == 'polarizability':
                 self.polar = float(line.split()[1])
 
+    def ignore_filtering(self):
+        return True
+    
     def has_pv (self):
         # NOTE: Formally, the gas simulations do have a pV term. However, they
         # are the same in all cases (pV = NkT), so they have no influence over
