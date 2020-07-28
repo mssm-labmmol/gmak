@@ -429,16 +429,16 @@ class ParameterGrid:
         for i,gp in enumerate(self.grid_points):
             # run 
             if gp.is_sample:
-                if not (self.wasSimulatedWithProtocol(protocol)):
+                if not (gp.wasSimulatedWithProtocol(protocol)):
                     gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
-                    self.setProtocolAsSimulated(protocol)
+                    gp.setProtocolAsSimulated(protocol)
                     # filter
                     if (protocol.type == 'slab'):
                         gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
                     else:
                         gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
                 else:
-                    print("MESSAGE: Gridpoint {} has already been simulated with protocol {}!".format(self.id, protocol.name))
+                    print("MESSAGE: Gridpoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
                     return
             # only prepare
             else:
