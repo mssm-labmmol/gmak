@@ -78,6 +78,7 @@ class StandardReweighterInterface(ReweighterInterface):
         self._propertyMatrix = OrderedDict()
         for prop in self.properties:
             self._propertyMatrix[prop] = [[] for i in range(self.parameterGrid.get_linear_size())]
+        self._configurationMatrix = [0 for i in range(self.parameterGrid.get_linear_size())]
 
     def _cleanFiles(self):
         # TODO: This function needs to be fixed before using.
