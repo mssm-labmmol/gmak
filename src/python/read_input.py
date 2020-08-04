@@ -244,7 +244,11 @@ def initialize_from_input (input_file, bool_legacy):
                         nameGas = line.split()[4]
                         corr    = float(line.split()[5])
 
-                        output_protocolsHash[propId] = [nameLiq, nameGas]
+                        if (nameGas == 'none'):
+                            output_protocolsHash[propId] = [nameLiq, nameGas, corr]
+                        else:
+                            output_protocolsHash[propId] = [nameLiq, nameGas]
+                            
                         # find protocol with name given - Liq
                         protocols = filter (lambda x: x.name == nameLiq, output_protocols)
                         for protocol in protocols:

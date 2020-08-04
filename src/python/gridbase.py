@@ -150,7 +150,7 @@ class GridPoint:
         protocol.prepare_gridpoint_at_dir (self, workdir)
 
     def simulate_with_protocol_at_dir (self, protocol, workdir):
-            protocol.run_gridpoint_at_dir (self, workdir)
+        protocol.run_gridpoint_at_dir (self, workdir)
 
     def reweight_with_protocol_at_other (self, protocol, gp_other, workdir):
         # from reweight.py
@@ -587,13 +587,19 @@ class ParameterGrid:
                 gp.add_property_estimate (prop_id, prop, estimateObj)
         if (prop == 'dhvap'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
-            nmols            = protocolObjs[0].nmols
-            #
-            estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
-            #
-            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
-            corr             = protocolObjs[1].other_corrections
-            temp             = protocolObjs[1].get_temperature()
+            nmols = protocolObjs[0].nmols
+            # for 'none' gas
+            if (desiredProt[1] == 'none'):
+                estimateValueGas, estimateErrGas = 0.0, 0.0
+                estimateValuePol, estimateErrPol = 0.0, 0.0
+                corr = desiredProt[3]
+            else:
+                #
+                estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
+                #
+                estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
+                corr = protocolObjs[1].other_corrections
+            temp             = protocolObjs[0].get_temperature()
             #
             for gp in self.grid_points:
                 estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],
