@@ -590,8 +590,8 @@ class ParameterGrid:
             nmols = protocolObjs[0].nmols
             # for 'none' gas
             if (propProtocols[1] == 'none'):
-                estimateValueGas, estimateErrGas = 0.0, 0.0
-                estimateValuePol, estimateErrPol = 0.0, 0.0
+                estimateValueGas, estimateErrGas = [0.0 for k in range(self.get_linear_size())], [0.0 for k in range(self.get_linear_size())]
+                estimateValuePol, estimateErrPol = [0.0 for k in range(self.get_linear_size())], [0.0 for k in range(self.get_linear_size())]
                 corr = propProtocols[2]
             else:
                 #
