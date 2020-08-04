@@ -595,11 +595,11 @@ class ParameterGrid:
                 corr = propProtocols[2]
             else:
                 #
-                estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
+                estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)
                 #
-                estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
+                estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)
                 corr = protocolObjs[1].other_corrections
-            temp             = protocolObjs[0].get_temperature()
+            temp = protocolObjs[0].get_temperature()
             #
             for gp in self.grid_points:
                 estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],

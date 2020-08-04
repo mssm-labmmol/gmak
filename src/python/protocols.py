@@ -1,6 +1,7 @@
 from simulate import *
 from surrogate_model import * 
 import re
+import copy
 
 class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
@@ -285,9 +286,12 @@ class GasProtocol(BaseProtocol):
         """Override when polcorr is not necessary."""
         if (prop == 'polcorr') and (self.polar < 0):
             EA, dEA = super().get_avg_err_estimate_of_property('potential', kind)
+            EA = copy.deepcopy(EA)
+            dEA = copy.deepcopy(dEA)
             for i in range(len(EA)):
                 EA[i] = 0.0
                 dEA[i] = 0.0
             return EA, dEA
         else:
-            return super().get_avg_err_estimate_of_property(prop, kind)
+            EA, dEA = super().get_avg_err_estimate_of_property(prop, kind)
+            return EA, dEA
