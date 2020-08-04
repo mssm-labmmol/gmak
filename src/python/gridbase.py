@@ -589,10 +589,10 @@ class ParameterGrid:
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols = protocolObjs[0].nmols
             # for 'none' gas
-            if (desiredProt[1] == 'none'):
+            if (propProtocols[1] == 'none'):
                 estimateValueGas, estimateErrGas = 0.0, 0.0
                 estimateValuePol, estimateErrPol = 0.0, 0.0
-                corr = desiredProt[3]
+                corr = propProtocols[2]
             else:
                 #
                 estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
