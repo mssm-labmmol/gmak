@@ -75,7 +75,7 @@ class dHvap (PropertyBase):
         print( "Initialized dHvap = %.2f +/- %.2f " % (self.value, self.err))
         print( "Components:")
         print( "U_liq = %.2f (%.2f)" % (value_liq, value_liq/nmols))
-        print( "U_gas = %.2f " % (value_gas))
+        print( "U_gas = %.4f " % (value_gas))
         print( "Polcorr = %.2f " % (value_pol))
         print( "Other corrections = %.2f " % (corrs))
         print( "RT = %.2f " % (R*temperature))
