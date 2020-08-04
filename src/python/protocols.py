@@ -284,6 +284,10 @@ class GasProtocol(BaseProtocol):
     def get_avg_err_estimate_of_property (self, prop, kind):
         """Override when polcorr is not necessary."""
         if (prop == 'polcorr') and (self.polar < 0):
-            return 0.0, 0.0
+            EA, dEA = super().get_avg_err_estimate_of_property(prop, kind)
+            for i in range(len(EA)):
+                EA[i] = 0.0
+                dEA[i] = 0.0
+            return EA, dEA
         else:
             return super().get_avg_err_estimate_of_property(prop, kind)
