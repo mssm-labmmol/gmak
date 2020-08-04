@@ -285,3 +285,5 @@ class GasProtocol(BaseProtocol):
         """Override when polcorr is not necessary."""
         if (prop == 'polcorr') and (self.polar < 0):
             return 0.0, 0.0
+        else:
+            return super().get_avg_err_estimate_of_property(prop, kind)
