@@ -245,8 +245,8 @@ class GridPoint:
                 self.protocol_outputs[protocol.name]['tpr'], \
                 [self.atomic_properties[protocol.name][x] for x in properties],\
                 odir + '/filtered_trajectory.xtc',\
-                [odir + '/filtered_' + prop + '.xvg' for prop in properties],\
-                protocol.ignore_filtering())
+                [odir + '/filtered_' + prop + '.xvg' for prop in properties])
+
                                      
         # update gridpoint trajectory
         self.protocol_outputs[protocol.name]['xtc'] = \
@@ -264,8 +264,7 @@ class GridPoint:
                 self.protocol_outputs[protocol.name]['tpr'], \
                 [self.atomic_properties[protocol.name][x] for x in properties],\
                 odir + '/filtered_trajectory.trr',\
-                [odir + '/filtered_' + prop + '.xvg' for prop in properties],\
-                protocol.ignore_filtering())
+                [odir + '/filtered_' + prop + '.xvg' for prop in properties])
         # update gridpoint trajectory
         self.protocol_outputs[protocol.name]['trr'] = \
                 os.path.abspath(odir + '/filtered_trajectory.trr')

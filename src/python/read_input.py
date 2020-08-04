@@ -256,10 +256,11 @@ def initialize_from_input (input_file, bool_legacy):
                         protocols = filter (lambda x: x.name == nameGas, output_protocols)
                         for protocol in protocols:
                             protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                            protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
                             if 'potential' not in protocol.properties:
                                 protocol.properties.append('potential')
-                            protocol.properties.append('polcorr')
+                            if protocol.polar >= 0:
+                                protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
+                                protocol.properties.append('polcorr')
                             protocol.set_other_corrections(corr)
                     elif (propRead == 'ced') or (propRead == 'gced'):
                         nameLiq = line.split()[3]
@@ -279,10 +280,11 @@ def initialize_from_input (input_file, bool_legacy):
                         protocols = filter (lambda x: x.name == nameGas, output_protocols)
                         for protocol in protocols:
                             protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                            protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
                             if 'potential' not in protocol.properties:
                                 protocol.properties.append('potential')
-                            protocol.properties.append('polcorr')
+                            if (protocol.polar >= 0):
+                                protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                                                         
+                                protocol.properties.append('polcorr')
                             protocol.set_other_corrections(corr)
                     elif (propRead == 'gamma'):
                         # find protocol with name given

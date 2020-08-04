@@ -71,10 +71,6 @@ class BaseProtocol:
                     break         
         return model.EA_pk[index,:], model.dEA_pk[index,:]
 
-    def ignore_filtering (self):
-        """This is typically False, except for very particular protocols which override it."""
-        return False
-        
     def requires_corners (self):
         """Checks if this protocol requires corners."""
         for m, p in self.surrogate_models:
@@ -261,9 +257,6 @@ class GasProtocol(BaseProtocol):
                 self.dipole = float(line.split()[1])
             if line.split()[0] == 'polarizability':
                 self.polar = float(line.split()[1])
-
-    def ignore_filtering(self):
-        return True
     
     def has_pv (self):
         # NOTE: Formally, the gas simulations do have a pV term. However, they
@@ -287,3 +280,8 @@ class GasProtocol(BaseProtocol):
 
     def set_other_corrections (self, corr):
         self.other_corrections = corr
+
+    def get_avg_err_estimate_of_property (self, prop, kind):
+        """Override when polcorr is not necessary."""
+        if (prop == 'polcorr') and (self.polar < 0):
+            return 0.0, 0.0
