@@ -1,5 +1,6 @@
 # TODO import ParameterGrid
 import numpy as np
+import copy
 
 class gridOptimizer:
     """
@@ -70,20 +71,25 @@ class gridOptimizer:
             self.stateScores.append((gP.id, gPScore))
         self.rankScores()
 
-    def printToFile (self, grid, filename):
+    def printToFile (self, grid, filename, sorted=True):
         fp = open(filename, "w")
         properties = self.referenceTolerances.keys()
         fp.write("# %3s" % "id")
         for prop in properties:
-            fp.write("%12s" % prop)
-            fp.write("%12s" % "err")
+            fp.write("%16s" % prop)
+            fp.write("%8s" % "err")
         fp.write("%16s\n" % "score")
-        for x in self.stateScores:
+        if sorted:
+            localStateScore = self.stateScores
+        else:
+            localStateScore = copy.deepcopy(self.stateScores)
+            localStateScore.sort(key=lambda x: x[0])
+        for x in localStateScore:
             fp.write("%5d" % x[0])
             for prop in properties:
                 propValue = grid[x[0]].get_property_estimate(prop)
                 propErr   = grid[x[0]].get_property_err(prop)
-                fp.write("%12.4f%12.4f" % (propValue, propErr))
+                fp.write("%16.4f%8.4f" % (propValue, propErr))
             fp.write("%16.6e\n" % x[1])
         fp.close()
 

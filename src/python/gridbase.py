@@ -927,6 +927,7 @@ class ParameterGrid:
         #
         optimizer.fillWithScores (self)
         optimizer.printToFile (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_data.dat")
+        optimizer.printToFile (self, self.makeStepPropertiesdir(optimizer) + "/full_data.dat", sorted=False)
         if (plotFlag):
             optimizer.plotToPdf (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_score.pdf")
         nextSample = optimizer.determineNextSample (self, surrogateModelHash)
