@@ -57,10 +57,10 @@ class Density (PropertyBase):
 
 class Gamma (PropertyBase):
 
-    def __init__ (self, value, err):
+    def __init__ (self, value, err, nsurf=2):
         self.set_textual_elements ("gamma", "mN m$^{-1}$", "$\\gamma$")
-        self.value = value
-        self.err = err
+        self.value = value/nsurf
+        self.err = err/nsurf
 
 class dHvap (PropertyBase):
 

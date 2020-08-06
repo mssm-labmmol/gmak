@@ -35,23 +35,7 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
     
     # gamma is special
     if name == "gamma":
-        # Obtain Lz.
-        Lz = get_box(gro)[2]
-        Lz_file = output_file + ".Lz"
-        os.system("echo " + Lz + "> " + Lz_file)
-        # Obtain Pxx, Pyy, Pzz series
-        P = []
-        for prop in ["Pres-XX", "Pres-YY", "Pres-ZZ"]: 
-            os.system("echo " + prop + " | gmx energy -f " + edr + " -s " + tpr + " -o " + output_file + "." + prop + ".tmp")
-            P.append(np.loadtxt(output_file + "." + prop + ".tmp.xvg", comments=['#','@'], usecols=(1,)))
-        # Calculate gamma series.
-        P = np.array(P)
-        factor = 0.1 # conversion to mN/m
-        gamma = factor * float(Lz) * 0.5 * (P[2,:] - 0.5 * (P[0,:] + P[1,:]))
-        np.savetxt(output_file, np.column_stack((range(len(gamma)),gamma)))
-        #for prop in ["Pres-XX", "Pres-YY", "Pres-ZZ"]: 
-        #    os.system("rm " + prop + ".tmp.xvg")
-        return
+        prop = "#Surf*SurfTen"
 
     if name == "density":
         prop = "Density"
