@@ -354,6 +354,9 @@ class ParameterGrid:
                 self.parSpaceGen.setState(i)
                 topoBundle.writeFilesForStatepath(i)
 
+    def writeParameters(self):
+        self.parSpaceGen.writeParameters(self.makePrefixOfParameters())
+
     def get_dim(self):
         return self.parSpaceGen.getDimension(self._mainString)
 
@@ -802,6 +805,9 @@ class ParameterGrid:
     def makePathOfSamples(self, optimizer):
         return "{}/samples_{}.dat".format(self.makeCurrentWorkdir(), optimizer.getCurrentIteration())
 
+    def makePrefixOfParameters(self):
+        return "{}/parameters".format(self.makeCurrentWorkdir())
+
     def make_grid_for_protocol (self, protocol, optimizer):
         workdir  = self.makeProtocolWorkdir(protocol)
         simu_dir = self.makeProtocolSimudir(protocol)
@@ -903,6 +909,9 @@ class ParameterGrid:
 
         # create topology files
         self.writeTopologies()
+
+        # create parameters file
+        self.writeParameters()
         
         for protocol in protocols:
             if (protocol.requires_corners()):

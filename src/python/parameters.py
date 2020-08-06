@@ -212,6 +212,12 @@ class ParameterSpaceGenerator:
                 par = parRef.dereference()
                 par.alter( values[j] )
 
+    def writeParameters(self, prefix):
+        for name in self.members.keys():
+            domainSpace, parList = self.members[name]
+            outfile = prefix + "_" + name + ".dat"
+            domainSpace.write_to_file(outfile)
+
     def setNewCenter(self, i):
         for name in self.members:
             self.members[name][0].set_new_center(i)
