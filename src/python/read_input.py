@@ -312,8 +312,7 @@ def initialize_from_input (input_file, bool_legacy):
                 if line[0] == '#':
                     continue
                 if line.rstrip() == '$end':
-                    output_subgrid['parspacegen'] = outputParameterSpaceGen.copy()
-                    output_subgrid['parspacegen'].rescale(output_subgrid['factors'])
+                    output_subgrid['parspacegen'] = outputParameterSpaceGen
                     break
                 option = line.split()[0]
                 if (option == 'method'):
@@ -328,7 +327,6 @@ def initialize_from_input (input_file, bool_legacy):
 
     return (output_workdir, output_grid, output_protocols, output_properties, \
             output_protocolsHash, output_optimizer, output_gaCoverInterface, output_surrogateModel, output_subgrid)
-
 
 if __name__ == '__main__':
     test = TestParameterIO()

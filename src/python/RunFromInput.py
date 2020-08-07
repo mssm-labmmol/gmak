@@ -9,15 +9,19 @@ from mdputils import mdpUtils
 from protocols import LiquidProtocol, GasProtocol, SlabProtocol
 from gridbase import GridPoint, ParameterGrid
 from gridoptimizer import gridOptimizer
+from subgrid import *
 
 import numpy as np
 import os
 import sys
+import copy
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
 else:
     bool_legacy = False
+
+plotFlag = not('--no-plot' in sys.argv)
 
 if __name__ == "__main__":
 
@@ -52,8 +56,24 @@ if __name__ == "__main__":
 
     # *********************** End of checks for run  **************************        
     
-    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, not('--no-plot' in sys.argv))
-    
+    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+
+    # *********************** Subgrid part           **************************        
+
+    subgridHash['parspacegen'] = copy.deepcopy(subgridHash['parspacegen'])
+    subgridHash['parspacegen'].rescale(subgridHash['factors'])
+    subgridObj = ParameterSubgrid(subgridHash['parspacegen'], grid, properties, subgridHash['method'], bool_legacy)
+    for prop in properties:
+        refValue = optimizer.referenceValues[prop]
+        subgridObj.save_property_values_to_file(prop)
+        subgridObj.save_property_diff_to_file(prop, refValue)
+        subgridObj.save_property_err_to_file(prop)
+        if plotFlag:
+            subgridObj.plot_property_to_file(prop)
+            subgridObj.plot_property_diff_to_file(prop, properties[prop], refValue)
+            subgridObj.plot_property_err_to_file(prop)
+    subgridObj.printAndPlotScores(optimizer, plotFlag)
+    subgridObj.writeParameters()
     
     # for nshifts in range(gridShifter.maxshifts):
     #     nGrid = nshifts + 1
