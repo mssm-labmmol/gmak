@@ -59,8 +59,8 @@ class Gamma (PropertyBase):
 
     def __init__ (self, value, err, nsurf=2):
         self.set_textual_elements ("gamma", "mN m$^{-1}$", "$\\gamma$")
-        self.value = value/nsurf
-        self.err = err/nsurf
+        self.value = 0.1 * value/nsurf
+        self.err = 0.1 * err/nsurf
 
 class dHvap (PropertyBase):
 
