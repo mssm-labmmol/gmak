@@ -30,10 +30,6 @@ class GridShifter:
         # Stores the CG.
         self.cg = tuple([0 for i in range(grid.get_dim())])
 
-        # Check
-        if (self.grid.get_dim() > 2):
-            raise ValueError("Can't shift grid of dimension > 2.")
-
     def getCurrentNumberOfShifts(self):
         return self.nshifts
 
