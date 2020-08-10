@@ -71,9 +71,11 @@ class gridOptimizer:
             self.stateScores.append((gP.id, gPScore))
         self.rankScores()
 
-    def printToFile (self, grid, filename, sorted=True):
+    def printToFile (self, grid, filename, sorted=True, ignoreSuffix='_nearest'):
         fp = open(filename, "w")
         properties = self.referenceTolerances.keys()
+        # remove ignored suffix from properties
+        properties = [prop for prop in properties if not(prop.endswith(ignoreSuffix))]
         fp.write("# %3s" % "id")
         for prop in properties:
             fp.write("%16s" % prop)
