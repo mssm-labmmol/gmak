@@ -84,3 +84,4 @@ def truncated_autocorr_with_skip(x):
 #    plt.show()
 #    print skip(ac)
 
+

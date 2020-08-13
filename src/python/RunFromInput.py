@@ -177,3 +177,4 @@ if __name__ == "__main__":
     #     optimizer.fillWithScores (subgrid)
     #     optimizer.printToFile (subgrid, subgridOutputs + "/optimizer_data.dat")
     #     optimizer.plotToPdf (subgrid, subgridOutputs + "/optimizer_score.pdf")
+
