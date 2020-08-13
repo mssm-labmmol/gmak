@@ -14,6 +14,7 @@ from    surrogate_model import *
 from    cartesiangrid   import *
 from    gridshifter     import *
 import  copy
+import  pickle
 
 def reweightItpChanger (inputTopology, index, outputTopology):
     fp = open(inputTopology, 'r')
@@ -304,6 +305,13 @@ class ParameterGrid:
         # Initialize GridPoints
         for i in range(self.get_linear_size()):
             self.grid_points.append( GridPoint(self, i) ) 
+
+    @staticmethod
+    def load_from_binary(fn):
+        fp = open(fn, 'rb')
+        obj = pickle.load(fp)
+        fp.close()
+        return obj
 
     @staticmethod
     def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples=False):
@@ -827,6 +835,12 @@ class ParameterGrid:
     def makePrefixOfParameters(self):
         return "{}/parameters".format(self.makeCurrentWorkdir())
 
+    def save_to_binary(self, optimizer):
+        fn = self.makeStepPropertiesdir(optimizer) + "/grid.bin"
+        fp = open(fn, 'wb')
+        pickle.dump(self, fp, pickle.HIGHEST_PRIORITY)
+        fp.close()
+
     def make_grid_for_protocol (self, protocol, optimizer):
         workdir  = self.makeProtocolWorkdir(protocol)
         simu_dir = self.makeProtocolSimudir(protocol)
@@ -960,6 +974,10 @@ class ParameterGrid:
         optimizer.printToFile (self, self.makeStepPropertiesdir(optimizer) + "/full_data.dat", sorted=False)
         if (plotFlag):
             optimizer.plotToPdf (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_score.pdf")
+
+        # save grid to binary -- nice!
+        self.save_to_binary(optimizer)
+
         nextSample = optimizer.determineNextSample (self, surrogateModelHash)
         print ("Next sample is %d"  % nextSample)
         if (nextSample == -1):
