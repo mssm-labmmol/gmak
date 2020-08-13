@@ -288,6 +288,7 @@ class ParameterGrid:
         self.parSpaceGen     = parSpaceGen
         self.topologyBundles = topologyBundles
         self.grid_points     = []
+        self.fixed_points    = []
         self.indexGrid       = CartesianGrid(self.get_size())
         self.reweighter      = reweighter
         self.shifter         = shifter
@@ -305,7 +306,7 @@ class ParameterGrid:
             self.grid_points.append( GridPoint(self, i) ) 
 
     @staticmethod
-    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir):
+    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples=False):
         from gridshifter import EmptyGridShifter
         parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter(), EmptyGridShifter(), workdir)
         parameterGrid.xlabel = xlabel
@@ -313,11 +314,14 @@ class ParameterGrid:
         parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
         parameterGrid.shifter    = shifterFactory(parameterGrid, shifterArgs)
         parameterGrid.set_samples(samples)
+        if (keep_initial_samples):
+            parameterGrid.set_fixed_points(samples)
         return parameterGrid
         
     @staticmethod
     def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir):
         samples       = []
+        keep_initial_samples = False
         # Assumes last line read was '$grid'.
         for line in stream:
             if line[0] == '#':
@@ -332,7 +336,14 @@ class ParameterGrid:
                 splitted = shlex.split(line)
                 xlabel = splitted[1]
                 ylabel = splitted[2]
-        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir)
+            if (line.split()[0] == 'fixsamples'):
+                if (line.split()[1] == 'yes'):
+                    keep_initial_samples = True
+                elif (line.split()[1] == 'no'):
+                    pass
+                else:
+                    raise ValueError("fixsamples can only be 'yes' or 'no'")
+        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples)
         return grid
 
     def setGridpoints(self, gridpoints):
@@ -412,6 +423,9 @@ class ParameterGrid:
         for x in samples_list:
             self.grid_points[x].set_as_sample()
 
+    def set_fixed_points(self, points_list):
+        self.fixed_points = copy.deepcopy(points_list)
+
     def add_sample (self, new_sample):
         self.grid_points[new_sample].set_as_sample()
 
@@ -427,6 +441,11 @@ class ParameterGrid:
         """Add corners as sampling points. Useful when interpolation is used, to
         guarantee that all points of the grid are estimated."""
         for p in self.indexGrid.getCornersAsLinear():
+            self.add_sample(p)
+
+    def add_fixed_points(self):
+        """Add fixed points as sampling points."""
+        for p in self.fixed_points:
             self.add_sample(p)
 
     def simulate_with_protocol_at_dir (self, protocol, workdir):
@@ -917,6 +936,8 @@ class ParameterGrid:
             if (protocol.requires_corners()):
                 self.add_corners()
                 break
+
+        self.add_fixed_points()
 
         for protocol in protocols:
             self.make_grid_for_protocol(protocol, optimizer)
