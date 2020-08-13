@@ -838,7 +838,7 @@ class ParameterGrid:
     def save_to_binary(self, optimizer):
         fn = self.makeStepPropertiesdir(optimizer) + "/grid.bin"
         fp = open(fn, 'wb')
-        pickle.dump(self, fp, pickle.HIGHEST_PRIORITY)
+        pickle.dump(self, fp, pickle.HIGHEST_PROTOCOL)
         fp.close()
 
     def make_grid_for_protocol (self, protocol, optimizer):
