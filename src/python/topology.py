@@ -128,64 +128,64 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
     def _alterFile(self, newFile):
         self.fn = newFile
 
-    def _writeBonded(self, topology):
-        self.fp.write("; placeholder for bondedtypes\n")
-        self.fp.write("\n")
+    def _writeBonded(self, fp, topology):
+        fp.write("; placeholder for bondedtypes\n")
+        fp.write("\n")
 
-    def _writeNonbonded(self, topology):
+    def _writeNonbonded(self, fp, topology):
         atomtypes = topology.getAtomtypes()
         pairtypes = topology.getPairtypes()
         # Write atomtypes.
-        self.fp.write("[ atomtypes ]\n")
+        fp.write("[ atomtypes ]\n")
         for label, pars in atomtypes:
             parameters = dict(pars)
-            self.fp.write("%-5s%4d%6.3f%6.3f%3s%18.7e%18.7e\n" % (label, self._l2z(label), 0.0, 0.0, "A",
+            fp.write("%-5s%4d%6.3f%6.3f%3s%18.7e%18.7e\n" % (label, self._l2z(label), 0.0, 0.0, "A",
                                                              parameters['c6'], parameters['c12']))
-        self.fp.write('\n')
+        fp.write('\n')
 
         # Write normal pairs.
-        self.fp.write("[ nonbond_params ]\n")
+        fp.write("[ nonbond_params ]\n")
         for label, pars in pairtypes:
             parameters = dict(pars)
             if (label[0] != label[1]):            
-                self.fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
+                fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
                             parameters['c6'], parameters['c12']))
-        self.fp.write('\n')
+        fp.write('\n')
 
         # Write special pairs.
-        self.fp.write("[ pairtypes ]\n")
+        fp.write("[ pairtypes ]\n")
         for label, pars in pairtypes:
             parameters = dict(pars)
-            self.fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
+            fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
                             parameters['cs6'], parameters['cs12']))
-        self.fp.write('\n')
+        fp.write('\n')
 
-    def _writeTopoInfo(self, topology):
+    def _writeTopoInfo(self, fp, topology):
         _fp = open(self.itp_input, 'r')
         for line in _fp:
-            self.fp.write(line)
+            fp.write(line)
         _fp.close()
 
     def getFiles(self):
         return self.fn
     
     def writeToFiles(self, topology):
-        self.fp = open(self.fn, 'w')
+        fp = open(self.fn, 'w')
 
         # Write defaults block.
-        self.fp.write("[ defaults ]\n; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ\n  1             1               no              1.0     1.0\n")
-        self.fp.write('\n')
+        fp.write("[ defaults ]\n; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ\n  1             1               no              1.0     1.0\n")
+        fp.write('\n')
 
         # Write bonded.
-        self._writeBonded(topology)
+        self._writeBonded(fp, topology)
 
         # Write nonbonded.
-        self._writeNonbonded(topology)
+        self._writeNonbonded(fp, topology)
 
         # Write topo info.
-        self._writeTopoInfo(topology)
+        self._writeTopoInfo(fp, topology)
         
-        self.fp.close()
+        fp.close()
 
 # ----------------------------------------------------------------------
 # Tests
@@ -329,24 +329,3 @@ class TestTopologyBundleGromacs:
             self.spaceGen.setState(i)
             self.bundle.writeFilesForStatepath(i)
 
-if __name__ == '__main__':
-    from io import StringIO
-    
-    nonbonded = NonbondedForcefieldFactory.createFromStream(StringIO("standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"))
-    parameter_reference = NonbondedParameterReference(nonbonded.atomtypes, 'CH1', 'cs6')
-    parameter_domain    = DomainSpace([VariationCartesian(1, 5, [0.0], [0.1], [5])])
-    space_gen = ParameterSpaceGenerator()
-    space_gen.addMember( 'main', parameter_domain, [parameter_reference] )
-    
-    test_1 = TopologyTestGromacsNoForcefield("/home/yan/programs/gridmaker/debug/abstr/et.itp", "/home/yan/programs/gridmaker/debug/abstr/et-output.itp")
-    test_2 = TopologyTestGromacs("/home/yan/programs/gridmaker/debug/abstr/et.itp", "/home/yan/programs/gridmaker/debug/abstr/et-output-forcefield.itp", nonbonded)
-    test_3 = TopologyTestGromacsWithVariations("/home/yan/programs/gridmaker/debug/abstr/et.itp", "/home/yan/programs/gridmaker/debug/abstr/et-varied", nonbonded, space_gen)
-    test_4 = TestTopologyBundleGromacs("/home/yan/programs/gridmaker/debug/abstr/et.itp",
-                                       "/home/yan/programs/gridmaker/debug/abstr/et_bundle",
-                                       nonbonded,
-                                       EmptyBondedForcefield,
-                                       space_gen)
-    #test_1.run()
-    #test_2.run()
-    #test_3.run()
-    test_4.run()

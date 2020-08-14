@@ -99,6 +99,18 @@ class ParameterSubgrid:
 
     def __getitem__(self, i):
         return self.grid_points[i]
+
+    def save_to_binary(self, optimizer):
+        # save grid
+        fn = self.makeSubgridDir() + "/grid.bin"
+        fp = open(fn, 'wb')
+        pickle.dump(self, fp, pickle.HIGHEST_PROTOCOL)
+        fp.close()
+        # save optimizer
+        fn = self.makeSubgridDir() + "/optimizer.bin"
+        fp = open(fn, 'wb')
+        pickle.dump(optimizer, fp, pickle.HIGHEST_PROTOCOL)
+        fp.close()
                 
     def get_dim(self):
         return self.parSpaceGen.getDimension(self._mainString)

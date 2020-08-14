@@ -85,51 +85,51 @@ class ParameterIO:
                 break
         return
 
-class TestParameterIO:
-    def __init__(self):
-        from io import StringIO
-        dsfac = DomainSpaceFactory
+# class TestParameterIO:
+#     def __init__(self):
+#         from io import StringIO
+#         dsfac = DomainSpaceFactory
 
-        # for forcefield
-        txt = "standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"
-        strio = StringIO(txt)
-        nbff = NonbondedForcefieldFactory.createFromStream(strio)
-        parreffac = ParameterReferenceFactory(nbff, EmptyBondedForcefield(), [EmptyTopology()])
+#         # for forcefield
+#         txt = "standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"
+#         strio = StringIO(txt)
+#         nbff = NonbondedForcefieldFactory.createFromStream(strio)
+#         parreffac = ParameterReferenceFactory(nbff, EmptyBondedForcefield(), [EmptyTopology()])
 
-        # for variations
-        txt = "$variation\n"
-        txt += "name        main\n"
-        txt += "pars        CH3/c6           CH3/c12\n"
-        txt += "type        cartesian\n"
-        txt += "start       9.3471353e-03    2.6266240e-05\n"
-        txt += "step        2.336783825e-05  6.566559999999999e-08\n"
-        txt += "size        33               33\n"
-        txt += "$end\n"
-        txt += "\n"
-        txt += "$variation\n"
-        txt += "name     ties\n"
-        txt += "pars     CH2/c6  CH2/c12\n"
-        txt += "using    main\n"
-        txt += "type     scale\n"
-        txt += "factors  0.1      20\n"
-        txt += "$end\n"
-        strio = StringIO(txt)
-        self.pario = ParameterIO(strio, parreffac, dsfac)
+#         # for variations
+#         txt = "$variation\n"
+#         txt += "name        main\n"
+#         txt += "pars        CH3/c6           CH3/c12\n"
+#         txt += "type        cartesian\n"
+#         txt += "start       9.3471353e-03    2.6266240e-05\n"
+#         txt += "step        2.336783825e-05  6.566559999999999e-08\n"
+#         txt += "size        33               33\n"
+#         txt += "$end\n"
+#         txt += "\n"
+#         txt += "$variation\n"
+#         txt += "name     ties\n"
+#         txt += "pars     CH2/c6  CH2/c12\n"
+#         txt += "using    main\n"
+#         txt += "type     scale\n"
+#         txt += "factors  0.1      20\n"
+#         txt += "$end\n"
+#         strio = StringIO(txt)
+#         self.pario = ParameterIO(strio, parreffac, dsfac)
 
-    def run(self):
-        # set at first variation
-        self.pario.stream.readline()
-        # do the thing
-        self.pario.read()
-        # set at next variation
-        self.pario.stream.readline()
-        self.pario.stream.readline()
-        # do the thing
-        self.pario.read()
-        # end
-        psgen = self.pario.getParameterSpaceGenerator()
-        # debug
-        psgen.debugPrint()
+#     def run(self):
+#         # set at first variation
+#         self.pario.stream.readline()
+#         # do the thing
+#         self.pario.read()
+#         # set at next variation
+#         self.pario.stream.readline()
+#         self.pario.stream.readline()
+#         # do the thing
+#         self.pario.read()
+#         # end
+#         psgen = self.pario.getParameterSpaceGenerator()
+#         # debug
+#         psgen.debugPrint()
         
 def initialize_from_input (input_file, bool_legacy):
     output_grid = None
@@ -327,8 +327,3 @@ def initialize_from_input (input_file, bool_legacy):
 
     return (output_workdir, output_grid, output_protocols, output_properties, \
             output_protocolsHash, output_optimizer, output_gaCoverInterface, output_surrogateModel, output_subgrid)
-
-if __name__ == '__main__':
-    test = TestParameterIO()
-    test.run()
-

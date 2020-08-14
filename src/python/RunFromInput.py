@@ -74,6 +74,7 @@ if __name__ == "__main__":
             subgridObj.plot_property_err_to_file(prop)
     subgridObj.printAndPlotScores(optimizer, plotFlag)
     subgridObj.writeParameters()
+    subgridObj.save_to_binary(optimizer)
     
     # for nshifts in range(gridShifter.maxshifts):
     #     nGrid = nshifts + 1

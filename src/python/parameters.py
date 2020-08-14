@@ -4,6 +4,9 @@ from    math        import  sqrt
 from    copy        import  deepcopy
 import  re
 
+def geometric_mean(x, y):
+    return np.sqrt(x*y)
+
 # -----------------------------------------------------------------------------
 # base classes for parameters
 # -----------------------------------------------------------------------------
@@ -298,7 +301,6 @@ class StandardLJPairtype(BasePairtype):
     with geometric-mean combination rule.
     """
     def __init__(self, atomtype_i, atomtype_j, nb_factory):
-        geometric_mean = lambda x,y : np.sqrt(x*y)
         comb_matrix = {'c6': ('c6', 'c6'), 'c12': ('c12', 'c12'), 'cs6': ('cs6', 'cs6'), 'cs12': ('cs12', 'cs12')}
         comb_funcs  = {'c6': geometric_mean, 'c12': geometric_mean, 'cs6': geometric_mean, 'cs12': geometric_mean}
         super().__init__(atomtype_i, atomtype_j, nb_factory, comb_matrix, comb_funcs)
@@ -422,23 +424,3 @@ class EmptyBondedForcefield(BondedForcefield):
         self.dihedraltypes = []
         self.impropertypes = []
 
-if __name__ == '__main__':
-    
-    #pars1 = NonbondedParameters(NonbondedParameterFactory, ['c6', 'c12', 'cs6', 'cs12'], [4,9,16,25])
-    #pars2 = NonbondedParameters(NonbondedParameterFactory, ['c6', 'c12', 'cs6', 'cs12'], [1,1,1,1])
-    #at1  = Atomtype('xxx', pars1)
-    #at2  = Atomtype('yyy', pars2)
-    #pt   = StandardLJPairtype(at1, at2, NonbondedParameterFactory)
-    #pt.debugPrint()
-    #ff = NonbondedForcefield([at1, at2])
-    from io import StringIO
-
-    txt = "standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"
-    strio = StringIO(txt)
-    ff = NonbondedForcefieldFactory.createFromStream(strio)
-    ref = NonbondedParameterReference(ff.atomtypes, "CH2", 'cs12')
-
-    ff.debugPrint()
-    print("--------------------")
-    ref.dereference().alter(1.0e+10)
-    ff.debugPrint()
