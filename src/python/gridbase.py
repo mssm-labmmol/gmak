@@ -802,6 +802,9 @@ class ParameterGrid:
         system("mkdir -p {}".format(os.path.abspath(dirname)))
         return os.path.abspath(dirname)
 
+    def resetWorkdir(self, workdir):
+        self.workdir = workdir
+
     def makeCurrentWorkdir(self):
         shifts = self.shifter.getCurrentNumberOfShifts()
         outdir = "{}/grid_{}".format(self.workdir, shifts)
