@@ -13,7 +13,7 @@ from gridbase import *
 
 class GridShifter:
 
-    def __init__ (self, grid, maxshifts, margins, ncut):
+    def __init__ (self, grid, maxshifts, margins, ncut, keepsamples):
 
         # Margins delimiting the border region.  self.margins = {}
         self.grid      = grid
@@ -26,6 +26,9 @@ class GridShifter:
         # Fraction of the best points which, if inside the border region,
         # trigger the shifting of the grid.
         self.ncut = ncut
+
+        # Do we keep samples from old grids?
+        self.keepSamples = keepsamples
 
         # Stores the CG.
         self.cg = tuple([0 for i in range(grid.get_dim())])
@@ -107,7 +110,7 @@ class GridShifter:
 
         # Set new gridpoints.
         for i, m in enumerate(maskArray):
-            if (m != -1):
+            if (m != -1) and (self.keepSamples):
                 newGridpoints[i] = self.grid[m]
                 newGridpoints[i].resetWithNewId(i)
             else:
@@ -122,7 +125,8 @@ class GridShifter:
         maxshifts = int(dictargs['maxshifts'][0])
         margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
         ncut      = float(dictargs['ncut'][0])
-        return GridShifter(grid, maxshifts, margins, ncut)
+        keepsamples = True if dictargs['keepsamples'] == 'yes' else False
+        return GridShifter(grid, maxshifts, margins, ncut, keepsamples)
 
 class EmptyGridShifter(GridShifter):
     def __init__(self):
