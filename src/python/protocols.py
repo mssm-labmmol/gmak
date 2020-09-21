@@ -148,7 +148,8 @@ class SlabProtocol(BaseProtocol):
         labels   =  [str(x) for x in range(len(self.mdps))]
         conf     =  gridpoint.protocol_outputs[self.follow]['gro']
         top      =  gridpoint.protocol_outputs[self.follow]['top']
-        out_slab = simulate_protocol_slab (conf, top, self.mdps, labels, workdir, self.nprocs)
+        liq_tpr  =  gridpoint.protocol_outputs[self.follow]['tpr']
+        out_slab = simulate_protocol_slab (conf, top, liq_tpr, self.mdps, labels, workdir, self.nprocs)
         gridpoint.add_protocol_output (self, out_slab)
         return
 

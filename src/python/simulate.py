@@ -205,18 +205,25 @@ def dummy_protocol_gas (conf, itp, mdps, labels, workdir):
     #
     return output_dict
 
-def simulate_protocol_slab (conf, top, mdps, labels, workdir, nprocs):
+def simulate_protocol_slab (conf, top, liq_tpr, mdps, labels, workdir, nprocs):
     conf = os.path.abspath(conf)
     top = os.path.abspath(top)
+    liq_tpr = os.path.abspath(liq_tpr)
     workdir = os.path.abspath(workdir)
     for i in range(len(mdps)):
         mdps[i] = os.path.abspath(mdps[i])
     # extend initial configuration
     output_dict = {}
+    pre_extended_conf = workdir + "/pre.slab.gro"
     extended_conf = workdir + "/slab.gro"
     box = get_box(conf)
     os.system("mkdir -p " + workdir)
-    os.system("gmx editconf -f %s -box %f %f %f -o %s" % (conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
+    # First, remove periodicity.
+    os.system("gmx trjconv -f %s -s %s -o %s -pbc whole" % (conf, liq_tpr, pre_extended_conf))
+    # Now, extend box.
+    os.system("gmx editconf -f %s -box %f %f %f -o %s" % (pre_extended_conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
+    # Remove temporary conf.
+    os.remove(pre_extended_conf)
     for i in range(len(mdps)):
         if i == 0:
             simulate_something (extended_conf, top, mdps[i], labels[i], workdir, nprocs)
