@@ -219,7 +219,7 @@ def simulate_protocol_slab (conf, top, liq_tpr, mdps, labels, workdir, nprocs):
     box = get_box(conf)
     os.system("mkdir -p " + workdir)
     # First, remove periodicity.
-    os.system("gmx trjconv -f %s -s %s -o %s -pbc whole" % (conf, liq_tpr, pre_extended_conf))
+    os.system("echo 0 | gmx trjconv -f %s -s %s -o %s -pbc whole" % (conf, liq_tpr, pre_extended_conf))
     # Now, extend box.
     os.system("gmx editconf -f %s -box %f %f %f -o %s" % (pre_extended_conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
     # Remove temporary conf.
