@@ -165,7 +165,7 @@ class Interpolation (SurrogateModel):
             dA_s = []
             for s in range(numberStates):
                 A_s.append(np.mean(A_psn[i][s]))
-                dA_s.append(np.std(A_psn[i][s]) / np.sqrt(len(A_psn[i][s])-1))
+                dA_s.append(np.std(A_psn[i][s], ddof=1) / np.sqrt(len(A_psn[i][s])))
             A_ps.append(A_s)
             dA_ps.append(dA_s)
         A_ps = np.array(A_ps)

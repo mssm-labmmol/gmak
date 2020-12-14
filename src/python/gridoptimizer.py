@@ -1,6 +1,7 @@
 # TODO import ParameterGrid
 import numpy as np
 import copy
+import scipy.stats as st
 
 class gridOptimizer:
     """
@@ -11,6 +12,7 @@ class gridOptimizer:
         self.maxSteps = maxSteps
         self.nsteps   = 0
         self.percentCutoff = percentCutoff
+        self.confidenceLevels = [0.68, 0.80, 0.90, 0.95]
         # Dictionaries indexed by property id's
         self.referenceValues = {}
         self.referenceTolerances = {}
@@ -55,20 +57,57 @@ class gridOptimizer:
 
     def rankScores (self):
         self.stateScores.sort(key=lambda x: x[1])
+        self.stateScoreIntervals[:] = [self.stateScoreIntervals[x[0]] for x in self.stateScores]
+
+    def computeNumericError(propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=.95):
+        scoreMax = 0.0
+        scoreMin = 0.0
+        numberOfProperties = len(propertyEstimates)
+        K = (np.prod(propertyErrors)/np.prod(propertyEstimates)) **(1.0/numberOfProperties)
+        for p in range(numberOfProperties):
+            Z = st.norm.ppf(0.5 * (1 + K * propertyEstimates[p] / propertyErrors[p]))
+            if (propertyEstimates[p] >= propertyReferences[p]):
+                devMax = propertyEstimates[p] + Z * propertyErrors[p] - propertyReferences[p]
+                devMin = propertyEstimates[p] - Z * propertyErrors[p] - propertyReferences[p]
+                if (devMin < 0):
+                    devMin = 0
+            else:
+                devMax = propertyReferences[p] - propertyEstimates[p] + Z * propertyErrors[p]
+                devMin = propertyReferences[p] - propertyEstimates[p] - Z * propertyErrors[p]
+                if (devMin < 0):
+                    devMin = 0
+            scoreMax += propertyWeis[p] * (devMax/propertyReferences[p]) ** 2
+            scoreMin += propertyWeis[p] * (devMin/propertyReferences[p]) ** 2
+        scoreMax = np.sqrt(scoreMax/np.sum(propertyWeis))
+        scoreMin = np.sqrt(scoreMin/np.sum(propertyWeis))
+        return (scoreMin, scoreMax)
 
     def fillWithScores (self, grid):
-        # clean stateScores first
+        # Clean stateScores first
         self.stateScores = []
+        # self.stateScoreIntervals[i][j] is j-th confidence interval for i-th gridpoint.
+        self.stateScoreIntervals = [[-1, [(0.0, 0.0) for j in range(len(self.confidenceLevels))]] for i in range(grid.get_linear_size())]
         for gP in grid.grid_points:
+            propertyEstimates = []
+            propertyErrs = []
+            propertyReferences = []
+            propertyWeis = []
             gPScore = 0.0
             weightSum = 0.0
             for prop_id in self.referenceTolerances.keys():
                 gPValue = gP.get_property_estimate(prop_id)
+                propertyEstimates.append(gPValue)
+                propertyErrs.append(gP.get_property_err(prop_id))
+                propertyReferences.append(self.referenceValues[prop_id])
+                propertyWeis.append(self.referenceWeights[prop_id])
                 weightSum += self.referenceWeights[prop_id]
                 sumValue = self.referenceWeights[prop_id] * ((gPValue - self.referenceValues[prop_id]) / self.referenceValues[prop_id]) ** 2
                 gPScore += sumValue
             gPScore = np.sqrt(gPScore / weightSum)
             self.stateScores.append((gP.id, gPScore))
+            self.stateScoreIntervals[gP.id][0] = gP.id
+            for ci, cl in enumerate(self.confidenceLevels):
+                self.stateScoreIntervals[gP.id][ci] = self.computeNumericError(propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=cl)
         self.rankScores()
 
     def printToFile (self, grid, filename, sorted=True, ignoreSuffix='_nearest'):
@@ -83,9 +122,12 @@ class gridOptimizer:
         fp.write("%16s\n" % "score")
         if sorted:
             localStateScore = self.stateScores
+            localIntervals = self.stateScoreIntervals
         else:
             localStateScore = copy.deepcopy(self.stateScores)
             localStateScore.sort(key=lambda x: x[0])
+            localIntervals = copy.deepcopy(self.stateScoreIntervals)
+            localIntervals.sort(key=lambda x: x[0])
         for x in localStateScore:
             fp.write("%5d" % x[0])
             for prop in properties:
@@ -93,6 +135,19 @@ class gridOptimizer:
                 propErr   = grid[x[0]].get_property_err(prop)
                 fp.write("%16.4f%8.4f" % (propValue, propErr))
             fp.write("%16.6e\n" % x[1])
+        fp.close()
+        fp = open("cis_" + filename, "w")
+        fp.write("# Scores with Confidence Intervals\n")
+        fp.write("#%15s%16s" % ("id", "central"))
+        for cl in self.confidenceLevels:
+            for spec in ["_min", "_max"]:
+                fp.write("%16s" % (str(int(100*cl)) + spec))
+            fp.write("\n")
+        for x in localIntervals:
+            fp.write("%16d" % x[0])
+            for y in x[1]:
+                fp.write("%16.6e" % y)
+            fp.write("\n")
         fp.close()
 
     def plotToPdf (self, grid, pdf_filename):
