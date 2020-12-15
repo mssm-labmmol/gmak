@@ -59,7 +59,7 @@ class gridOptimizer:
         self.stateScores.sort(key=lambda x: x[1])
         self.stateScoreIntervals[:] = [self.stateScoreIntervals[x[0]] for x in self.stateScores]
 
-    def computeNumericError(propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=.95):
+    def computeNumericError(self, propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=.95):
         scoreMax = 0.0
         scoreMin = 0.0
         numberOfProperties = len(propertyEstimates)
