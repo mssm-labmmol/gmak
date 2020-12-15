@@ -146,7 +146,7 @@ class gridOptimizer:
         for x in localIntervals:
             fp.write("%16d" % x[0])
             for y in x[1]:
-                fp.write("%16.6e" % y)
+                fp.write("%16.6e%16.6e" % (y[0], y[1]))
             fp.write("\n")
         fp.close()
 
