@@ -107,7 +107,7 @@ class gridOptimizer:
             self.stateScores.append((gP.id, gPScore))
             self.stateScoreIntervals[gP.id][0] = gP.id
             for ci, cl in enumerate(self.confidenceLevels):
-                self.stateScoreIntervals[gP.id][ci] = self.computeNumericError(propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=cl)
+                self.stateScoreIntervals[gP.id][ci] = self.computeNumericError(propertyEstimates, propertyErrs, propertyReferences, propertyWeis, confidenceLevel=cl)
         self.rankScores()
 
     def printToFile (self, grid, filename, sorted=True, ignoreSuffix='_nearest'):
