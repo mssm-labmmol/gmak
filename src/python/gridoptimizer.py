@@ -136,7 +136,7 @@ class gridOptimizer:
                 fp.write("%16.4f%8.4f" % (propValue, propErr))
             fp.write("%16.6e\n" % x[1])
         fp.close()
-        fp = open("cis_" + filename, "w")
+        fp = open(filename + '.cis', "w")
         fp.write("# Scores with Confidence Intervals\n")
         fp.write("#%15s%16s" % ("id", "central"))
         for cl in self.confidenceLevels:
