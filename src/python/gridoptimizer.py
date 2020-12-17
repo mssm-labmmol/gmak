@@ -80,6 +80,7 @@ class gridOptimizer:
             scoreMin += propertyWeis[p] * (devMin/propertyReferences[p]) ** 2
         scoreMax = np.sqrt(scoreMax/np.sum(propertyWeis))
         scoreMin = np.sqrt(scoreMin/np.sum(propertyWeis))
+        print("Confidence Interval Calculation => ", scoreMin, scoreMax)
         return (scoreMin, scoreMax)
 
     def fillWithScores (self, grid):
@@ -142,9 +143,10 @@ class gridOptimizer:
         for cl in self.confidenceLevels:
             for spec in ["_min", "_max"]:
                 fp.write("%16s" % (str(int(100*cl)) + spec))
-            fp.write("\n")
-        for x in localIntervals:
+        fp.write("\n")
+        for x, s in zip(localIntervals, localStateScore):
             fp.write("%16d" % x[0])
+            fp.write("%16.6e" % s[1])
             for y in x[1]:
                 fp.write("%16.6e%16.6e" % (y[0], y[1]))
             fp.write("\n")
