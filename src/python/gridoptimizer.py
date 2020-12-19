@@ -63,9 +63,11 @@ class gridOptimizer:
         scoreMax = 0.0
         scoreMin = 0.0
         numberOfProperties = len(propertyEstimates)
+        print("Confidence Interval Input data => ", propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel)
         K = (np.prod(propertyErrors)/np.prod(propertyEstimates)) **(1.0/numberOfProperties)
         for p in range(numberOfProperties):
             Z = st.norm.ppf(0.5 * (1 + K * propertyEstimates[p] / propertyErrors[p]))
+            print("Confidence Interval Zvalue: ", Z)
             if (propertyEstimates[p] >= propertyReferences[p]):
                 devMax = propertyEstimates[p] + Z * propertyErrors[p] - propertyReferences[p]
                 devMin = propertyEstimates[p] - Z * propertyErrors[p] - propertyReferences[p]
