@@ -63,11 +63,9 @@ class gridOptimizer:
         scoreMax = 0.0
         scoreMin = 0.0
         numberOfProperties = len(propertyEstimates)
-        print("Confidence Interval Input data => ", propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel)
         K = (np.prod(propertyErrors)/np.prod(propertyEstimates)) **(1.0/numberOfProperties)
         for p in range(numberOfProperties):
             Z = st.norm.ppf(0.5 * (1 + K * propertyEstimates[p] / propertyErrors[p]))
-            print("Confidence Interval Zvalue: ", Z)
             if (propertyEstimates[p] >= propertyReferences[p]):
                 devMax = propertyEstimates[p] + Z * propertyErrors[p] - propertyReferences[p]
                 devMin = propertyEstimates[p] - Z * propertyErrors[p] - propertyReferences[p]
@@ -82,7 +80,6 @@ class gridOptimizer:
             scoreMin += propertyWeis[p] * (devMin/propertyReferences[p]) ** 2
         scoreMax = np.sqrt(scoreMax/np.sum(propertyWeis))
         scoreMin = np.sqrt(scoreMin/np.sum(propertyWeis))
-        print("Confidence Interval Calculation => ", scoreMin, scoreMax)
         return (scoreMin, scoreMax)
 
     def fillWithScores (self, grid):
@@ -98,6 +95,9 @@ class gridOptimizer:
             gPScore = 0.0
             weightSum = 0.0
             for prop_id in self.referenceTolerances.keys():
+                # ignore properties with no weight
+                if self.referenceWeights[prop_id] == 0.0:
+                    continue
                 gPValue = gP.get_property_estimate(prop_id)
                 propertyEstimates.append(gPValue)
                 propertyErrs.append(gP.get_property_err(prop_id))
