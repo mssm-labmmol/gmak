@@ -63,9 +63,9 @@ class gridOptimizer:
         scoreMax = 0.0
         scoreMin = 0.0
         numberOfProperties = len(propertyEstimates)
-        K = (np.prod(propertyErrors)/np.prod(propertyEstimates)) **(1.0/numberOfProperties)
+        K = (confidenceLevel) **(1.0/numberOfProperties)
         for p in range(numberOfProperties):
-            Z = st.norm.ppf(0.5 * (1 + K * propertyEstimates[p] / propertyErrors[p]))
+            Z = st.norm.ppf(1 - 0.5 * (1 - K), scale=propertyErrors[p])
             if (propertyEstimates[p] >= propertyReferences[p]):
                 devMax = propertyEstimates[p] + Z * propertyErrors[p] - propertyReferences[p]
                 devMin = propertyEstimates[p] - Z * propertyErrors[p] - propertyReferences[p]
