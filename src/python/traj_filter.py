@@ -12,7 +12,9 @@ def wrapperStatisticalInefficiency(data):
     return statisticalInefficiency(data)
 
 # assumes that the propfiles are standard Gromacs xvg files
-def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
+def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods):
+    # If method = 'mbar', the filtered trajectory and the filtered properties have the same -skip.
+    # If method = 'linear', 'nearest' or 'cubic', the filtered trajectory will have the same -skip as in 'mbar', but each property trajectory will be filtered according to its own statistical inefficiency.
     xtc = os.path.abspath(xtc)
     tpr = os.path.abspath(tpr)
     oxtc = os.path.abspath(oxtc)
@@ -25,7 +27,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
     for propfile in propfiles:
         x = np.loadtxt(propfile, comments=['@','#'], usecols=(1,))
         skip = wrapperStatisticalInefficiency(x)
-        skips.append(skip)
+        skips.append(int(np.ceil(skip)))
 
     actual_skip = int(np.max(skips))
     print("FILTER: Skip is {}".format(actual_skip))
@@ -33,9 +35,14 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles):
     os.system("echo 0 | gmx trjconv -f %s -s %s -skip %d -o %s" % (xtc,tpr,actual_skip,oxtc))
     
     # also filter the selected properties
-    for i,propfile in enumerate(propfiles):
+    for i, propfile in enumerate(propfiles):
         x = np.loadtxt(propfile, comments=['@','#'], usecols=(0,1,))
-        x_skipped = x[::actual_skip]
+        if (methods[i] == 'mbar'):
+            x_skipped = x[::actual_skip]
+        if (methods[i] in ['nearest', 'linear', 'cubic']):
+            x_skipped = x[::skips[i]]
+        else:
+            raise ValueError("Unknown filtering method ", methods[i])
         np.savetxt(opropfiles[i], x_skipped)
 
 def truncated_autocorr(x):

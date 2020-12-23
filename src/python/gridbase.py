@@ -237,41 +237,46 @@ class GridPoint:
             self.atomic_properties[protocol.name] = {}
             self.atomic_properties[protocol.name][prop] = output
 
-    def filter_xtc_in_protocol (self, protocol, properties, odir):
-        for prop in properties:
+    def filter_traj_in_protocol (self, protocol, properties, odir, ext):
+        rw_props = protocol.get_reweighting_properties()
+        interp_models_props = protocol.get_interp_models_props()
+        normal_props = [x[1] for x in interp_models_props]
+        normal_kinds = [x[0].kind for x in interp_models_props]
+        kinds = []
+        print(normal_props)
+        print(rw_props)
+        print(properties)
+        for i, prop in enumerate(properties):
+            n_kinds = 0
+            if (prop in normal_props):
+                kinds.append(normal_kinds[i])
+                n_kinds += 1
+            if (prop in rw_props):
+                kinds.append('mbar')
+                n_kinds += 1
+            if (n_kinds == 0) or (n_kinds > 1):
+                raise Exception("Property "+ prop+ " belongs to 0 or more than 1 type of surrogate model.")
             self.get_atomic_property_from_protocol (prop, protocol,\
                     odir + "/" + prop + ".xvg")
         # from traj_filter
-        extract_uncorrelated_frames (self.protocol_outputs[protocol.name]['xtc'],\
+        extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],\
                 self.protocol_outputs[protocol.name]['tpr'], \
                 [self.atomic_properties[protocol.name][x] for x in properties],\
-                odir + '/filtered_trajectory.xtc',\
-                [odir + '/filtered_' + prop + '.xvg' for prop in properties])
-
-                                     
+                odir + '/filtered_trajectory.' + ext,\
+                [odir + '/filtered_' + prop + '.xvg' for prop in properties],
+                methods=kinds)
         # update gridpoint trajectory
-        self.protocol_outputs[protocol.name]['xtc'] = \
-                os.path.abspath(odir + '/filtered_trajectory.xtc')
+        self.protocol_outputs[protocol.name][ext] = \
+                os.path.abspath(odir + '/filtered_trajectory.' + ext)
         # update path of filtered properties
         for x in properties:
             self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
+
+    def filter_xtc_in_protocol (self, protocol, properties, odir):
+        return self.filter_traj_in_protocol(protocol, properties, odir, 'xtc')
 
     def filter_trr_in_protocol (self, protocol, properties, odir):
-        for prop in properties:
-            self.get_atomic_property_from_protocol (prop, protocol,\
-                    odir + "/" + prop + ".xvg")
-        # from traj_filter
-        extract_uncorrelated_frames (self.protocol_outputs[protocol.name]['trr'],\
-                self.protocol_outputs[protocol.name]['tpr'], \
-                [self.atomic_properties[protocol.name][x] for x in properties],\
-                odir + '/filtered_trajectory.trr',\
-                [odir + '/filtered_' + prop + '.xvg' for prop in properties])
-        # update gridpoint trajectory
-        self.protocol_outputs[protocol.name]['trr'] = \
-                os.path.abspath(odir + '/filtered_trajectory.trr')
-        # update path of filtered properties
-        for x in properties:
-            self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
+        return self.filter_traj_in_protocol(protocol, properties, odir, 'trr')
 
 class ParameterGrid:
 

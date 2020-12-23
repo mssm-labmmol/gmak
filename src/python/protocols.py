@@ -7,10 +7,10 @@ class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
     def get_filtering_properties (self):
         standard_properties = self.get_properties()
-        if 'potential' not in standard_properties:
+        if ('potential' not in standard_properties) and (self.get_mbar_model() is not None):
             standard_properties.append('potential')
         if self.has_pv():
-            if 'pV' not in standard_properties:
+            if ('pV' not in standard_properties) and (self.get_mbar_model() is not None):
                 standard_properties.append('pV')
         return standard_properties
     
@@ -89,14 +89,17 @@ class BaseProtocol:
     def get_reweighting_properties (self):
         """Based on the surrogate models for each property, return a list
         with the atomic properties that need reweighting."""
-        output_list = ['potential']
-        if (self.has_pv()):
-            output_list.append('pV')
-        for m, p in self.surrogate_models:
-            if m.requiresReweight():
-                if p not in output_list:
-                    output_list.append(p)
-        return output_list
+        if self.get_mbar_model() is None:
+            return []
+        else:
+            output_list = ['potential']
+            if (self.has_pv()):
+                output_list.append('pV')
+            for m, p in self.surrogate_models:
+                if m.requiresReweight():
+                    if p not in output_list:
+                        output_list.append(p)
+            return output_list
 
     def get_nonreweighting_properties (self):
         """Based on the surrogate models for each property, return a list

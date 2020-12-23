@@ -237,8 +237,8 @@ def initialize_from_input (input_file, bool_legacy):
                             protocol.add_surrogate_model(surrModel, 'density', bool_legacy)
                             protocol.properties.append('density') 
                             # always add potential for safety
-                            if 'potential' not in protocol.properties:
-                                protocol.properties.append('potential')
+                            #if 'potential' not in protocol.properties:
+                            #    protocol.properties.append('potential')
                     elif (propRead == 'dhvap'):
                         nameLiq = line.split()[3]
                         nameGas = line.split()[4]
@@ -297,9 +297,9 @@ def initialize_from_input (input_file, bool_legacy):
                         for protocol in protocols:
                             protocol.add_surrogate_model(surrModel, 'gamma', bool_legacy)           
                             protocol.properties.append('gamma')
-                            # potential ALWAYS
-                            if 'potential' not in protocol.properties:
-                                protocol.properties.append('potential')
+                            # potential for safety
+                            #if 'potential' not in protocol.properties:
+                            #    protocol.properties.append('potential')
                     else:
                         print ("ERROR: Property \"%s\" is not supported.\n" % typeRead)
                         exit()
