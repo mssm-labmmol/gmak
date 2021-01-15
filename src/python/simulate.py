@@ -4,9 +4,34 @@ import sys
 import os
 import re
 from traj_ana import get_box
+from mdputils import *
 
-# Functions.
-#
+def read_nsteps_from_mdp (mdp):
+    mu = mdpUtils()
+    mu.parse_file(mdp)
+    return mu.get_nsteps()
+
+def check_simulation_state (workdir, label):
+    check_log_loc = "%s/%s/%s.log" % (workdir, label, label)
+    check_cpt_loc = "%s/%s/%s.cpt" % (workdir, label, label)
+    if (os.path.isfile(check_log_loc)):
+        if (os.path.isfile(check_cpt_loc)):
+            return 'FULL'
+        else:
+            return 'ONLY_LOG'
+    return 'NONE'
+
+def extend_something (nsteps, workdir, label, nprocs=-1):
+    workdir = os.path.abspath(workdir)
+    os.system("gmx convert-tpr -s %s/%s/%s.tpr -nsteps %d -o %s/%s/tmp.tpr" % (workdir, label, label, nsteps, workdir, label))
+    os.system("mv %s/%s/tmp.tpr %s/%s/%s.tpr" % (workdir, label, workdir, label, label))
+    if (nprocs == -1):
+        os.system("gmx mdrun -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (workdir, label, label,
+                                                                                    workdir, label, label,
+                                                                                    workdir, label, label))
+    else:
+        os.system("gmx mdrun -nt %d -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (nprocs, workdir, label, label, workdir, label, label, workdir, label, label))
+
 def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     conf = os.path.abspath(conf)
     top = os.path.abspath(top)
@@ -14,9 +39,15 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     workdir = os.path.abspath(workdir)
     os.system("mkdir -p %s/%s" % (workdir, label))
     check_log_loc = "%s/%s/%s.log" % (workdir,label,label)
-    if (os.path.isfile(check_log_loc)):
-        print ("log from simulations " + check_log_loc + " already exists, will not perform it")
-    else:
+    simu_state = check_simulation_state(workdir, label)
+    if (simu_state == 'ONLY_LOG'):
+        # This will only happen for minimization, I guess. We can just assume it finished alright with a warning.
+        print("--------> WARNING: There is a log file but no cpt file. We are assuming a successful minimization.")
+        print("                   If there is any problem, this may be the cause.")
+    elif (simu_state == 'FULL'):
+        print ("There is a cpt, will start simulation from there (possibly its end).")
+        os.system("gmx mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (workdir, label, label, workdir, label, label, workdir, label, label))
+    elif (simu_state == 'NONE'):
         print ("log from simulations " + check_log_loc + " does not exist, will perform it")
         command = "gmx grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (mdp, conf, top, workdir, label, label)
         print ("COMMAND: " + command)
@@ -28,6 +59,7 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
 
         print ("COMMAND: " + command)
         os.system(command)
+
 
 def get_molecule_name_from_itp (itp):
     itp = os.path.abspath(itp)
@@ -103,7 +135,7 @@ def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
         #fi.close()
         #os.system("mv %s.tmp %s" % (itp,itp))
 
-def simulate_protocol_liquid (conf, nmols, box, itp, mdps, labels, workdir):
+def simulate_protocol_liquid (conf, nmols, box, itp, mdps, nsteps, labels, workdir):
     conf = os.path.abspath(conf)
     itp = os.path.abspath(itp)
     workdir = os.path.abspath(workdir)
@@ -115,6 +147,13 @@ def simulate_protocol_liquid (conf, nmols, box, itp, mdps, labels, workdir):
     for i in range(len(mdps)):
         if i == 0:
             simulate_something (workdir + "/liquid.gro", workdir + "/liquid.top", mdps[i], labels[i], workdir)
+        elif i == len(mdps) - 1:
+            if (read_nsteps_from_mdp(mdps[i]) == nsteps):
+                previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
+                simulate_something (previous_conf, workdir + "/liquid.top", mdps[i], labels[i], workdir)
+            else:
+                # Extend
+                extend_something(nsteps, workdir, labels[i])
         else:
             previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
             simulate_something (previous_conf, workdir + "/liquid.top", mdps[i], labels[i], workdir)
@@ -154,7 +193,7 @@ def dummy_protocol_liquid (conf, nmols, box, itp, mdps, labels, workdir):
     #
     return output_dict
 
-def simulate_protocol_gas (conf, itp, mdps, labels, workdir):
+def simulate_protocol_gas (conf, itp, mdps, nsteps, labels, workdir):
     conf = os.path.abspath(conf)
     itp = os.path.abspath(itp)
     workdir = os.path.abspath(workdir)
@@ -167,6 +206,12 @@ def simulate_protocol_gas (conf, itp, mdps, labels, workdir):
     for i in range(len(mdps)):
         if i == 0:
             simulate_something (conf, workdir + "/gas.top", mdps[i], labels[i], workdir)
+        elif i == len(mdps) - 1:
+            if (read_nsteps_from_mdp(mdps[i]) == nsteps):
+                previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
+                simulate_something (previous_conf, workdir + "/gas.top", mdps[i], labels[i], workdir)
+            else:
+                extend_something (nsteps, workdir, labels[i])
         else:
             previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
             simulate_something (previous_conf, workdir + "/gas.top", mdps[i], labels[i], workdir)
@@ -205,7 +250,7 @@ def dummy_protocol_gas (conf, itp, mdps, labels, workdir):
     #
     return output_dict
 
-def simulate_protocol_slab (conf, top, liq_tpr, mdps, labels, workdir, nprocs):
+def simulate_protocol_slab (conf, top, liq_tpr, mdps, nsteps, labels, workdir, nprocs):
     conf = os.path.abspath(conf)
     top = os.path.abspath(top)
     liq_tpr = os.path.abspath(liq_tpr)
@@ -227,6 +272,13 @@ def simulate_protocol_slab (conf, top, liq_tpr, mdps, labels, workdir, nprocs):
     for i in range(len(mdps)):
         if i == 0:
             simulate_something (extended_conf, top, mdps[i], labels[i], workdir, nprocs)
+        elif i == len(mdps) - 1:
+            if (read_nsteps_from_mdp(mdps[i]) == nsteps):
+                previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
+                simulate_something (previous_conf, top, mdps[i], labels[i], workdir, nprocs)
+            else:
+                # Extend
+                extend_something(nsteps, workdir, labels[i], nprocs)
         else:
             previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
             simulate_something (previous_conf, top, mdps[i], labels[i], workdir, nprocs)
@@ -265,22 +317,3 @@ def dummy_protocol_slab (conf, top, mdps, labels, workdir):
     output_dict['top'] = top
     return output_dict
 
-if __name__ == "__main__":
-    labels = ["em", "nvt", "npt", "md"]
-    mdps = [ "em_pme.mdp", "nvt_pme.mdp", "npt_pme.mdp", "md_pme.mdp" ]
-
-    initial_configuration = "conf.gro"
-    itp = "molecule.itp"
-    nmols = 512
-    initial_box = [ 3.40, 3.40, 3.40 ]
-
-    ffdir = "./ff"
-
-    # check if labels match mdps
-    if (len(labels) != len(mdps)):
-        print ("labels do not match mdps")
-        exit(0)
-
-    # simulate a full stage
-    #simulate_protocol (initial_configuration, nmols, initial_box, ffdir, itp, mdps, labels, "./TEST-DIR-FINAL")
-    simulate_protocol_slab ("./liquid.gro", "./liquid.top", mdps, labels, "./coisinha")

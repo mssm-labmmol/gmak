@@ -36,6 +36,10 @@ class mdpUtils:
         except KeyError:
             raise KeyError("Option {} was not specified in file {}.".format(option, self.filename))
 
+    def get_nsteps(self):
+        """Return nsteps."""
+        return int(self.get_option('nsteps')[0])
+
     def get_writefreq_energy(self):
         """Returns frequency (in number of steps) of writing energies.
          This also checks if the frequency is a multiple of the frequency of calculating energy."""

@@ -1,5 +1,5 @@
 from simulate import *
-from surrogate_model import * 
+from surrogate_model import *
 import re
 import copy
 
@@ -152,7 +152,8 @@ class SlabProtocol(BaseProtocol):
         conf     =  gridpoint.protocol_outputs[self.follow]['gro']
         top      =  gridpoint.protocol_outputs[self.follow]['top']
         liq_tpr  =  gridpoint.protocol_outputs[self.follow]['tpr']
-        out_slab = simulate_protocol_slab (conf, top, liq_tpr, self.mdps, labels, workdir, self.nprocs)
+        nsteps   =  gridpoint.getProtocolSteps(self)
+        out_slab = simulate_protocol_slab (conf, top, liq_tpr, self.mdps, nsteps, labels, workdir, self.nprocs)
         gridpoint.add_protocol_output (self, out_slab)
         return
 
@@ -213,8 +214,9 @@ class LiquidProtocol(BaseProtocol):
 
     def run_gridpoint_at_dir (self, gridpoint, workdir):
         labels = [str(x) for x in range(len(self.mdps))]
+        nsteps = gridpoint.getProtocolSteps(self)
         out_liquid = simulate_protocol_liquid (self.coords, self.nmols,\
-                self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, labels, workdir)
+                                               self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, nsteps, labels, workdir)
         gridpoint.add_protocol_output (self, out_liquid)
         return
 
@@ -271,8 +273,9 @@ class GasProtocol(BaseProtocol):
 
     def run_gridpoint_at_dir (self, gridpoint, workdir):
         labels = [str(x) for x in range(len(self.mdps))]
+        nsteps = gridpoint.getProtocolSteps(self)
         out_gas = simulate_protocol_gas (self.coords, gridpoint.getTopologyPath(self.molecule),\
-                self.mdps, labels, workdir)
+                                         self.mdps, nsteps, labels, workdir)
         gridpoint.add_protocol_output (self, out_gas)
         return
 

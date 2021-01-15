@@ -2,6 +2,7 @@ import  re
 import  os
 import  shlex
 import  numpy           as     np
+from    mdputils        import * 
 from    reweightbase    import *
 from    traj_ana        import *
 from    traj_filter     import *
@@ -121,11 +122,24 @@ class GridPoint:
         self.is_sample = False
         self.is_simulated = []
         self.protocol_outputs = {}
+        self.protocol_steps = {}
         self.atomic_properties = {}
         # self.rw_outputs = {}
         # also initialize subdictionaries - is this needed? <<todo-1>>
         # self.rw_outputs[self.id] = {}
         self.estimated_properties = {}
+
+    def initProtocolSteps(self, protocols):
+        for protocol in protocols:
+            mu = mdpUtils()
+            mu.parse_file(protocol.mdps[-1])
+            self.setProtocolSteps(protocol, mu.get_nsteps())
+
+    def setProtocolSteps(self, protocol, steps):
+        self.protocol_steps[protocol.name] = steps
+
+    def getProtocolSteps(self, protocol):
+        return self.protocol_steps[protocol.name]
 
     def resetWithNewId(self, newId):
         self.id = newId
@@ -137,6 +151,10 @@ class GridPoint:
     def setProtocolAsSimulated(self, protocol):
         if (protocol.name not in self.is_simulated):
             self.is_simulated.append(protocol.name)
+
+    def unsetProtocolAsSimulated(self, protocol):
+        if (protocol.name in self.is_simulated):
+            self.is_simulated.remove(protocol.name)
     
     def getTopologyPath(self, molecule):
         return self.baseGrid.topologyBundles[molecule].getPathsForStatepath(self.id)
@@ -358,6 +376,10 @@ class ParameterGrid:
                     raise ValueError("fixsamples can only be 'yes' or 'no'")
         grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples)
         return grid
+
+    def initProtocolSteps(self, protocols):
+        for gp in self.grid_points:
+            gp.initProtocolSteps(protocols)
 
     def setGridpoints(self, gridpoints):
         self.grid_points = gridpoints
@@ -952,7 +974,11 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
+    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False, init=True):
+
+        if (init):
+            # initialize number of steps of simulations
+            self.initProtocolSteps(protocols)
 
         # create topology files
         self.writeTopologies()
@@ -992,15 +1018,26 @@ class ParameterGrid:
         # save grid to binary -- nice!
         self.save_to_binary(optimizer)
 
-        nextSample = optimizer.determineNextSample (self, surrogateModelHash)
-        print ("Next sample is %d"  % nextSample)
+        # convert protocolsHash (values = list of protocol names) into
+        # protocolsHashByObject (values = list of references to protocols)
+        protocolsHashByObject = {}
+        for prop in protocolsHash.keys():
+            protocolsHashByObject[prop] = []
+            for name in protocolsHash[prop]:
+                for prot in protocols:
+                    if (prot.name == name):
+                        protocolsHashByObject[prop].append(prot)
+                        
+        nextSample = optimizer.determineNextSample (self, surrogateModelHash, protocolsHashByObject)
+        print ("Next sample is", nextSample)
         if (nextSample == -1):
             if not self.shift(optimizer):
                 return
         else:
-            self.add_sample(nextSample)
+            for sample in nextSample:
+                self.add_sample(sample)
         # Recursion
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, init=False)
             
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            

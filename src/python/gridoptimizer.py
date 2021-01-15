@@ -176,27 +176,56 @@ class gridOptimizer:
             warnings.warn("Can only plot scores for 1-D or 2-D grid.")
             return
 
-    def determineNextSample (self, grid, smHash):
+    def determineNextSample (self, grid, smHash, protHash):
         if (self.nsteps >= self.maxSteps):
             return -1
-        nTested = 0
+        areAllSamplesConverged = True
         properties = self.referenceTolerances.keys()
         for x in self.stateScores:
-            # ignore sampled
-            if (x[0] in grid.get_samples_id()):
-                nTested += 1
-                continue
-            if (nTested > self.percentCutoff * grid.get_linear_size()):
-                return -1
             for prop in properties:
-                # skip properties without weight - this includes those ending with '_nearest'
+                # Identify the protocols corresponding to this property.
+                protocols = protHash[prop]
                 if (self.referenceWeights[prop] == 0.0):
                     continue
-                if (smHash[prop] == 'mbar'):
-                    propErr = grid[x[0]].get_property_err(prop)
-                else:
-                    propErr = np.abs(grid[x[0]].get_property_estimate(prop) - grid[x[0]].get_property_estimate(prop + '_nearest'))
+                propErr = grid[x[0]].get_property_err(prop)
                 if (propErr > self.referenceTolerances[prop]):
-                    self.nsteps += 1
-                    return x[0]
-            nTested += 1
+                    if (x[0] in grid.get_samples_id()):
+                        # This sample is not converged for this property.
+                        areAllSamplesConverged = False
+                        scalingFactor = (propErr / self.referenceTolerances[prop]) ** 2
+                        for protocol in protocols:
+                            currentSteps = grid[x[0]].getProtocolSteps(protocol)
+                            grid[x[0]].unsetProtocolAsSimulated(protocol)
+                            grid[x[0]].setProtocolSteps(protocol, int(scalingFactor * currentSteps))
+                        
+        if (areAllSamplesConverged):
+            nTested = 0
+            outSamples = []
+            properties = self.referenceTolerances.keys()
+            for x in self.stateScores:
+                # ignore sampled
+                if (x[0] in grid.get_samples_id()):
+                    nTested += 1
+                    continue
+                if (nTested > self.percentCutoff * grid.get_linear_size()):
+                    return -1
+                for prop in properties:
+                    # skip properties without weight - this includes those ending with '_nearest'
+                    if (self.referenceWeights[prop] == 0.0):
+                        continue
+                    if (smHash[prop] == 'mbar'):
+                        propErr = grid[x[0]].get_property_err(prop)
+                        if (propErr > self.referenceTolerances[prop]):
+                            self.nsteps += 1
+                            outSamples.append(x[0])
+                            return [x[0]]
+                    else: # i.e., interpolated properties
+                        propErr = grid[x[0]].get_property_err(prop)
+                        if (propErr > self.referenceTolerances[prop]):
+                            self.nsteps += 1
+                            return [x[0]]
+                self.nsteps += 1
+                nTested += 1
+        else:
+            self.nsteps += 1
+            return []
