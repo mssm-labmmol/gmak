@@ -1,4 +1,5 @@
 import os
+from logger import *
 from parameters import *
 from cartesiangrid import *
 from gridbase import *
@@ -57,6 +58,7 @@ class GridShifter:
             cg[i] = int(cg[i]/thr)
 
         print ("Note: CG is {}".format(cg))
+        globalLogger.putMessage('MESSAGE: CG position is {}'.format(cg))
         self.cg = tuple(cg)
         return self.cg
 
@@ -64,7 +66,6 @@ class GridShifter:
     def doWeShift (self):
         if (self.nshifts >= self.maxshifts):
             return False
-
         grid_size = self.grid.get_size()
         dimension = self.grid.get_dim()
         for i in range(dimension):
@@ -73,15 +74,16 @@ class GridShifter:
             cg_i    = self.cg[i]
             if (cg_i < dim_min) or (cg_i > dim_max):
                 return True
-       
         return False
 
     def checkShift (self, optimizer):
         self.calcCG(optimizer)
         if not (self.doWeShift()):
             print ("Note: No need to shift the grid.")
+            globalLogger.putMessage('MESSAGE: The grid *WAS NOT* shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
             return False
         print ("Note: We are shifting the grid.")
+        globalLogger.putMessage('MESSAGE: The grid was shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
         # self.shift(grid, paramLoop, old_workdir, new_workdir)
         self.nshifts += 1
         return True

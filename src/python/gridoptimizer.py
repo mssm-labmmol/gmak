@@ -2,6 +2,7 @@
 import numpy as np
 import copy
 import scipy.stats as st
+from   logger import *
 
 class gridOptimizer:
     """
@@ -11,6 +12,7 @@ class gridOptimizer:
     def __init__ (self, maxSteps=5, percentCutoff=.25):
         self.maxSteps = maxSteps
         self.nsteps   = 0
+        self.length_nsteps = 0
         self.percentCutoff = percentCutoff
         self.confidenceLevels = [0.68, 0.80, 0.90, 0.95]
         # Dictionaries indexed by property id's
@@ -22,6 +24,7 @@ class gridOptimizer:
 
     def reset(self):
         self.nsteps = 0
+        self.length_nsteps = 0
 
     def getCurrentIteration(self):
         return self.nsteps
@@ -177,8 +180,8 @@ class gridOptimizer:
             return
 
     def determineNextSample (self, grid, smHash, protHash):
-        if (self.nsteps >= self.maxSteps):
-            return -1
+        globalLogger.putMessage('BEGIN OPTIMIZER')
+        globalLogger.indent()
         areAllSamplesConverged = True
         properties = self.referenceTolerances.keys()
         for x in self.stateScores:
@@ -193,12 +196,20 @@ class gridOptimizer:
                         # This sample is not converged for this property.
                         areAllSamplesConverged = False
                         scalingFactor = (propErr / self.referenceTolerances[prop]) ** 2
+                        newSteps = int(scalingFactor * currentSteps)
+                        globalLogger.putMessage('MESSAGE: GridPoint {} : Steps : {}->{}'.format(x[0], currentSteps, newSteps))
                         for protocol in protocols:
                             currentSteps = grid[x[0]].getProtocolSteps(protocol)
                             grid[x[0]].unsetProtocolAsSimulated(protocol)
-                            grid[x[0]].setProtocolSteps(protocol, int(scalingFactor * currentSteps))
+                            grid[x[0]].setProtocolSteps(protocol, newSteps)
                         
         if (areAllSamplesConverged):
+            globalLogger.putMessage('MESSAGE: Estimates are converged and simulations will not be extended.')
+            if (self.nsteps - self.length_nsteps >= self.maxSteps):
+                globalLogger.putMessage('MESSAGE: Reached max number of steps: {}/{}/{}'.format(self.nsteps - self.length_nsteps, self.nsteps, self.maxSteps))
+                globalLogger.unindent()
+                globalLogger.putMessage('END OPTIMIZER')
+                return -1
             nTested = 0
             outSamples = []
             properties = self.referenceTolerances.keys()
@@ -208,6 +219,9 @@ class gridOptimizer:
                     nTested += 1
                     continue
                 if (nTested > self.percentCutoff * grid.get_linear_size()):
+                    globalLogger.putMessage('MESSAGE: All {} best GridPoints are OK!'.format(int(self.percentCutoff * grid.get_linear_size())))
+                    globalLogger.unindent()
+                    globalLogger.putMessage('END OPTIMIZER')
                     return -1
                 for prop in properties:
                     # skip properties without weight - this includes those ending with '_nearest'
@@ -218,14 +232,24 @@ class gridOptimizer:
                         if (propErr > self.referenceTolerances[prop]):
                             self.nsteps += 1
                             outSamples.append(x[0])
+                            globalLogger.putMessage('MESSAGE: GridPoint {} will be simulated next.'.format(x[0]))
+                            globalLogger.unindent()
+                            globalLogger.putMessage('END OPTIMIZER')
                             return [x[0]]
                     else: # i.e., interpolated properties
                         propErr = grid[x[0]].get_property_err(prop)
                         if (propErr > self.referenceTolerances[prop]):
                             self.nsteps += 1
+                            globalLogger.putMessage('MESSAGE: GridPoint {} will be simulated next.'.format(x[0]))
+                            globalLogger.unindent()
+                            globalLogger.putMessage('END OPTIMIZER')
                             return [x[0]]
                 self.nsteps += 1
                 nTested += 1
         else:
+            globalLogger.putMessage('MESSAGE: Estimates are not converged, so some simulations will be extended.')
+            globalLogger.unindent()
+            globalLogger.putMessage('END OPTIMIZER')
+            self.length_nsteps += 1
             self.nsteps += 1
             return []

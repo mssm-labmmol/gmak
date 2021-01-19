@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from logger import *
 from gridshifter import * 
 from parameters import * 
 from grid_ana import * 
@@ -40,7 +41,7 @@ if __name__ == "__main__":
 
     # SET RANDOM NUMBER SEED - TODO
 
-    # In each protocol, check writing frequencies of energy and trajectory to avoid any problems.
+    # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
     mdp_ut = mdpUtils()
     for protocol in protocols:
         # Check only production run.
@@ -55,8 +56,12 @@ if __name__ == "__main__":
                 protocol.name, efreq, xfreq))
 
     # *********************** End of checks for run  **************************        
-    
+
+    globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
+    globalLogger.indent()
     grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+    globalLogger.unindent()
+    globalLogger.putMessage('END MAINLOOP', dated=True)
 
     # *********************** Subgrid part           **************************        
 

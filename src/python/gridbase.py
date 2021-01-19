@@ -16,6 +16,7 @@ from    cartesiangrid   import *
 from    gridshifter     import *
 import  copy
 import  pickle
+from    logger          import *
 
 def reweightItpChanger (inputTopology, index, outputTopology):
     fp = open(inputTopology, 'r')
@@ -488,6 +489,8 @@ class ParameterGrid:
             # run 
             if gp.is_sample:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
+                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended.".format(gp.id), dated=True)
+                    globalLogger.indent()
                     gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
                     gp.setProtocolAsSimulated(protocol)
                     # filter
@@ -495,10 +498,13 @@ class ParameterGrid:
                         gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
                     else:
                         gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    globalLogger.unindent()
                 else:
-                    print("MESSAGE: Gridpoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
+                    print("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
+                    globalLogger.putMessage("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
             # only prepare
             else:
+                globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
                 gp.prepare_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
 
     def reweight(self, protocol, workdir):
@@ -880,6 +886,8 @@ class ParameterGrid:
     def make_grid_for_protocol (self, protocol, optimizer):
         workdir  = self.makeProtocolWorkdir(protocol)
         simu_dir = self.makeProtocolSimudir(protocol)
+        globalLogger.putMessage('BEGIN PROTOCOL {}'.format(protocol.name), dated=True)
+        globalLogger.indent()
 
         # save samples to file
         self.save_samples_to_file(self.makePathOfSamples(optimizer))
@@ -890,6 +898,8 @@ class ParameterGrid:
 
         # if any surrogate model requires reweight
         if (protocol.requires_reweight()):
+            globalLogger.putMessage('BEGIN REWEIGHT', dated=True)
+            globalLogger.indent()
             rw_dir, mbar_dir = self.makeProtocolReweightdirs(protocol)
             # BEGIN_OF_OLD_CODE
             # # standard reweight -- using 'rerun'
@@ -956,6 +966,8 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, mbar_model.kind, rw_prop)
                 mbar_model.writeExpectationsToFile(fn_avg, fn_err, p)
             mbar_model.writeLogToDirectory("%s/details" % mbar_dir)
+            globalLogger.unindent()
+            globalLogger.putMessage('END REWEIGHT', dated=True)
 
         # non-reweighted properties
         interp_models_props = protocol.get_interp_models_props()
@@ -974,7 +986,12 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
+        globalLogger.unindent()
+        globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
+
     def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False, init=True):
+        globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
+        globalLogger.indent()
 
         if (init):
             # initialize number of steps of simulations
@@ -1031,12 +1048,19 @@ class ParameterGrid:
         nextSample = optimizer.determineNextSample (self, surrogateModelHash, protocolsHashByObject)
         print ("Next sample is", nextSample)
         if (nextSample == -1):
-            if not self.shift(optimizer):
+            if self.shift(optimizer):
+                globalLogger.unindent()
+                globalLogger.putMessage('END GRIDSTEP', dated=True)
+            else:
+                globalLogger.unindent()
+                globalLogger.putMessage('END MAINLOOP', dated=True)
                 return
         else:
             for sample in nextSample:
                 self.add_sample(sample)
         # Recursion
+        globalLogger.unindent()
+        globalLogger.putMessage('END GRIDSTEP', dated=True)
         self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, init=False)
             
     # type-hinted header is commented because it is not supported in old Python versions

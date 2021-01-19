@@ -5,6 +5,7 @@ import os
 import re
 from traj_ana import get_box
 from mdputils import *
+from logger import *
 
 def read_nsteps_from_mdp (mdp):
     mu = mdpUtils()
@@ -22,6 +23,9 @@ def check_simulation_state (workdir, label):
     return 'NONE'
 
 def extend_something (nsteps, workdir, label, nprocs=-1):
+    globalLogger.indent()
+    globalLogger.putMessage('Extending')
+    globalLogger.unindent()
     workdir = os.path.abspath(workdir)
     os.system("gmx convert-tpr -s %s/%s/%s.tpr -nsteps %d -o %s/%s/tmp.tpr" % (workdir, label, label, nsteps, workdir, label))
     os.system("mv %s/%s/tmp.tpr %s/%s/%s.tpr" % (workdir, label, workdir, label, label))
@@ -44,10 +48,13 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
         # This will only happen for minimization, I guess. We can just assume it finished alright with a warning.
         print("--------> WARNING: There is a log file but no cpt file. We are assuming a successful minimization.")
         print("                   If there is any problem, this may be the cause.")
+        globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
     elif (simu_state == 'FULL'):
+        globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
         print ("There is a cpt, will start simulation from there (possibly its end).")
         os.system("gmx mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (workdir, label, label, workdir, label, label, workdir, label, label))
     elif (simu_state == 'NONE'):
+        globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
         print ("log from simulations " + check_log_loc + " does not exist, will perform it")
         command = "gmx grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (mdp, conf, top, workdir, label, label)
         print ("COMMAND: " + command)

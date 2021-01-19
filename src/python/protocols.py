@@ -2,6 +2,7 @@ from simulate import *
 from surrogate_model import *
 import re
 import copy
+from logger import *
 
 class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
