@@ -48,25 +48,18 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     simu_state = check_simulation_state(workdir, label)
     if (simu_state == 'ONLY_LOG'):
         # This will only happen for minimization, I guess. We can just assume it finished alright with a warning.
-        print("--------> WARNING: There is a log file but no cpt file. We are assuming a successful minimization.")
-        print("                   If there is any problem, this may be the cause.")
         globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
     elif (simu_state == 'FULL'):
         globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
-        print ("There is a cpt, will start simulation from there (possibly its end).")
         runcmd.run("%s mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label, workdir, label, label))
     elif (simu_state == 'NONE'):
         globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
-        print ("log from simulations " + check_log_loc + " does not exist, will perform it")
         command = "%s grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (ConfigVariables.gmx, mdp, conf, top, workdir, label, label)
-        print ("COMMAND: " + command)
         runcmd.run(command)
         if (nprocs == -1):
             command = "%s mdrun -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label)
         else:
             command = "%s mdrun -nt %d -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label)
-
-        print ("COMMAND: " + command)
         runcmd.run(command)
 
 
@@ -75,14 +68,11 @@ def get_molecule_name_from_itp (itp):
     fp = open(itp, "r")
     flag = False
     for line in fp:
-        print ("itp line is " + line)
         if (re.match(r".*\[ moleculetype \].*", line)):
-            print ("found moleculetype tag")
             flag = True
             continue
         if (flag == True):
             if (re.match(r"^;", line) is None):
-                print ("Matched line is " + line)
                 return line.split()[0]
     fp.close()
     return "NOT-FOUND"

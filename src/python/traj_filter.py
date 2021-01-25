@@ -1,6 +1,4 @@
-#!/usr/bin/python
 import runcmd
-
 import numpy as np
 import os 
 from pymbar.timeseries import statisticalInefficiency
@@ -36,7 +34,6 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
         skips.append(int(np.ceil(skip)))
 
     actual_skip = int(np.max(skips))
-    print("FILTER: Skip is {}".format(actual_skip))
 
     runcmd.run("echo 0 | %s trjconv -f %s -s %s -skip %d -o %s" % (ConfigVariables.gmx, xtc,tpr,actual_skip,oxtc))
     
@@ -77,24 +74,4 @@ def truncated_autocorr_with_skip(x):
         else:
             skip = skip + 1
     return [np.array(corr),skip]
-
-#def skip(ac):
-#    a = 0.0
-#    nsamples = len(ac)
-#    for i in range(len(ac)):
-#        a += (1.0 - 1.0 * i / nsamples) * ac[i]
-#        if ( np.isnan(a) ):
-#            a = 0.0
-#        
-#    return int (1 + 2.0*a)
-
-#if __name__ == "__main__":
-#    import matplotlib.pyplot as plt
-#    x = np.loadtxt("energy.xvg")
-#    ac = truncated_autocorr(x)
-#    plt.figure()
-#    plt.plot(ac)
-#    plt.show()
-#    print skip(ac)
-
 

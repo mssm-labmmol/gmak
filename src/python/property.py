@@ -74,14 +74,14 @@ class dHvap (PropertyBase):
         self.set_textual_elements ("dhvap", "kJ mol$^{-1}$", "$\\Delta H_\\mathrm{vap}$")
         self.value = value_gas - value_liq/nmols - value_pol + corrs + R*temperature
         self.err   = np.sqrt(err_gas**2 + (err_liq/nmols)**2 + (err_pol)**2)
-        print( "************************************")
-        print( "Initialized dHvap = %.2f +/- %.2f " % (self.value, self.err))
-        print( "Components:")
-        print( "U_liq = %.2f (%.2f)" % (value_liq, value_liq/nmols))
-        print( "U_gas = %.4f " % (value_gas))
-        print( "Polcorr = %.2f " % (value_pol))
-        print( "Other corrections = %.2f " % (corrs))
-        print( "RT = %.2f " % (R*temperature))
+        #print( "************************************")
+        #print( "Initialized dHvap = %.2f +/- %.2f " % (self.value, self.err))
+        #print( "Components:")
+        #print( "U_liq = %.2f (%.2f)" % (value_liq, value_liq/nmols))
+        #print( "U_gas = %.4f " % (value_gas))
+        #print( "Polcorr = %.2f " % (value_pol))
+        #print( "Other corrections = %.2f " % (corrs))
+        #print( "RT = %.2f " % (R*temperature))
 
 class CohesiveEnergyDensity(PropertyBase):
 

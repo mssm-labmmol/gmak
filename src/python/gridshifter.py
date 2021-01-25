@@ -58,7 +58,6 @@ class GridShifter:
         for i, x in enumerate(cg):
             cg[i] = int(cg[i]/thr)
 
-        print ("Note: CG is {}".format(cg))
         globalLogger.putMessage('MESSAGE: CG position is {}'.format(cg))
         self.cg = tuple(cg)
         return self.cg
@@ -80,10 +79,8 @@ class GridShifter:
     def checkShift (self, optimizer):
         self.calcCG(optimizer)
         if not (self.doWeShift()):
-            print ("Note: No need to shift the grid.")
             globalLogger.putMessage('MESSAGE: The grid *WAS NOT* shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
             return False
-        print ("Note: We are shifting the grid.")
         globalLogger.putMessage('MESSAGE: The grid was shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
         # self.shift(grid, paramLoop, old_workdir, new_workdir)
         self.nshifts += 1

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-import runcmd
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct 28 12:13:44 2019
@@ -7,6 +5,7 @@ Created on Mon Oct 28 12:13:44 2019
 @author: Bruno A. C. Horta, IQ-UFRJ, Brazil
 """
 
+import runcmd
 import copy
 import multiprocessing
 from random import uniform

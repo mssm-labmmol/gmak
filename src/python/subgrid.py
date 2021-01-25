@@ -91,7 +91,6 @@ class ParameterSubgrid:
                 dA_pe[p].append(self.grid_points[s].get_property_err(prop_id))
         A_pe            = np.array(A_pe)
         dA_pe           = np.array(dA_pe)
-        print(A_pe)
         (EA_pk, dEA_pk) = self.model.computeExpectationsFromAvgStd(A_pe, dA_pe, I_e, tuple(self.get_size()))
         for p, prop_id in enumerate(list_of_property_names):
             for gp in self.grid_points:

@@ -1,11 +1,4 @@
-#!/usr/bin/python
 import runcmd
-
-# Description:
-# ------------
-#     Bla bla bla bla bla
-#
-
 import numpy as np
 try:
     import matplotlib as mtp

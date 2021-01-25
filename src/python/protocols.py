@@ -73,7 +73,6 @@ class BaseProtocol:
         if (kind == 'mbar'):
             model = self.get_mbar_model()
             index = self.get_reweighting_properties().index(prop)
-            print(self.get_reweighting_properties())
         else:
             index = 0
             for m, p in self.surrogate_models:

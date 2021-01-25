@@ -526,7 +526,3 @@ class coverInterface (object):
             if (splitted[0] == 'nostart'):
                 self.noStart = True
         
-if __name__ == "__main__":
-    samples = [544]
-    covInt = coverInterface (33, previousSamples=samples, maxSamples=15, nRuns=10, volFrac=0.85, hardness=500.00, radius=4.80, popSize=100, nGens=20)
-    covInt.run()

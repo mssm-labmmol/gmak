@@ -1,6 +1,4 @@
-#!/usr/bin/python
 import runcmd
-
 import os 
 import sys 
 import numpy as np
@@ -120,14 +118,3 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
     # remove all files at the end
     runcmd.run("rm epsilon.xvg dipdist.xvg aver.xvg")
 
-if __name__ == "__main__":
-    xtc = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-gas/544/sd/sd.xtc"
-    gro = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-gas/544/sd/sd.gro"
-    edr = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-gas/544/sd/sd.edr"
-    tpr = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-gas/544/sd/sd.tpr"
-    ndx = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-liq/544/md/oxygen.ndx"
-    #obtain_property(xtc, edr, gro, tpr, "gamma", "density-test.xvg")
-    #obtain_gr (xtc, edr, tpr, ndx, "OW", "OW", "./gr-files/gr_curve")
-    gas_dipole = 1.85
-    gas_polarizability = 0.00147
-    obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, "polcorr/polcorr.xvg")

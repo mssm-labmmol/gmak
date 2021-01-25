@@ -1,5 +1,4 @@
 """ 
-import runcmd
 This file defines the base class SurrogateModel and the derived classes for each
 type of surrogate model: MBAR and three interpolation methods nearest neighbor,
 linear and (bi)cubic spline interpolation.  In principle, the main code needs
@@ -8,6 +7,7 @@ dealt with inside each class.
 """
 
 from os import system
+import runcmd
 import pymbar
 import numpy as np
 import sys

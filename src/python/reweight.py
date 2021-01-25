@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import runcmd
 
 import os
@@ -42,12 +41,3 @@ def reweight (xtc, gro, top, mdp, workdir):
     output_files['trr'] = rw_deffnm + ".trr"
     output_files['gro'] = gro
     return output_files
-
-# main for testing if the function does what it is supposed to do 
-if __name__ == '__main__':
-    xtc = "/home/yan/PROJECTS/mbar_par/scripts_and_programs/local-opt/new-optimization-test-liq/192/md/traj.xtc"
-    gro = "/home/yan/PROJECTS/mbar_par/scripts_and_programs/local-opt/new-optimization-test-liq/192/md/md.gro"
-    top = "/home/yan/PROJECTS/mbar_par/scripts_and_programs/local-opt/new-optimization-test-liq/192/topo/liquid.top"
-    mdp = "/home/yan/PROJECTS/mbar_par/scripts_and_programs/local-opt/new-optimization-test-liq/192/mdp/md.mdp"
-    workdir = "./hahahahaha"
-    reweight(xtc, gro, top, mdp, workdir)

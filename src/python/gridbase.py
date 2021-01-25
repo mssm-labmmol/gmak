@@ -62,8 +62,6 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
     gro = gi.rw_outputs[gj_id][protocol.name]['gro']
     # If file already exists, no need to create it again.
     if not (os.path.isfile(out_file)):
-        print ("Getting potential from %s and storing in %s." % \
-        (edr, out_file))
         # get
         obtain_property (xtc, edr, gro, tpr, 'potential', out_file)
     if (protocol.has_pv()):
@@ -74,7 +72,6 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
         if not (os.path.isfile(out_file)):
             # copy from original trajectory
             original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
-            print("Copying pV: {} -> {}".format(original_file, out_file))
             runcmd.run("cp {} {}".format(original_file, out_file))
     # Delete trajectory files (the ones that are big).
     # We don't need to delete the xtc file because it corresponds to the original trajectory.
@@ -517,7 +514,6 @@ class ParameterGrid:
                     gp.setProtocolAsSimulated(protocol)
                     globalLogger.unindent()
                 else:
-                    print("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
                     globalLogger.putMessage("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
             # only prepare
             else:
@@ -544,118 +540,6 @@ class ParameterGrid:
         
     def retrieveReweightNumberOfConfigurations(self):
         return self.reweighter.getConfigurationMatrix()
-
-    # # standard reweight + potential/pV recalculation
-    # def parallel_clean_reweight_with_protocol_at_dir (self, protocol, workdir, workdir_mbar):
-    #     properties = protocol.get_properties()
-    #     ncpus_per_process = 2 
-    #     nprocesses = multiprocessing.cpu_count() / ncpus_per_process
-    #     pool = multiprocessing.Pool(nprocesses)
-    #     pool_arg_list = []
-    #     for i,gp in enumerate(self.grid_points):
-    #         if gp.is_sample:
-    #             for j,gp_other in enumerate(self.grid_points):
-    #                 pool_arg_list.append([i,gp,j,gp_other,protocol,workdir,workdir_mbar,properties])
-    #     pool.map(core_parallel_clean_reweight_i_at_j, pool_arg_list)
-    
-    # # fast reweight + potential/pV recalculation
-    # def fast_clean_reweight_with_protocol_at_dir (self, protocol, reweightHash, workdir, workdir_mbar):
-    #     properties = protocol.get_properties()
-    #     for i,gp in enumerate(self.grid_points):
-    #         if (gp.is_sample):
-    #             # Clean this list.
-    #             preReweightOutputs = []
-    #             listOfPotentialFiles = []
-    #             # Before reweighting, rerun the trajectory progressively
-    #             # deactivating the energy components associated to each parameter.
-    #             numberOfRuns = 2 * int( reweightHash['npars']) + 1
-    #             for j in range(numberOfRuns):
-    #                 # Modify the topology of the original simulation to refer to
-    #                 # the proper *.itp file. Only 'j' is needed, as the names of
-    #                 # the files are hard-coded.
-    #                 runcmd.run("mkdir -p %s/decouple_%d_at_%d" % (workdir, i, j))
-    #                 topologyName = "%s/decouple_%d_at_%d/topol.top" % (workdir, i, j)
-    #                 reweightItpChanger (gp.protocol_outputs[protocol.name]['top'], j,\
-    #                         topologyName)
-    #                 # Run the reweighting.
-    #                 if (protocol.type == 'slab'):
-    #                     preReweightOutput = reweight (gp.protocol_outputs[protocol.name]['trr'],\
-    #                             gp.protocol_outputs[protocol.name]['gro'],\
-    #                             topologyName,\
-    #                             protocol.mdps[-1],\
-    #                             "%s/decouple_%d_at_%d" % (workdir, i, j))
-    #                 else:
-    #                     preReweightOutput = reweight (gp.protocol_outputs[protocol.name]['xtc'],\
-    #                             gp.protocol_outputs[protocol.name]['gro'],\
-    #                             topologyName,\
-    #                             protocol.mdps[-1],\
-    #                             "%s/decouple_%d_at_%d" % (workdir, i, j))
-    #                 # Save.
-    #                 xtc = preReweightOutput['xtc']
-    #                 edr = preReweightOutput['edr']
-    #                 gro = preReweightOutput['gro']
-    #                 tpr = preReweightOutput['tpr']
-    #                 outPotential =  "%s/decouple_%d_at_%d/potential.xvg" % (workdir, i, j)
-    #                 preReweightOutputs.append(preReweightOutput)
-    #                 listOfPotentialFiles.append(outPotential)
-    #                 # Get the potential energy of the reweighted trajectory.
-    #                 obtain_property (xtc, edr, gro, tpr, 'potential', outPotential)
-    #             # Run the reweighing program to obtain the reweighted potential
-    #             # energies. This will always be necessary for MBAR.
-    #             filesArg = " ".join(listOfPotentialFiles)
-    #             fileGrid = reweightHash['parameters']
-    #             anaRwBinary = reweightHash['program']
-    #             command  = "%s -f %s -p %s -r %d -o %s/reweighted_properties/potential_%d_%%d.xvg -time" % (anaRwBinary, filesArg, fileGrid, i, workdir_mbar, i)
-    #             print ("ANA_RW: %s" % command )
-    #             # Create containing directory.
-    #             runcmd.run("mkdir -p %s/reweighted_properties/" % workdir_mbar)
-    #             runcmd.run(command)
-    #             # Reweight other properties.
-    #             # Redefine variables.
-    #             # Note that rw = 0 corresponds to reweighting in the original state.
-    #             xtc = preReweightOutputs[0]['xtc']
-    #             edr = preReweightOutputs[0]['edr']
-    #             tpr = preReweightOutputs[0]['tpr']
-    #             gro = preReweightOutputs[0]['gro']
-    #             gi  = gp
-    #             # Calculate pV if necessary -- it is the same for all reweighted states.
-    #             # In practice, this means COPYING the (filtered) pV data of the original simulation.
-    #             if (protocol.has_pv()):
-    #                 for gj in self.grid_points:
-    #                     gj_id = gj.id 
-    #                     out_file = workdir_mbar + \
-    #                         "/reweighted_properties/pV_%d_%d.xvg" % \
-    #                         (gi.id, gj_id)
-    #                     # If file already exists, no need to create it again, just set the variable.
-    #                     if not (os.path.isfile(out_file)):
-    #                         # copy from original trajectory
-    #                         original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
-    #                         print("Copying pV: {} -> {}".format(original_file, out_file))
-    #                         runcmd.run("cp {} {}".format(original_file, out_file))
-
-    # def reweight_mechanical_properties_for_protocol (self, protocol, mbar_dir):
-    #     """Reweight mechanical properties for_protocol and stores results in rw_dir."""
-    #     for prop in protocol.get_reweighting_properties():
-    #         # first, ignore potential and pV
-    #         if (prop == 'potential') or (prop == 'pV'):
-    #             continue
-    #         elif (prop == 'density') or (prop == 'polcorr') or (prop == 'volume'):
-    #             # same for all states
-    #             for gp in self.get_samples():
-    #                 id = gp.id
-    #                 input_file = gp.retrieve_atomic_property_from_protocol(prop, protocol)
-    #                 for gpo in self.grid_points:
-    #                     id_j = gpo.id
-    #                     out_file = "%s/reweighted_properties/%s_%d_%d.xvg" % (mbar_dir, prop, id, id_j)
-    #                     print("Copying density: {} -> {}".format(input_file, out_file))
-    #                     runcmd.run("cp %s %s" % (input_file, out_file))
-    #         elif (prop == 'gamma'):
-    #             # something needs to be done
-    #             print ("ERROR: Reweighting of property " + prop + " is not implemented.")
-    #             exit()                
-    #         else:
-    #             print ("ERROR: Reweighting of property " + prop + " is not implemented.")
-    #             exit()
 
     def compute_final_properties (self, prop_id, prop, propProtocols, protocols, kind):
         protocolObjs = []
@@ -1037,7 +921,6 @@ class ParameterGrid:
                         protocolsHashByObject[prop].append(prot)
                         
         nextSample = optimizer.determineNextSample (self, surrogateModelHash, protocolsHashByObject)
-        print ("Next sample is", nextSample)
         init_flag = False
         if (nextSample == -1):
             if self.shift(optimizer):
