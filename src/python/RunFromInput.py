@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import runcmd
 
 from logger import *
 from gridshifter import * 
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     #             grid.add_sample(nextSample)
     #         workdir = base_workdir + ("/grid_%d/" % nGrid)
     #         thisRunOutputs = workdir + "/step_%d" % (nsteps+1)
-    #         os.system("mkdir -p %s" % thisRunOutputs)
+    #         runcmd.run("mkdir -p %s" % thisRunOutputs)
 
     #         # create the grid file
     #         gridFile = workdir + "/grid.dat"
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     #         reweightHash['parameters'] = gridFile
 
     #         # create itp files for each grid point
-    #         os.system("mkdir -p " + workdir + "/topo")
+    #         runcmd.run("mkdir -p " + workdir + "/topo")
     #         for gridpoint in grid.grid_points:
     #             itpPathPreffix = workdir + "/topo/et_%d" % (gridpoint.id)
     #             paramLoop.create_full_itp_for_position (gridpoint.id, itpPathPreffix)
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     # # make refined
     # subgrid = grid.create_refined_subgrid(subgridHash['factors'], subgridHash['method'], properties)
     # subgridOutputs = "%s/subgrid" % workdir
-    # os.system("mkdir -p " + subgridOutputs)
+    # runcmd.run("mkdir -p " + subgridOutputs)
     # subgrid.save_samples_to_file("%s/subgrid/samples.dat" % workdir)
 
     # refined_parameters = paramLoop.loop.create_refined(*subgridHash['factors'])

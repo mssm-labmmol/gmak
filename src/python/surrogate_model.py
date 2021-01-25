@@ -1,4 +1,5 @@
 """ 
+import runcmd
 This file defines the base class SurrogateModel and the derived classes for each
 type of surrogate model: MBAR and three interpolation methods nearest neighbor,
 linear and (bi)cubic spline interpolation.  In principle, the main code needs

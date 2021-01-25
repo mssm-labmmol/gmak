@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import runcmd
 from simulate import *
 from shutil import copyfile
 from surrogate_model import *
@@ -344,7 +345,7 @@ class SolvationProtocol(BaseProtocol):
         labels = [str(x) for x in range(len(self.mdps))]
         nsteps = gridpoint.getProtocolSteps(self)
         if self.follows is not None and simulate:
-            os.system("mkdir -p {}".format(workdir))
+            runcmd.run("mkdir -p {}".format(workdir))
             copyfile(gridpoint.protocol_outputs[self.follows.name]['gro'],
                      workdir + '/solvation.gro')
         out = simulate_protocol_solvation(self.coords, self.nmols,

@@ -1,4 +1,5 @@
 import sys
+import runcmd
 import os
 import subprocess
 import re
@@ -28,21 +29,21 @@ def extend_something (nsteps, workdir, label, nprocs=-1):
     globalLogger.putMessage('Extending')
     globalLogger.unindent()
     workdir = os.path.abspath(workdir)
-    os.system("%s convert-tpr -s %s/%s/%s.tpr -nsteps %d -o %s/%s/tmp.tpr" % (ConfigVariables.gmx, workdir, label, label, nsteps, workdir, label))
-    os.system("mv %s/%s/tmp.tpr %s/%s/%s.tpr" % (workdir, label, workdir, label, label))
+    runcmd.run("%s convert-tpr -s %s/%s/%s.tpr -nsteps %d -o %s/%s/tmp.tpr" % (ConfigVariables.gmx, workdir, label, label, nsteps, workdir, label))
+    runcmd.run("mv %s/%s/tmp.tpr %s/%s/%s.tpr" % (workdir, label, workdir, label, label))
     if (nprocs == -1):
         os.system("%s mdrun -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label,
                                                                                     workdir, label, label,
                                                                                     workdir, label, label))
     else:
-        os.system("%s mdrun -nt %d -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label, workdir, label, label))
+        runcmd.run("%s mdrun -nt %d -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label, workdir, label, label))
 
 def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     conf = os.path.abspath(conf)
     top = os.path.abspath(top)
     mdp = os.path.abspath(mdp)
     workdir = os.path.abspath(workdir)
-    os.system("mkdir -p %s/%s" % (workdir, label))
+    runcmd.run("mkdir -p %s/%s" % (workdir, label))
     check_log_loc = "%s/%s/%s.log" % (workdir,label,label)
     simu_state = check_simulation_state(workdir, label)
     if (simu_state == 'ONLY_LOG'):
@@ -53,20 +54,20 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     elif (simu_state == 'FULL'):
         globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
         print ("There is a cpt, will start simulation from there (possibly its end).")
-        os.system("%s mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label, workdir, label, label))
+        runcmd.run("%s mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label, workdir, label, label))
     elif (simu_state == 'NONE'):
         globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
         print ("log from simulations " + check_log_loc + " does not exist, will perform it")
         command = "%s grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (ConfigVariables.gmx, mdp, conf, top, workdir, label, label)
         print ("COMMAND: " + command)
-        os.system(command)
+        runcmd.run(command)
         if (nprocs == -1):
             command = "%s mdrun -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label)
         else:
             command = "%s mdrun -nt %d -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label)
 
         print ("COMMAND: " + command)
-        os.system(command)
+        runcmd.run(command)
 
 
 def get_molecule_name_from_itp (itp):
@@ -91,7 +92,7 @@ def make_topology (nmols, outtop, itp):
     itp = os.path.abspath(itp)
     # create box
     #command = "gmx insert-molecules -ci %s -nmol %d -box %f %f %f -o %s" % (conf,nmols,box[0],box[1],box[2],outconf)
-    #os.system(command)
+    #runcmd.run(command)
     # make topology
     molecule_name = get_molecule_name_from_itp(itp)
     fp = open(outtop, 'w')
@@ -110,7 +111,7 @@ def make_topology (nmols, outtop, itp):
     #        fp.write(line)
     #fp.close()
     #fi.close()
-    os.system("mv %s.tmp %s" % (itp,itp))
+    runcmd.run("mv %s.tmp %s" % (itp,itp))
 
 def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
     conf = os.path.abspath(conf)
@@ -120,7 +121,7 @@ def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
     # create box if it does not exist
     if not (os.path.isfile(outconf)):
         command = "%s insert-molecules -ci %s -nmol %d -box %f %f %f -o %s" % (ConfigVariables.gmx, conf,nmols,box[0],box[1],box[2],outconf)
-        os.system(command)
+        runcmd.run(command)
     # always make topology if not there
     if True:
     #if not (os.path.isfile(outtop)):
@@ -137,15 +138,15 @@ def make_solvation_box_and_topology (confs, nmols, outconf, outtop, itps, makeBo
     if not (os.path.isfile(outconf)) and makeBox:
         # first, create a box with one solute molecule
         command = "{} editconf -bt cubic -f {} -d 1.4 -o _box-1.gro".format(ConfigVariables.gmx, confs['solute'])
-        os.system(command)
+        runcmd.run(command)
         # complete solutes
         if (nmols['solute'] > 1):
             command = "{} insert-molecules -f _box-1.gro -ci {} -nmol {} -o _box-2.gro".format(ConfigVariables.gmx, confs['solute'], nmols['solute'] - 1)
-            os.system(command)
+            runcmd.run(command)
             os.rename("_box-2.gro", "_box-1.gro")
         # complete solvent
         command = "{} insert-molecules -f _box-1.gro -ci {} -nmol {} -o {}".format(ConfigVariables.gmx, confs['solvent'], nmols['solvent'], outconf)
-        os.system(command)
+        runcmd.run(command)
         os.remove("_box-1.gro")
     # always make topology if not there
     if True:
@@ -168,7 +169,7 @@ def simulate_protocol_liquid (conf, nmols, box, itp, mdps, nsteps, labels, workd
     for i in range(len(mdps)):
         mdps[i] = os.path.abspath(mdps[i])
     output_dict = {}
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
     make_a_box_and_topology (conf, nmols, box, workdir + "/liquid.gro", workdir + "/liquid.top", itp)
     for i in range(len(mdps)):
         if i == 0:
@@ -202,7 +203,7 @@ def simulate_protocol_solvation (conf, nmols, itp, mdps, nsteps, labels, workdir
     for i in range(len(mdps)):
         mdps[i] = os.path.abspath(mdps[i])
     output_dict = {}
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
     if follows:
         make_solvation_box_and_topology (conf, nmols, confpath, topopath, itp, makeBox=False)
     else:
@@ -240,7 +241,7 @@ def dummy_protocol_liquid (conf, nmols, box, itp, mdps, labels, workdir):
 
     output_dict = {}
 
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
     make_topology (nmols, workdir + "/liquid.top", itp)
 #    for i in range(len(mdps)):
 #        if i == 0:
@@ -265,7 +266,7 @@ def simulate_protocol_gas (conf, itp, mdps, nsteps, labels, workdir):
         mdps[i] = os.path.abspath(mdps[i])
     nmols = 1 # by default
     output_dict = {}
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
     make_topology (nmols, workdir + "/gas.top", itp)
     for i in range(len(mdps)):
         if i == 0:
@@ -297,7 +298,7 @@ def dummy_protocol_gas (conf, itp, mdps, labels, workdir):
         mdps[i] = os.path.abspath(mdps[i])
     nmols = 1 # by default
     output_dict = {}
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
     make_topology (nmols, workdir + "/gas.top", itp)
 #    for i in range(len(mdps)):
 #        if i == 0:
@@ -326,11 +327,11 @@ def simulate_protocol_slab (conf, top, liq_tpr, mdps, nsteps, labels, workdir, n
     pre_extended_conf = workdir + "/pre.slab.gro"
     extended_conf = workdir + "/slab.gro"
     box = get_box(conf)
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
     # First, remove periodicity.
-    os.system("echo 0 | %s trjconv -f %s -s %s -o %s -pbc whole" % (ConfigVariables.gmx, conf, liq_tpr, pre_extended_conf))
+    runcmd.run("echo 0 | %s trjconv -f %s -s %s -o %s -pbc whole" % (ConfigVariables.gmx, conf, liq_tpr, pre_extended_conf))
     # Now, extend box.
-    os.system("%s editconf -f %s -box %f %f %f -o %s" % (ConfigVariables.gmx, pre_extended_conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
+    runcmd.run("%s editconf -f %s -box %f %f %f -o %s" % (ConfigVariables.gmx, pre_extended_conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
     # Remove temporary conf.
     os.remove(pre_extended_conf)
     for i in range(len(mdps)):
@@ -365,8 +366,8 @@ def dummy_protocol_slab (conf, top, mdps, labels, workdir):
     output_dict = {}
     #extended_conf = workdir + "/slab.gro"
     #box = get_box(conf)
-    os.system("mkdir -p " + workdir)
-    #os.system("gmx editconf -f %s -box %f %f %f -o %s" % (conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
+    runcmd.run("mkdir -p " + workdir)
+    #runcmd.run("gmx editconf -f %s -box %f %f %f -o %s" % (conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
     #for i in range(len(mdps)):
         #if i == 0:
             #simulate_something (extended_conf, top, mdps[i], labels[i], workdir)

@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import runcmd
 #
 
 import numpy as np
@@ -82,20 +83,20 @@ def estimate_properties (u_matrix, pv_matrix, sampled_states, temp, nk_out, ukn_
         out_preffixes[i] = os.path.abspath(out_preffixes[i])
         path_of_preffix = '/'.join(out_preffixes[i].split('/')[0:-1])
         # create path if it does not exist
-        os.system("mkdir -p " + path_of_preffix)
+        runcmd.run("mkdir -p " + path_of_preffix)
 
     eff_out = os.path.abspath(eff_out)
     path_of_preffix = '/'.join(eff_out.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     path_of_preffix = '/'.join(nk_out.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     path_of_preffix = '/'.join(ukn_out.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     M = prop_matrix.shape[0] # number of properties
     K = prop_matrix.shape[1] # total number of states
@@ -160,20 +161,20 @@ def estimate_properties_no_pv (u_matrix, sampled_states, temp, nk_out, ukn_out, 
         out_preffixes[i] = os.path.abspath(out_preffixes[i])
         path_of_preffix = '/'.join(out_preffixes[i].split('/')[0:-1])
         # create path if it does not exist
-        os.system("mkdir -p " + path_of_preffix)
+        runcmd.run("mkdir -p " + path_of_preffix)
 
     eff_out = os.path.abspath(eff_out)
     path_of_preffix = '/'.join(eff_out.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     path_of_preffix = '/'.join(nk_out.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     path_of_preffix = '/'.join(ukn_out.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     M = prop_matrix.shape[0] # number of properties
     K = prop_matrix.shape[1] # total number of states

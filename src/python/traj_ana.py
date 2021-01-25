@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import runcmd
 
 import os 
 import sys 
@@ -32,7 +33,7 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
 
     path_of_preffix = '/'.join(output_file.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
     
     # gamma is special
     if name == "gamma":
@@ -46,7 +47,7 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
         prop = "pV"
     if name == "volume":
         prop = "Volume"
-    os.system("echo \"" + prop + "\" | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
+    runcmd.run("echo \"" + prop + "\" | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
 
 def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0, bin=0.002):
     xtc = os.path.abspath(xtc)
@@ -57,12 +58,12 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
 
     path_of_preffix = '/'.join(output_file_preffix.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     output_list = []
     
     # dummy property, calculated only to extract the times
-    os.system("echo \"Pot\" | %s energy -f %s -s %s -o %s_dummy-times.xvg" % (ConfigVariables.gmx, edr,tpr,output_file_preffix))
+    runcmd.run("echo \"Pot\" | %s energy -f %s -s %s -o %s_dummy-times.xvg" % (ConfigVariables.gmx, edr,tpr,output_file_preffix))
     times = np.loadtxt("%s_dummy-times.xvg" % (output_file_preffix), usecols=(0,), comments=['@','#'])
 
     gr_data = []
@@ -70,12 +71,12 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
     for i in range(len(times)):
         b = times[i]
         e = b
-        os.system("%s rdf -f %s -s %s -n %s -b %f -e %f -o %s_%d.xvg -ref %s -sel %s -cut %s -rmax %f -bin %f" % (ConfigVariables.gmx, xtc,tpr,ndx,b,e,output_file_preffix,i+1,g1,g2,cut,rmax,bin))
+        runcmd.run("%s rdf -f %s -s %s -n %s -b %f -e %f -o %s_%d.xvg -ref %s -sel %s -cut %s -rmax %f -bin %f" % (ConfigVariables.gmx, xtc,tpr,ndx,b,e,output_file_preffix,i+1,g1,g2,cut,rmax,bin))
         idxs = np.loadtxt("%s_%d.xvg" % (output_file_preffix, i+1), usecols=(0,), comments=['@','#'])
         idxs_relevant = [j for j,x in enumerate(idxs) if ((x >= cut) and (x <= rmax))]
         gr_data.append(np.loadtxt("%s_%d.xvg" % (output_file_preffix, i+1),
             usecols=(1,), comments=['@','#'])[idxs_relevant])
-        os.system("rm %s_%d.xvg" % (output_file_preffix, i+1))
+        runcmd.run("rm %s_%d.xvg" % (output_file_preffix, i+1))
 
     gr_data = np.array(gr_data)
 
@@ -95,7 +96,7 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
 
     path_of_preffix = '/'.join(output_file.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
     Mtotfn = path_of_preffix + '/Mtot.xvg'
 
     AVOGADRO = 6.02e23
@@ -103,7 +104,7 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
     COUL = 8.987551e9
 
     # obtain dipoles
-    os.system("echo 0 | %s dipoles -f %s -s %s -o %s" % (ConfigVariables.gmx, xtc,tpr,Mtotfn))
+    runcmd.run("echo 0 | %s dipoles -f %s -s %s -o %s" % (ConfigVariables.gmx, xtc,tpr,Mtotfn))
 
     # get dummy times
     times = np.loadtxt(Mtotfn, comments=['@','#'], usecols=(0,))
@@ -117,7 +118,7 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
     np.savetxt(output_file, outarray)
 
     # remove all files at the end
-    os.system("rm epsilon.xvg dipdist.xvg aver.xvg")
+    runcmd.run("rm epsilon.xvg dipdist.xvg aver.xvg")
 
 if __name__ == "__main__":
     xtc = "/home/yan/PROJECTS/mbar_par/systems/GEOMETRIES/MULTIPOLE-OPT/CAS-D/GRID_1/new-optimization-test-gas/544/sd/sd.xtc"

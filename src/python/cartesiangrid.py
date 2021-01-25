@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+import runcmd
 
 class CartesianGrid:
 

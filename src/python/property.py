@@ -1,4 +1,5 @@
 import numpy as np
+import runcmd
 import os
 from shutil import copyfile
 
@@ -151,7 +152,7 @@ class DGsolvAlchemicalAnalysis(PropertyBase):
         ddf = kbT * mbar.d_delta_f_.iloc[0,-1]
         # create parent directory if it does not exist
         path_of_preffix = '/'.join(output.split('/')[0:-1])
-        os.system("mkdir -p " + path_of_preffix)
+        runcmd.run("mkdir -p " + path_of_preffix)
         # write these values to disk
         _fp = open(output, 'w')
         _fp.write('Value{:>10.3f}\nError{:>10.4f}\n'.format(df, ddf))

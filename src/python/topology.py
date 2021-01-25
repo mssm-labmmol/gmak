@@ -1,4 +1,5 @@
 # import base force-field classes
+import runcmd
 from parameters import *
 from variations import *
 import os 

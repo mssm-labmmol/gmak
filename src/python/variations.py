@@ -1,4 +1,5 @@
 import numpy as np
+import runcmd
 from abc import ABC, abstractmethod, abstractproperty
 from copy import deepcopy
 from cartesiangrid import *

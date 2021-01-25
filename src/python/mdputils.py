@@ -1,4 +1,5 @@
 class mdpUtils:
+    import runcmd
     """A simple class to read info and possibly manipulate GROMACS .mdp files.
     Features are implemented as they are needed, so many functionalities may still
     be absent."""

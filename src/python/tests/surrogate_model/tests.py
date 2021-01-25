@@ -55,7 +55,7 @@ class TestMBAR(unittest.TestCase):
         self.assertTrue(np.allclose(np.loadtxt(output_dir + '/W_k.dat'),
                 np.loadtxt(ref_dir + '/W_k.dat')))
         # remove created files
-        os.system('rm -rf ' + output_dir)
+        runcmd.run('rm -rf ' + output_dir)
    
     def test_nonlegacy_compute_and_write_single_property(self):
         self.compute_and_write(1, False)
@@ -95,7 +95,7 @@ class TestInterpolate(unittest.TestCase):
             ref_dI_k = np.loadtxt(fn_ref_dI_k)
             # write expectations 
             dir_I = os.path.join(dirname, 'output_{}_{}'.format(kind, i))
-            os.system('mkdir -p ' + dir_I)
+            runcmd.run('mkdir -p ' + dir_I)
             fn_I_k = dir_I + '/prop_{}_I_k_{}.dat'.format(i,kind)
             fn_dI_k = dir_I + '/prop_{}_dI_k_{}.dat'.format(i,kind)
             interp.writeExpectationsToFile(fn_I_k, fn_dI_k, i)
@@ -104,7 +104,7 @@ class TestInterpolate(unittest.TestCase):
             this_dI_k = np.loadtxt(fn_dI_k)
             self.assertTrue(np.allclose(this_I_k, ref_I_k, equal_nan=True))
             self.assertTrue(np.allclose(this_dI_k, ref_dI_k, equal_nan=True))
-            os.system('rm -rf ' + dir_I)
+            runcmd.run('rm -rf ' + dir_I)
 
     def test_nearest(self):
         self._test_a_kind(2, 'nearest')

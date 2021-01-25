@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import runcmd
 
 import os
 import sys
@@ -22,7 +23,7 @@ def reweight (xtc, gro, top, mdp, workdir):
     rw_tpr = workdir + "/reweight.tpr"
     rw_deffnm = workdir + "/reweight"
 
-    os.system("mkdir -p " + workdir)
+    runcmd.run("mkdir -p " + workdir)
 
     if (os.path.isfile(check_log_loc)):
         #print "log from reweight already exists, will not perform it"
@@ -31,8 +32,8 @@ def reweight (xtc, gro, top, mdp, workdir):
         #print("gmx mdrun -rerun %s -s %s -deffnm %s" % (xtc,rw_tpr,rw_deffnm))
         pass
     else:
-        os.system("%s grompp -f %s -c %s -o %s -p %s -maxwarn 5" % (ConfigVariables.gmx, mdp,gro,rw_tpr,top))
-        os.system("%s mdrun -rerun %s -s %s -deffnm %s" % (ConfigVariables.gmx, xtc,rw_tpr,rw_deffnm))
+        runcmd.run("%s grompp -f %s -c %s -o %s -p %s -maxwarn 5" % (ConfigVariables.gmx, mdp,gro,rw_tpr,top))
+        runcmd.run("%s mdrun -rerun %s -s %s -deffnm %s" % (ConfigVariables.gmx, xtc,rw_tpr,rw_deffnm))
 
     output_files = {}
     output_files['xtc'] = xtc

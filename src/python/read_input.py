@@ -1,4 +1,5 @@
 #from RunFromInput import ParameterGrid
+import runcmd
 from reweightbase import ReweighterFactory
 from gridoptimizer import gridOptimizer
 from gridshifter import *
@@ -177,7 +178,7 @@ def initialize_from_input (input_file, bool_legacy):
                 #moleculesDict[name]['gro'] = blockDict['gro'][i]
                 outputTopoBundles[name]    = TopologyBundleFactory.createBundle('gromacs', blockDict['itp'][i], prefix,
                                                 outputNonbondedForcefield, outputBondedForcefield)
-                os.system("mkdir -p {}/{}".format(output_workdir, name))
+                runcmd.run("mkdir -p {}/{}".format(output_workdir, name))
                                                                                 
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist

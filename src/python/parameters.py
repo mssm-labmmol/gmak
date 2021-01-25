@@ -1,4 +1,5 @@
 import  numpy       as      np
+import runcmd
 from    variations  import  DomainSpace
 from    math        import  sqrt
 from    copy        import  deepcopy

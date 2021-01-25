@@ -1,4 +1,5 @@
 import os
+import runcmd
 from logger import *
 from parameters import *
 from cartesiangrid import *
@@ -8,7 +9,7 @@ from gridbase import *
 # def create_symbolic_link (target, link_name):
 #     if not (os.path.isdir(link_name)):
 #         print ("Linking: ln -s %s %s" % (target, link_name))
-#         os.system ("ln -s %s %s" % (target, link_name))
+#         runcmd.run("ln -s %s %s" % (target, link_name))
 #     else:
 #         print ("Warning: Link %s already exists.\n" % link_name)
 

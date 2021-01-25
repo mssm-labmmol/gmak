@@ -1,4 +1,5 @@
 from math import sqrt 
+import runcmd
 from random import choice
 import time
 import os
@@ -261,9 +262,9 @@ class VolumePrinter (object):
     def savefig (self, output):
         self.interface.end(self.stream)
         self.stream.close()
-        os.system(self.interface.compile_command() + " " + self.fn + "> /dev/null 2>&1")
-        os.system("mv volumeprintertmpfile.pdf " + output)
-        os.system("rm volumeprintertmpfile.*")
+        runcmd.run(self.interface.compile_command() + " " + self.fn + "> /dev/null 2>&1")
+        runcmd.run("mv volumeprintertmpfile.pdf " + output)
+        runcmd.run("rm volumeprintertmpfile.*")
 
 
 class coverageIndividualBase (object):

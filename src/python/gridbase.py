@@ -1,3 +1,4 @@
+import runcmd
 import  re
 import  os
 import  shlex
@@ -74,7 +75,7 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
             # copy from original trajectory
             original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
             print("Copying pV: {} -> {}".format(original_file, out_file))
-            os.system("cp {} {}".format(original_file, out_file))
+            runcmd.run("cp {} {}".format(original_file, out_file))
     # Delete trajectory files (the ones that are big).
     # We don't need to delete the xtc file because it corresponds to the original trajectory.
     for ff in [trr,edr]:
@@ -572,7 +573,7 @@ class ParameterGrid:
     #                 # Modify the topology of the original simulation to refer to
     #                 # the proper *.itp file. Only 'j' is needed, as the names of
     #                 # the files are hard-coded.
-    #                 os.system("mkdir -p %s/decouple_%d_at_%d" % (workdir, i, j))
+    #                 runcmd.run("mkdir -p %s/decouple_%d_at_%d" % (workdir, i, j))
     #                 topologyName = "%s/decouple_%d_at_%d/topol.top" % (workdir, i, j)
     #                 reweightItpChanger (gp.protocol_outputs[protocol.name]['top'], j,\
     #                         topologyName)
@@ -607,8 +608,8 @@ class ParameterGrid:
     #             command  = "%s -f %s -p %s -r %d -o %s/reweighted_properties/potential_%d_%%d.xvg -time" % (anaRwBinary, filesArg, fileGrid, i, workdir_mbar, i)
     #             print ("ANA_RW: %s" % command )
     #             # Create containing directory.
-    #             os.system("mkdir -p %s/reweighted_properties/" % workdir_mbar)
-    #             os.system(command)
+    #             runcmd.run("mkdir -p %s/reweighted_properties/" % workdir_mbar)
+    #             runcmd.run(command)
     #             # Reweight other properties.
     #             # Redefine variables.
     #             # Note that rw = 0 corresponds to reweighting in the original state.
@@ -630,7 +631,7 @@ class ParameterGrid:
     #                         # copy from original trajectory
     #                         original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
     #                         print("Copying pV: {} -> {}".format(original_file, out_file))
-    #                         os.system("cp {} {}".format(original_file, out_file))
+    #                         runcmd.run("cp {} {}".format(original_file, out_file))
 
     # def reweight_mechanical_properties_for_protocol (self, protocol, mbar_dir):
     #     """Reweight mechanical properties for_protocol and stores results in rw_dir."""
@@ -647,7 +648,7 @@ class ParameterGrid:
     #                     id_j = gpo.id
     #                     out_file = "%s/reweighted_properties/%s_%d_%d.xvg" % (mbar_dir, prop, id, id_j)
     #                     print("Copying density: {} -> {}".format(input_file, out_file))
-    #                     os.system("cp %s %s" % (input_file, out_file))
+    #                     runcmd.run("cp %s %s" % (input_file, out_file))
     #         elif (prop == 'gamma'):
     #             # something needs to be done
     #             print ("ERROR: Reweighting of property " + prop + " is not implemented.")

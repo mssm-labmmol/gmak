@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import runcmd
 
 import numpy as np
 import os 
@@ -22,7 +23,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
 
     path_of_preffix = '/'.join(oxtc.split('/')[0:-1])
     # create path if it does not exist
-    os.system("mkdir -p " + path_of_preffix)
+    runcmd.run("mkdir -p " + path_of_preffix)
 
     # do nothing if no properties are specified
     if len(propfiles) == 0:
@@ -37,7 +38,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
     actual_skip = int(np.max(skips))
     print("FILTER: Skip is {}".format(actual_skip))
 
-    os.system("echo 0 | %s trjconv -f %s -s %s -skip %d -o %s" % (ConfigVariables.gmx, xtc,tpr,actual_skip,oxtc))
+    runcmd.run("echo 0 | %s trjconv -f %s -s %s -skip %d -o %s" % (ConfigVariables.gmx, xtc,tpr,actual_skip,oxtc))
     
     # also filter the selected properties
     for i, propfile in enumerate(propfiles):

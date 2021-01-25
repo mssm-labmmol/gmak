@@ -1,4 +1,5 @@
 from  copy             import  deepcopy
+import runcmd
 from  grid_ana         import  *
 from  property         import  *
 from  cartesiangrid    import  *
@@ -137,7 +138,7 @@ class ParameterSubgrid:
 
     def makeSubgridDir(self):
         subgridDir = os.path.abspath(self.gridWorkdir + "/subgrid")
-        os.system("mkdir -p " + subgridDir)
+        runcmd.run("mkdir -p " + subgridDir)
         return subgridDir
     
     def save_property_values_to_file (self, prop):
