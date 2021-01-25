@@ -2,6 +2,7 @@
 
 import os
 import sys
+from config import ConfigVariables
 
 def reweightWrapper(inputData, workdir):
     xtc     = inputData['xtc']
@@ -30,8 +31,8 @@ def reweight (xtc, gro, top, mdp, workdir):
         #print("gmx mdrun -rerun %s -s %s -deffnm %s" % (xtc,rw_tpr,rw_deffnm))
         pass
     else:
-        os.system("gmx grompp -f %s -c %s -o %s -p %s -maxwarn 5" % (mdp,gro,rw_tpr,top))
-        os.system("gmx mdrun -rerun %s -s %s -deffnm %s" % (xtc,rw_tpr,rw_deffnm))
+        os.system("%s grompp -f %s -c %s -o %s -p %s -maxwarn 5" % (ConfigVariables.gmx, mdp,gro,rw_tpr,top))
+        os.system("%s mdrun -rerun %s -s %s -deffnm %s" % (ConfigVariables.gmx, xtc,rw_tpr,rw_deffnm))
 
     output_files = {}
     output_files['xtc'] = xtc

@@ -1,4 +1,6 @@
 import numpy as np
+import os
+from shutil import copyfile
 
 def init_property_from_string(property_string, value, err):
     if (property_string == 'density'):
@@ -112,4 +114,45 @@ class GammaViaCohesiveEnergyDensity(PropertyBase):
         #self.err   = np.abs( ced.value * (1.0/3)*(v_m)**(-2.0/3)*err_v_m + ced.err * (v_m**(1.0/3)) ) / self.conversionConstant
         self.err   = self.value * np.sqrt( (((1.0/3) * v_m**(-2.0/3) * err_v_m)/(v_m**(1./3)))**2 + (ced.err/ced.value)**2)
         
-        
+class DGsolvAlchemicalAnalysis(PropertyBase):
+
+    def __init__(self, value, err):
+        # Set attributes
+        self.value = value
+        self.err = err
+        self.set_textual_elements("dgsolv", "kJ mol$^{-1}$", "$\\Delta G_{\\mathrm{solv}}$")
+
+    @staticmethod
+    def obtain(dhdlFiles, temperature, output):
+        # ------------------------------------------------------------------------
+        #  Alchemlyb imports
+        # ------------------------------------------------------------------------
+        from   alchemlyb import preprocessing
+        from   alchemlyb.parsing import gmx
+        from   alchemlyb import estimators
+        import pandas as pd
+
+        # calculate kbT value
+        kbT = temperature * 0.83144626
+        # intialize MBAR object with default settings
+        mbar = estimators.MBAR()
+        # extract u_nk from the dHdl files
+        u_nk = [gmx.extract_u_nk(dhdl_file, temperature) for dhdl_file in dhdlFiles]
+        # subsample within each u_nk
+        u_nk = [preprocessing.statistical_inefficiency(df, df.iloc[:,i]) for i, df in enumerate(u_nk)]
+        # concatenate u_nk for all sampled states
+        u_nk = pd.concat(u_nk)
+        # run MBAR on the u_nk data
+        mbar.fit(u_nk)
+        # get free-energy-difference estimate and estimate error
+        df  = - kbT * mbar.delta_f_.iloc[0,-1]  # note the minus sign; this is because we typically
+                                                # follow the alchemical path of de-solvation instead
+                                                # of solvation
+        ddf = kbT * mbar.d_delta_f_.iloc[0,-1]
+        # create parent directory if it does not exist
+        path_of_preffix = '/'.join(output.split('/')[0:-1])
+        os.system("mkdir -p " + path_of_preffix)
+        # write these values to disk
+        _fp = open(output, 'w')
+        _fp.write('Value{:>10.3f}\nError{:>10.4f}\n'.format(df, ddf))
+        _fp.close()

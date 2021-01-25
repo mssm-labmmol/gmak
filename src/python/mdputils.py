@@ -66,3 +66,34 @@ class mdpUtils:
             string_list = self.get_option('ref-t')
         float_list  = [float(x) for x in string_list]
         return float_list
+
+    def get_nlambdas(self):
+        """Returns the number of lambda values for a free energy mdp file."""
+        # make a list of all *-lambdas options
+        lambdaOptions = [k for k in self.optionsDict.keys() if k.endswith('-lambdas')]
+        if len(lambdaOptions) > 0:
+            # get number of lambda for each
+            nlambdas = [len(self.get_option(k)) for k in lambdaOptions]
+            nlambdasCte = nlambdas[0]
+            for l in nlambdas:
+               if (l != nlambdasCte):
+                   raise Exception('Two *-lambdas options have a different number of lambda values.')
+            return nlambdasCte
+        else:
+            raise Exception('Requesting nlambdas for a mdp file that does not contain *-lambdas options.')
+
+    def set_option(self, option, value_list):
+        self.optionsDict[option] = value_list
+        
+    def set_lambda_state(self, value):
+        option = 'init-lambda-state'
+        self.optionsDict[option] = [value]
+
+    def write_to_file(self, fn):
+        fp = open(fn, 'w')
+        for k in self.optionsDict.keys():
+            fp.write("%-16s = " % k)
+            for v in self.optionsDict[k]:
+                fp.write("%-10s" % v)
+            fp.write("\n")
+        fp.close()

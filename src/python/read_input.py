@@ -7,7 +7,7 @@ from variations import *
 from gridbase import *
 from topology import * 
 from coverage import coverInterface
-from protocols import LiquidProtocol, GasProtocol, SlabProtocol
+from protocols import LiquidProtocol, GasProtocol, SlabProtocol, SolvationProtocol, SolvationFreeEnergyFactory, DummyProtocol
 
 import os
 import sys 
@@ -200,6 +200,14 @@ def initialize_from_input (input_file, bool_legacy):
                     new_protocol = SlabProtocol("",[],5.0,[],-1)
                     new_protocol.read_from_stream (fp)
                     output_protocols.append(new_protocol)
+                elif (typeRead == 'dgsolv'):
+                    argsdict = block2dict(fp, '$end', '#')
+                    new_protocols = SolvationFreeEnergyFactory().createSolvationProtocolFromDict(argsdict)
+                    base_protocol = DummyProtocol(argsdict['name'][0], new_protocols[0])
+                    base_protocol.point_to(new_protocols)
+                    for prot in new_protocols:
+                        output_protocols.append(prot)
+                    output_protocols.append(base_protocol)
                 else:
                     print ("ERROR: Type \"%s\" is not supported.\n" % typeRead)
                     exit()
@@ -300,6 +308,17 @@ def initialize_from_input (input_file, bool_legacy):
                             # potential for safety
                             #if 'potential' not in protocol.properties:
                             #    protocol.properties.append('potential')
+                    elif (propRead == 'dgsolv'):
+                        # find protocol with name given
+                        output_protocolsHash[propId] = [nameRead]
+                        base_protocol = filter(lambda x: x.name == nameRead, output_protocols)
+                        for protocol in base_protocol:
+                            protocol.add_surrogate_model(surrModel, 'dgsolv', bool_legacy)           
+                            protocol.properties.append('dgsolv')
+                        # also
+                        protocols = filter(lambda x: x.name.startswith(nameRead + '-'), output_protocols)
+                        for protocol in protocols:
+                            protocol.surrogate_models = []
                     else:
                         print ("ERROR: Property \"%s\" is not supported.\n" % typeRead)
                         exit()

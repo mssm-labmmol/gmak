@@ -3,6 +3,7 @@
 import numpy as np
 import os 
 from pymbar.timeseries import statisticalInefficiency
+from config import ConfigVariables
 
 # Wrapper for statisticalIneffiency calculation.
 # pymbar.timeseries.statisticalInefficiency fails if auto-covariance is zero.
@@ -23,6 +24,10 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
     # create path if it does not exist
     os.system("mkdir -p " + path_of_preffix)
 
+    # do nothing if no properties are specified
+    if len(propfiles) == 0:
+        return
+
     skips = []
     for propfile in propfiles:
         x = np.loadtxt(propfile, comments=['@','#'], usecols=(1,))
@@ -32,7 +37,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
     actual_skip = int(np.max(skips))
     print("FILTER: Skip is {}".format(actual_skip))
 
-    os.system("echo 0 | gmx trjconv -f %s -s %s -skip %d -o %s" % (xtc,tpr,actual_skip,oxtc))
+    os.system("echo 0 | %s trjconv -f %s -s %s -skip %d -o %s" % (ConfigVariables.gmx, xtc,tpr,actual_skip,oxtc))
     
     # also filter the selected properties
     for i, propfile in enumerate(propfiles):

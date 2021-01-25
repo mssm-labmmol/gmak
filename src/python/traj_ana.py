@@ -3,6 +3,7 @@
 import os 
 import sys 
 import numpy as np
+from config import ConfigVariables
 
 # returns list with box lengths
 def get_box (gro):
@@ -45,7 +46,7 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
         prop = "pV"
     if name == "volume":
         prop = "Volume"
-    os.system("echo \"" + prop + "\" | gmx energy -f " + edr + " -s " + tpr + " -o " + output_file)
+    os.system("echo \"" + prop + "\" | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
 
 def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0, bin=0.002):
     xtc = os.path.abspath(xtc)
@@ -61,7 +62,7 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
     output_list = []
     
     # dummy property, calculated only to extract the times
-    os.system("echo \"Pot\" | gmx energy -f %s -s %s -o %s_dummy-times.xvg" % (edr,tpr,output_file_preffix))
+    os.system("echo \"Pot\" | %s energy -f %s -s %s -o %s_dummy-times.xvg" % (ConfigVariables.gmx, edr,tpr,output_file_preffix))
     times = np.loadtxt("%s_dummy-times.xvg" % (output_file_preffix), usecols=(0,), comments=['@','#'])
 
     gr_data = []
@@ -69,7 +70,7 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
     for i in range(len(times)):
         b = times[i]
         e = b
-        os.system("gmx rdf -f %s -s %s -n %s -b %f -e %f -o %s_%d.xvg -ref %s -sel %s -cut %s -rmax %f -bin %f" % (xtc,tpr,ndx,b,e,output_file_preffix,i+1,g1,g2,cut,rmax,bin))
+        os.system("%s rdf -f %s -s %s -n %s -b %f -e %f -o %s_%d.xvg -ref %s -sel %s -cut %s -rmax %f -bin %f" % (ConfigVariables.gmx, xtc,tpr,ndx,b,e,output_file_preffix,i+1,g1,g2,cut,rmax,bin))
         idxs = np.loadtxt("%s_%d.xvg" % (output_file_preffix, i+1), usecols=(0,), comments=['@','#'])
         idxs_relevant = [j for j,x in enumerate(idxs) if ((x >= cut) and (x <= rmax))]
         gr_data.append(np.loadtxt("%s_%d.xvg" % (output_file_preffix, i+1),
@@ -102,7 +103,7 @@ def obtain_polcorr (xtc, edr, gro, tpr, gas_dipole, gas_polarizability, output_f
     COUL = 8.987551e9
 
     # obtain dipoles
-    os.system("echo 0 | gmx dipoles -f %s -s %s -o %s" % (xtc,tpr,Mtotfn))
+    os.system("echo 0 | %s dipoles -f %s -s %s -o %s" % (ConfigVariables.gmx, xtc,tpr,Mtotfn))
 
     # get dummy times
     times = np.loadtxt(Mtotfn, comments=['@','#'], usecols=(0,))

@@ -1,8 +1,13 @@
+from abc import ABC, abstractmethod
 from simulate import *
+from shutil import copyfile
 from surrogate_model import *
+import warnings
 import re
 import copy
+import os
 from logger import *
+from mdputils import *
 
 class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
@@ -14,6 +19,9 @@ class BaseProtocol:
             if ('pV' not in standard_properties) and (self.get_mbar_model() is not None):
                 standard_properties.append('pV')
         return standard_properties
+
+    def expand(self):
+        return [self,]
     
     def get_properties (self):
         return self.properties
@@ -111,7 +119,7 @@ class BaseProtocol:
                 if p not in output_list:
                     output_list.append(p)
         return output_list
-        
+
 class SlabProtocol(BaseProtocol):
 
     def __init__ (self):
@@ -303,3 +311,126 @@ class GasProtocol(BaseProtocol):
         else:
             EA, dEA = super().get_avg_err_estimate_of_property(prop, kind)
             return EA, dEA
+
+class SolvationProtocol(BaseProtocol):
+
+    type = "solv"
+
+    def __init__ (self):
+        self.name = ""
+        self.mdps = []
+        self.properties = []
+        self.coords = {'solvent': '', 'solute': ''}
+        self.molecules = {'solvent': '', 'solute': ''}
+        self.nmols  = {'solvent': 0, 'solute': 0}
+        self.box_size = 0.0
+        self.follows = None
+
+    def __init__ (self, name, moleculeSolvent, moleculeSolute,
+                  nmolsSolvent, nmolsSolute, coordsSolvent, coordsSolute, mdps, 
+                  properties, followsObj):
+        self.name = name
+        self.mdps = mdps
+        self.molecules = {'solvent': moleculeSolvent, 'solute': moleculeSolute}
+        self.coords = {'solvent': coordsSolvent, 'solute': coordsSolute}
+        self.nmols = {'solvent': nmolsSolvent, 'solute': nmolsSolute}
+        self.properties = properties
+        self.follows= followsObj
+
+    def has_pv (self):
+        return True
+
+    def run_gridpoint_at_dir (self, gridpoint, workdir, simulate=True):
+        labels = [str(x) for x in range(len(self.mdps))]
+        nsteps = gridpoint.getProtocolSteps(self)
+        if self.follows is not None and simulate:
+            os.system("mkdir -p {}".format(workdir))
+            copyfile(gridpoint.protocol_outputs[self.follows.name]['gro'],
+                     workdir + '/solvation.gro')
+        out = simulate_protocol_solvation(self.coords, self.nmols,
+                                          {'solute':
+                                           gridpoint.getTopologyPath(self.molecules['solute']),
+                                           'solvent':
+                                           gridpoint.getTopologyPath(self.molecules['solvent'])},
+                                          self.mdps, nsteps, labels,
+                                          workdir, simulate,
+                                          self.follows is not None)
+        gridpoint.add_protocol_output (self, out)
+
+    def prepare_gridpoint_at_dir (self, gridpoint, workdir):
+        self.run_gridpoint_at_dir(gridpoint, workdir, simulate=False)
+
+
+class DummyProtocol(BaseProtocol):
+
+    def __init__ (self, name, protocol):
+        self.type = 'dgsolv'
+        self.name = name
+        self.properties = []
+        self.mdps = protocol.mdps
+        self.coords = protocol.coords
+        self.molecules = protocol.molecules
+        self.nmols  = {'solvent': 0, 'solute': 0}
+        self.box_size = 0.0
+        self.follows = None
+        self.inner_protocols = []
+
+    def point_to(self, protocols):
+        self.inner_protocols = protocols
+
+    def expand(self):
+        return self.inner_protocols
+
+    def has_pv (self):
+        return False
+
+    def run_gridpoint_at_dir (self, gridpoint, workdir):
+        return
+
+    def prepare_gridpoint_at_dir (self, gridpoint, workdir):
+        return
+
+class SolvationProtocolFactory(ABC):
+    @abstractmethod
+    def createSolvationProtocolFromDict(self, args):
+        pass
+
+class SolvationFreeEnergyFactory(SolvationProtocolFactory):
+    def __init__ (self):
+        return
+
+    def createSolvationProtocolFromDict(self, args):
+        # read number of lambda points from some mdp file
+        imu = mdpUtils()
+        imu.parse_file(args['mdps'][-1])
+        nlambdas = imu.get_nlambdas()
+        if (int(imu.get_option('calc-lambda-neighbors')[0]) != -1):
+            warnings.warn('calc-lambda-neighbors will be set to -1')
+        outputProtocols = []
+        for i in range(nlambdas):
+            mdps = []
+            for m in args['mdps']:
+                prefix = os.path.abspath(m)[:-4]
+                fn = prefix + '_{}.mdp'.format(i)
+                mdps.append(fn)
+                imu.clean()
+                imu.parse_file(m)
+                imu.set_lambda_state(i)
+                imu.set_option('calc-lambda-neighbors', ['-1'])
+                imu.write_to_file(fn)
+            # create
+            if (i == 0):
+                follows = None
+            else:
+                follows = outputProtocols[i - 1]
+            outputProtocols.append(SolvationProtocol(args['name'][0] +
+                                                     '-{}'.format(i),
+                                                     args['solvent'][0],
+                                                     args['solute'][0],
+                                                     int(args['solvent'][1]),
+                                                     int(args['solute'][1]),
+                                                     args['solvent'][2],
+                                                     args['solute'][2],
+                                                     mdps,
+                                                     [], follows))
+        return outputProtocols

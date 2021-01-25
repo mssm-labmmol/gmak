@@ -164,8 +164,16 @@ class Interpolation (SurrogateModel):
             A_s = []
             dA_s = []
             for s in range(numberStates):
-                A_s.append(np.mean(A_psn[i][s]))
-                dA_s.append(np.std(A_psn[i][s], ddof=1) / np.sqrt(len(A_psn[i][s])))
+                numberOfConfs = len(A_psn[i][s])
+                if (numberOfConfs < 2):
+                    raise Exception
+                elif (numberOfConfs == 2):
+                    # In this case, first line is average and second line is error.
+                    A_s.append(A_psn[i][s][0])
+                    dA_s.append(A_psn[i][s][1])
+                else:
+                    A_s.append(np.mean(A_psn[i][s]))
+                    dA_s.append(np.std(A_psn[i][s], ddof=1) / np.sqrt(len(A_psn[i][s])))
             A_ps.append(A_s)
             dA_ps.append(dA_s)
         A_ps = np.array(A_ps)
