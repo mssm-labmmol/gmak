@@ -101,7 +101,7 @@ def make_topology (nmols, outtop, itp):
     #        fp.write(line)
     #fp.close()
     #fi.close()
-    runcmd.run("mv %s.tmp %s" % (itp,itp))
+    #runcmd.run("mv %s.tmp %s" % (itp,itp))
 
 def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
     conf = os.path.abspath(conf)

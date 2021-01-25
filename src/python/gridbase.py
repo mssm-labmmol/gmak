@@ -508,7 +508,7 @@ class ParameterGrid:
             # run 
             if gp.is_sample:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
-                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended.".format(gp.id), dated=True)
+                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolSteps(protocol)), dated=True)
                     globalLogger.indent()
                     gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
                     gp.setProtocolAsSimulated(protocol)
