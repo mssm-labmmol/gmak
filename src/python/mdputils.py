@@ -1,5 +1,3 @@
-import runcmd
-
 class mdpUtils:
     """A simple class to read info and possibly manipulate GROMACS .mdp files.
     Features are implemented as they are needed, so many functionalities may still
@@ -86,6 +84,17 @@ class mdpUtils:
 
     def set_option(self, option, value_list):
         self.optionsDict[option] = value_list
+
+    def set_temperature(self, value):
+        # temperature can occur in any of these options
+        options = ['ref-t', 'ref_t', 'gen-temp', 'gen_temp']
+        for opt in options:
+            try:
+                size = len(self.optionsDict[opt])
+                self.optionsDict[opt] = [value for i in range(size)]
+            except KeyError:
+                # ignore missing keys
+                pass
         
     def set_lambda_state(self, value):
         option = 'init-lambda-state'
