@@ -101,6 +101,9 @@ class GridShifter:
         self.grid.incrementPrefixOfTopologies()
         self.grid.writeTopologies()
 
+        # Set center as sample.
+        self.grid[linearCG].set_as_sample()
+
         shiftTuple = cartesianGrid.getDisplacement(cartesianGrid.getCenterAsLinear(), linearCG)
         
         # New gridpoints.

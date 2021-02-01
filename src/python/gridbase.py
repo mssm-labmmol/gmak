@@ -1,24 +1,25 @@
 import runcmd
-import  re
-import  os
-import  shlex
-import  numpy           as     np
-from    property        import DGsolvAlchemicalAnalysis
-from    mdputils        import * 
-from    reweightbase    import *
-from    traj_ana        import *
-from    traj_filter     import *
-from    reweight        import *
-import  multiprocessing
-from    property        import * 
-from    grid_ana        import *
-import  warnings
-from    surrogate_model import *
-from    cartesiangrid   import *
-from    gridshifter     import *
-import  copy
-import  pickle
-from    logger          import *
+import re
+import os
+import shlex
+import numpy           as     np
+from   property        import DGsolvAlchemicalAnalysis
+from   mdputils        import * 
+from   reweightbase    import *
+from   traj_ana        import *
+from   traj_filter     import *
+from   reweight        import *
+import multiprocessing
+from   property        import * 
+from   grid_ana        import *
+import warnings
+from   surrogate_model import *
+from   cartesiangrid   import *
+from   gridshifter     import *
+import copy
+import pickle
+from   logger          import *
+from   state           import *
 
 def reweightItpChanger (inputTopology, index, outputTopology):
     fp = open(inputTopology, 'r')
@@ -361,6 +362,7 @@ class ParameterGrid:
         parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter(), EmptyGridShifter(), workdir)
         parameterGrid.xlabel = xlabel
         parameterGrid.ylabel = ylabel
+        parameterGrid.init = True
         parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
         parameterGrid.shifter    = shifterFactory(parameterGrid, shifterArgs)
         parameterGrid.set_samples(samples)
@@ -865,11 +867,11 @@ class ParameterGrid:
                     fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, kind, prop)
                     model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False, init=True):
+    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
         globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         globalLogger.indent()
 
-        if (init):
+        if (self.init):
             # initialize number of steps of simulations
             self.initProtocolSteps(protocols)
 
@@ -907,8 +909,8 @@ class ParameterGrid:
         if (plotFlag):
             optimizer.plotToPdf (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_score.pdf")
 
-        # save grid to binary -- nice!
-        self.save_to_binary(optimizer)
+        #self.save_to_binary(optimizer) # No longer needed because I am saving state
+                                        # at the end of each run.
 
         # convert protocolsHash (values = list of protocol names) into
         # protocolsHashByObject (values = list of references to protocols)
@@ -930,6 +932,9 @@ class ParameterGrid:
             else:
                 globalLogger.unindent()
                 globalLogger.putMessage('END MAINLOOP', dated=True)
+                globalState.saveToFile() # Save state to file if
+                                         # needed for further
+                                         # analysis.
                 return
         else:
             for sample in nextSample:
@@ -937,7 +942,9 @@ class ParameterGrid:
         # Recursion
         globalLogger.unindent()
         globalLogger.putMessage('END GRIDSTEP', dated=True)
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, init=init_flag)
+        self.init = init_flag
+        globalState.saveToFile()
+        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
             
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            

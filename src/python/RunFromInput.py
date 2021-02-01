@@ -11,12 +11,14 @@ from protocols import LiquidProtocol, GasProtocol, SlabProtocol
 from gridbase import GridPoint, ParameterGrid
 from gridoptimizer import gridOptimizer
 from subgrid import *
+from state import * 
 
 import numpy as np
 import os
 import sys
 import copy
 import runcmd
+import pickle
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
@@ -27,36 +29,54 @@ plotFlag = not('--no-plot' in sys.argv)
 
 if __name__ == "__main__":
 
-    (base_workdir,
-     grid,
-     protocols,
-     properties,
-     protocolsHash,
-     optimizer,
-     gaCoverInterface,
-     surrogateModelHash,
-     subgridHash) = initialize_from_input (sys.argv[1], bool_legacy)
+    if ('--restart' in sys.argv): # restart from a given binary file
+        binFilename = sys.argv[sys.argv.index('--restart') + 1]
+        binFile = open(binFilename, 'rb')
+        globalState.setFromBinary(binFile) # load state
+        binFile.close()
 
-    # push nearest copies into optimizer
-    optimizer.pushNearest(surrogateModelHash)
+        (base_workdir, # read variables as if reading from an input file,
+         grid,         # but actually reading from state
+         protocols,    # 
+         properties,   # this way the rest of this program can remain the same
+         protocolsHash,
+         optimizer,
+         gaCoverInterface,
+         surrogateModelHash,
+         subgridHash) = globalState.getInitializationState()
 
-    # SET RANDOM NUMBER SEED - TODO
+        globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
-    # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
-    mdp_ut = mdpUtils()
-    for protocol in protocols:
-        # Check only production run.
-        mdp_ut.parse_file(protocol.mdps[-1])
-        efreq = mdp_ut.get_writefreq_energy()
-        if (protocol.type == 'slab'):
-            xfreq = mdp_ut.get_writefreq_pos()
-        else:
-            xfreq = mdp_ut.get_writefreq_compressedpos()
-        if (efreq != xfreq):
-            raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
-                protocol.name, efreq, xfreq))
+    else:
+        globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy))
 
-    # *********************** End of checks for run  **************************        
+        (base_workdir, # read variables from input file
+         grid,
+         protocols,
+         properties,
+         protocolsHash,
+         optimizer,
+         gaCoverInterface,
+         surrogateModelHash,
+         subgridHash) = globalState.getInitializationState()
+
+        # push nearest copies into optimizer
+        optimizer.pushNearest(surrogateModelHash)
+        # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
+        mdp_ut = mdpUtils()
+        for protocol in protocols:
+            # Check only production run.
+            mdp_ut.parse_file(protocol.mdps[-1])
+            efreq = mdp_ut.get_writefreq_energy()
+            if (protocol.type == 'slab'):
+                xfreq = mdp_ut.get_writefreq_pos()
+            else:
+                xfreq = mdp_ut.get_writefreq_compressedpos()
+            if (efreq != xfreq):
+                raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
+                    protocol.name, efreq, xfreq))
+
+        # *********************** End of checks for run  **************************        
 
     globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
     globalLogger.indent()
