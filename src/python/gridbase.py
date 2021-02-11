@@ -167,7 +167,8 @@ class GridPoint:
         return self.estimated_properties[prop].err
 
     def prepare_with_protocol_at_dir (self, protocol, workdir):
-        protocol.prepare_gridpoint_at_dir (self, workdir)
+        if (protocol.requires_reweight):
+            protocol.prepare_gridpoint_at_dir (self, workdir)
 
     def simulate_with_protocol_at_dir (self, protocol, workdir):
         protocol.run_gridpoint_at_dir (self, workdir)
