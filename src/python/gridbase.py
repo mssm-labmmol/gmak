@@ -418,10 +418,9 @@ class ParameterGrid:
 
     def writeTopologies(self):
         for t, topoBundle in enumerate(self.topologyBundles.values()):
-            hideForcefield = (t != 0)
             for i in range(self.get_linear_size()):
                 self.parSpaceGen.setState(i)
-                topoBundle.writeFilesForStatepath(i, hideForcefield=hideForcefield)
+                topoBundle.writeFilesForStatepath(i)
 
     def writeParameters(self):
         self.parSpaceGen.writeParameters(self.makePrefixOfParameters())

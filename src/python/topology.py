@@ -170,17 +170,20 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
     def getFiles(self):
         return self.fn
     
-    def writeToFiles(self, topology, hideForcefield=False):
+    def writeToFiles(self, topology):
         fp = open(self.fn, 'w')
 
-        if (not hideForcefield):
-            # Write defaults block.
-            fp.write("[ defaults ]\n; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ\n  1             1               no              1.0     1.0\n")
-            fp.write('\n')
-            # Write bonded.
-            self._writeBonded(fp, topology)
-            # Write nonbonded.
-            self._writeNonbonded(fp, topology)
+        # Guard force field part.
+        fp.write("#ifndef FORCEFIELD_INCLUDE\n")
+        fp.write("#define FORCEFIELD_INCLUDE\n")
+        # Write defaults block.
+        fp.write("[ defaults ]\n; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ\n  1             1               no              1.0     1.0\n")
+        fp.write('\n')
+        # Write bonded.
+        self._writeBonded(fp, topology)
+        # Write nonbonded.
+        self._writeNonbonded(fp, topology)
+        fp.write("#endif\n")
 
         # Write topo info.
         self._writeTopoInfo(fp, topology)
@@ -282,9 +285,9 @@ class TopologyBundle:
     def incrementPrefix(self):
         self.topologyOutputSetter.incrementPrefix()
 
-    def writeFilesForStatepath(self, state, hideForcefield=False):
+    def writeFilesForStatepath(self, state):
         self.topologyOutputSetter.setState(self.topologyOutput, state)  
-        self.topologyOutput.writeToFiles(self.topology, hideForcefield=hideForcefield)
+        self.topologyOutput.writeToFiles(self.topology)
 
     def getPathsForStatepath(self, state):
         self.topologyOutputSetter.setState(self.topologyOutput, state) 
