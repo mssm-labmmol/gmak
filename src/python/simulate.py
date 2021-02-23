@@ -51,7 +51,10 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
         globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
     elif (simu_state == 'FULL'):
         globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
-        runcmd.run("%s mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label, workdir, label, label))
+        if (nprocs == -1):
+            runcmd.run("%s mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label, workdir, label, label))
+        else:
+            runcmd.run("%s mdrun -nt %d -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label, workdir, label, label))
     elif (simu_state == 'NONE'):
         globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
         command = "%s grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (ConfigVariables.gmx, mdp, conf, top, workdir, label, label)
