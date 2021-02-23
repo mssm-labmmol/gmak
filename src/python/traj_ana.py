@@ -45,7 +45,7 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
         prop = "pV"
     if name == "volume":
         prop = "Volume"
-    runcmd.run("echo \"" + prop + "\" | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
+    runcmd.run("echo " + prop + " | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
 
 def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0, bin=0.002):
     xtc = os.path.abspath(xtc)
@@ -61,7 +61,7 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
     output_list = []
     
     # dummy property, calculated only to extract the times
-    runcmd.run("echo \"Pot\" | %s energy -f %s -s %s -o %s_dummy-times.xvg" % (ConfigVariables.gmx, edr,tpr,output_file_preffix))
+    runcmd.run("echo Pot | %s energy -f %s -s %s -o %s_dummy-times.xvg" % (ConfigVariables.gmx, edr,tpr,output_file_preffix))
     times = np.loadtxt("%s_dummy-times.xvg" % (output_file_preffix), usecols=(0,), comments=['@','#'])
 
     gr_data = []
