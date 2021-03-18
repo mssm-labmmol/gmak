@@ -125,6 +125,8 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
             return 6
         if name[0] == 'N':
             return 7
+        if name == 'AR':
+            return 18
 
     def _alterFile(self, newFile):
         self.fn = newFile
@@ -139,7 +141,10 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         # Write atomtypes.
         fp.write("[ atomtypes ]\n")
         for label, pars in atomtypes:
+            print(atomtypes)
+            print(pars)
             parameters = dict(pars)
+            print(parameters)
             fp.write("%-5s%4d%6.3f%6.3f%3s%18.7e%18.7e\n" % (label, self._l2z(label), 0.0, 0.0, "A",
                                                              parameters['c6'], parameters['c12']))
         fp.write('\n')
