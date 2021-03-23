@@ -862,10 +862,9 @@ class ParameterGrid:
             I_s = self.get_samples_id()
             # estimate properties
             for p, (model, prop) in enumerate(interp_models_props):
-                for kind in [model.kind, 'nearest']:
-                    model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()))
-                    fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, kind, prop)
-                    model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
+                model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()))
+                fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
+                model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
     def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
         globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)

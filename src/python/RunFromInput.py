@@ -60,8 +60,6 @@ if __name__ == "__main__":
          surrogateModelHash,
          subgridHash) = globalState.getInitializationState()
 
-        # push nearest copies into optimizer
-        optimizer.pushNearest(surrogateModelHash)
         # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
         mdp_ut = mdpUtils()
         for protocol in protocols:
