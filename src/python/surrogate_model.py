@@ -244,10 +244,12 @@ class Interpolation (SurrogateModel):
 class GaussianProcessRegressionInterpolation (Interpolation):
     # GPR inherits from Interpolation but overrides the actual
     # interpolation operation.
+    reweight = False
+    corners = True
+    kind = 'gpr'
 
     def __init__(self): 
-        self.reweight = False
-        self.corners = True
+        return
 
     @staticmethod
     def _featureNormalization(Xsamples, Xgrid):
