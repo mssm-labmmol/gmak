@@ -24,7 +24,7 @@ def init_surrogate_model_from_string (string, bool_legacy):
         else:
             return MBAR()
     elif(string == 'gpr'):
-        GaussianProcessRegressionInterpolation()
+        return GaussianProcessRegressionInterpolation()
     else:
         return Interpolation(string)
 
