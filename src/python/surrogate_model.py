@@ -253,7 +253,7 @@ class GaussianProcessRegressionInterpolation (Interpolation):
 
     @staticmethod
     def _featureNormalization(Xsamples, Xgrid):
-        cp = Xsamples.copy()
+        cp = Xsamples.copy().astype('float64')
         for i in range(Xsamples.ndim):
             max = np.max(Xgrid[:, i])
             min = np.min(Xgrid[:, i])
@@ -290,7 +290,7 @@ class GaussianProcessRegressionInterpolation (Interpolation):
         for k in kernels:
             # Initialize GPR process
             gp = gaussian_process.GaussianProcessRegressor(kernel=k,
-                                                        n_restarts_optimizer=optimizationCycles)
+                                                           n_restarts_optimizer=optimizationCycles)
             # Fit model
             gp.fit(X_, Yarray)
             # Test log of marginal likelihood
