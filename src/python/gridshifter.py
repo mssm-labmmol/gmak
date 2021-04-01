@@ -63,9 +63,10 @@ class GridShifter:
         return self.cg
 
     # With CG calculated, verify if we need to shift.
-    def doWeShift (self):
+    def doWeShift (self, optimizer):
         if (self.nshifts >= self.maxshifts):
             return False
+        self.calcCG(optimizer)
         grid_size = self.grid.get_size()
         dimension = self.grid.get_dim()
         for i in range(dimension):
@@ -77,8 +78,7 @@ class GridShifter:
         return False
 
     def checkShift (self, optimizer):
-        self.calcCG(optimizer)
-        if not (self.doWeShift()):
+        if not (self.doWeShift(optimizer)):
             globalLogger.putMessage('MESSAGE: The grid *WAS NOT* shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
             return False
         globalLogger.putMessage('MESSAGE: The grid was shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
