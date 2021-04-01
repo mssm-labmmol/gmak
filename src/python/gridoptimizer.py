@@ -63,13 +63,13 @@ class gridOptimizer:
         for p in range(numberOfProperties):
             Z = st.norm.ppf(1 - 0.5 * (1 - K), scale=propertyErrors[p])
             if (propertyEstimates[p] >= propertyReferences[p]):
-                devMax = propertyEstimates[p] + Z * propertyErrors[p] - propertyReferences[p]
-                devMin = propertyEstimates[p] - Z * propertyErrors[p] - propertyReferences[p]
+                devMax = propertyEstimates[p] + Z - propertyReferences[p]
+                devMin = propertyEstimates[p] - Z - propertyReferences[p]
                 if (devMin < 0):
                     devMin = 0
             else:
-                devMax = propertyReferences[p] - propertyEstimates[p] + Z * propertyErrors[p]
-                devMin = propertyReferences[p] - propertyEstimates[p] - Z * propertyErrors[p]
+                devMax = propertyReferences[p] - propertyEstimates[p] + Z
+                devMin = propertyReferences[p] - propertyEstimates[p] - Z
                 if (devMin < 0):
                     devMin = 0
             scoreMax += propertyWeis[p] * (devMax/propertyReferences[p]) ** 2
