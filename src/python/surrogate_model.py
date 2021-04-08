@@ -1,24 +1,30 @@
-""" 
-This file defines the base class SurrogateModel and the derived classes for each
-type of surrogate model: MBAR and three interpolation methods nearest neighbor,
-linear and (bi)cubic spline interpolation.  In principle, the main code needs
-only to use methods defined for the base class. Method-specific details are
-dealt with inside each class.
+"""This file defines the base class SurrogateModel and the derived
+classes for each type of surrogate model: MBAR, the three
+interpolation methods nearest neighbor, linear and (bi)cubic spline
+interpolation, and Gaussian Process Regression.
 """
 
+# TODO: Rewrite it so that there are two types of SurrogateModel:
+# those based on Reweight (MBAR) and those based on Avgs and Stds (all
+# interpolations + GPR).
+
 from os import system
-import runcmd
 import pymbar
 import numpy as np
 import sys
 from scipy.interpolate import griddata
+# Import scikit-learn things
+from sklearn import gaussian_process
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, Matern, DotProduct, ExpSineSquared, RationalQuadratic
 
 def init_surrogate_model_from_string (string, bool_legacy):
-    if (string == 'mbar'):
+    if(string == 'mbar'):
         if (bool_legacy):
             return MBARLegacy()
         else:
             return MBAR()
+    elif(string == 'gpr'):
+        return GaussianProcessRegressionInterpolation()
     else:
         return Interpolation(string)
 
@@ -234,3 +240,120 @@ class Interpolation (SurrogateModel):
         (A_ps, dA_ps) = self._computeAvgStd(A_psn)
         return self.computeExpectationsFromAvgStd(A_ps, dA_ps, I_s, gridShape)
 
+
+class GaussianProcessRegressionInterpolation (Interpolation):
+    # GPR inherits from Interpolation but overrides the actual
+    # interpolation operation.
+    reweight = False
+    corners = True
+    kind = 'gpr'
+
+    def __init__(self): 
+        return
+
+    @staticmethod
+    def _featureNormalization(Xsamples, Xgrid):
+        cp = Xsamples.copy().astype('float64')
+        for i in range(Xsamples.ndim):
+            max = np.max(Xgrid[:, i])
+            min = np.min(Xgrid[:, i])
+            cp[:, i] = (Xsamples[:, i] - min)/(max - min)
+        return cp
+
+    @staticmethod
+    def _GPfit(Xarray, Yarray, Xpred, coreKernel=None, noiseLevel=None, optimizationCycles=20):
+        # Normalize each feature to [0,1] interval
+        X_ = GaussianProcessRegressionInterpolation._featureNormalization(Xarray, Xpred)
+        Xpred_ = GaussianProcessRegressionInterpolation._featureNormalization(Xpred, Xpred)
+        # If there is only one feature, reshape the arrays Xarray and Xpred
+        if (Xarray.ndim == 1):
+            X_ = Xarray.reshape(-1, 1)
+        if (Xpred.ndim == 1):
+            Xpred_ = Xpred.reshape(-1, 1)
+        if (coreKernel is None):
+            # Loop over test core Kernels
+            kernels = [ConstantKernel() * RBF(),
+                    ConstantKernel() * Matern(),
+                    ConstantKernel() * DotProduct(),
+                    ConstantKernel() * ExpSineSquared(),
+                    ConstantKernel() * RationalQuadratic()]
+        else:
+            # Use given kernel only
+            kernels = [coreKernel,]
+        if (noiseLevel is not None):
+            # Add noise level
+            for i, k in enumerate(kernels):
+                kernels[i] = k + WhiteKernel(noise_level=noiseLevel, noise_level_bounds='fixed')
+        maxLogLikelihood = -1.0e+23
+        optGP = None
+        # Loop over kernels
+        for k in kernels:
+            # Initialize GPR process
+            gp = gaussian_process.GaussianProcessRegressor(kernel=k,
+                                                           n_restarts_optimizer=optimizationCycles)
+            # Fit model
+            gp.fit(X_, Yarray)
+            # Test log of marginal likelihood
+            if (gp.log_marginal_likelihood_value_ > maxLogLikelihood):
+                optGP = gp
+                maxLogLikelihood = gp.log_marginal_likelihood_value_
+        print('Optimal GPR is ', optGP)
+        print('LogLikelihood = ', maxLogLikelihood)
+        return optGP.predict(Xpred_, return_std=True) # ypred, sigma
+
+    def computeExpectationsFromAvgStd(self, A_ps, dA_ps, I_s, gridShape):
+        # make grid from shape
+        gridDomain = np.meshgrid(*[np.arange(s) for s in gridShape], indexing='ij')
+        # determine grid indices for sampled states
+        sampleIndices = []
+        gridIndices = []
+        linearIdx = 0
+        for idx in np.ndindex(gridShape):
+            gridIndices.append(np.array(idx))
+            if linearIdx in I_s:
+                sampleIndices.append(np.array(idx))
+            linearIdx += 1
+        gridIndices = np.array(gridIndices)
+        sampleIndices = np.array(sampleIndices)
+        # interpolate property data
+        A_pk = []
+        dA_pk = []
+        numberProps = A_ps.shape[0]
+        for i in range(numberProps):
+            noise_level = np.mean(dA_ps[i,:])**2
+            A_k, dA_k  = GaussianProcessRegressionInterpolation._GPfit(sampleIndices, A_ps[i,:], gridIndices, noiseLevel=noise_level)
+            A_pk.append(A_k)
+            dA_pk.append(dA_k)
+        A_pk = np.array(A_pk)
+        dA_pk = np.array(dA_pk)
+        A_pk = A_pk.reshape((numberProps, A_k.size))
+        dA_pk = dA_pk.reshape((numberProps, dA_k.size))        
+        self.EA_pk = A_pk
+        self.dEA_pk = dA_pk
+        return (A_pk, dA_pk)
+        
+    def computeExpectations(self, A_psn, I_s, gridShape):
+        """
+        Parameters:
+        -----------
+        A_psn :    bi-dimensional list P x S of (np.ndarray, float, shape N(S))
+                      P - number of properties
+                      S - number of sampled states
+                      N - number of uncorrelated configurations
+                      A_psn[p,s,n] - property 'p' for configuration 'n' of sampled state 's'
+
+        I_s   :    np.ndarray of shape (S)
+                      I_s[s] - linear index of sampled state 's'
+        
+        gridShape : tuple (n_1, n_2, ..., n_D), int
+                      n_d - number of partitions for edge 'd'
+
+        Returns:
+        --------
+        (EA_pk, dEA_pk) :    EA_pk :    np.ndarray, float, shape (P,K)
+                            dEA_pk :    np.ndarray, float, shape (P,K)
+
+        """
+        # mean and std for sampled states
+        (A_ps, dA_ps) = self._computeAvgStd(A_psn)
+        return self.computeExpectationsFromAvgStd(A_ps, dA_ps, I_s, gridShape)

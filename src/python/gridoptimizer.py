@@ -51,14 +51,6 @@ class gridOptimizer:
                 self.referenceWeights[propertyName] = float(splittedLine[2])
                 self.referenceTolerances[propertyName] = float(splittedLine[3])
 
-    def pushNearest(self, smHash):
-        names = list(self.referenceValues.keys())
-        for name in names:
-            if (smHash[name] != 'mbar'):
-                self.referenceValues[name + '_nearest'] = self.referenceValues[name]
-                self.referenceWeights[name + '_nearest'] = 0.00
-                self.referenceTolerances[name + '_nearest'] = 1.00e+23
-
     def rankScores (self):
         self.stateScores.sort(key=lambda x: x[1])
         self.stateScoreIntervals[:] = [self.stateScoreIntervals[x[0]] for x in self.stateScores]
@@ -71,13 +63,13 @@ class gridOptimizer:
         for p in range(numberOfProperties):
             Z = st.norm.ppf(1 - 0.5 * (1 - K), scale=propertyErrors[p])
             if (propertyEstimates[p] >= propertyReferences[p]):
-                devMax = propertyEstimates[p] + Z * propertyErrors[p] - propertyReferences[p]
-                devMin = propertyEstimates[p] - Z * propertyErrors[p] - propertyReferences[p]
+                devMax = propertyEstimates[p] + Z - propertyReferences[p]
+                devMin = propertyEstimates[p] - Z - propertyReferences[p]
                 if (devMin < 0):
                     devMin = 0
             else:
-                devMax = propertyReferences[p] - propertyEstimates[p] + Z * propertyErrors[p]
-                devMin = propertyReferences[p] - propertyEstimates[p] - Z * propertyErrors[p]
+                devMax = propertyReferences[p] - propertyEstimates[p] + Z
+                devMin = propertyReferences[p] - propertyEstimates[p] - Z
                 if (devMin < 0):
                     devMin = 0
             scoreMax += propertyWeis[p] * (devMax/propertyReferences[p]) ** 2
@@ -117,11 +109,9 @@ class gridOptimizer:
                 self.stateScoreIntervals[gP.id][1][ci] = self.computeNumericError(propertyEstimates, propertyErrs, propertyReferences, propertyWeis, confidenceLevel=cl)
         self.rankScores()
 
-    def printToFile (self, grid, filename, sorted=True, ignoreSuffix='_nearest'):
+    def printToFile (self, grid, filename, sorted=True):
         fp = open(filename, "w")
         properties = self.referenceTolerances.keys()
-        # remove ignored suffix from properties
-        properties = [prop for prop in properties if not(prop.endswith(ignoreSuffix))]
         fp.write("# %3s" % "id")
         for prop in properties:
             fp.write("%16s" % prop)
@@ -226,7 +216,7 @@ class gridOptimizer:
                     globalLogger.putMessage('END OPTIMIZER')
                     return -1
                 for prop in properties:
-                    # skip properties without weight - this includes those ending with '_nearest'
+                    # skip properties without weight 
                     if (self.referenceWeights[prop] == 0.0):
                         continue
                     if (smHash[prop] == 'mbar'):

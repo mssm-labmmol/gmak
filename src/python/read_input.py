@@ -226,13 +226,8 @@ def initialize_from_input (input_file, bool_legacy):
                 propRead = line.split()[2]
                 nameRead = line.split()[3]
 
-                if (surrModel == 'linear') or (surrModel == 'cubic'):
-                    propIds = [propId, propId + '_nearest']
-                    surrModels = [surrModel, 'nearest']
-                else:
-                    # mbar
-                    propIds = [propId]
-                    surrModels = [surrModel]
+                propIds = [propId]
+                surrModels = [surrModel]
 
                 for propId, surrModel in zip(propIds, surrModels):
                     output_surrogateModel[propId] = surrModel
