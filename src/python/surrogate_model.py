@@ -7,6 +7,8 @@ interpolation, and Gaussian Process Regression.
 # TODO: Rewrite it so that there are two types of SurrogateModel:
 # those based on Reweight (MBAR) and those based on Avgs and Stds (all
 # interpolations + GPR).
+#
+# TODO: The AvgStd stuff can be in the base class.
 
 from os import system
 import pymbar
@@ -25,6 +27,8 @@ def init_surrogate_model_from_string (string, bool_legacy):
             return MBAR()
     elif(string == 'gpr'):
         return GaussianProcessRegressionInterpolation()
+    elif(string == 'empty'):
+        return EmptySurrogateModel()
     else:
         return Interpolation(string)
 
@@ -48,6 +52,95 @@ class SurrogateModel:
 
     def writeLogToDirectory(self, dir_path):
         return
+
+class EmptySurrogateModel:
+
+    self.corners = False
+    self.reweight = False
+
+    def __init__(self):
+        return
+
+    def _computeAvgStd(self, A_psn):
+        numberProps = len(A_psn)
+        numberStates = len(A_psn[0])
+        A_ps = []
+        dA_ps = []
+        for i in range(numberProps):
+            A_s = []
+            dA_s = []
+            for s in range(numberStates):
+                numberOfConfs = len(A_psn[i][s])
+                if (numberOfConfs < 2):
+                    raise Exception
+                elif (numberOfConfs == 2):
+                    # In this case, first line is average and second line is error.
+                    A_s.append(A_psn[i][s][0])
+                    dA_s.append(A_psn[i][s][1])
+                else:
+                    A_s.append(np.mean(A_psn[i][s]))
+                    dA_s.append(np.std(A_psn[i][s], ddof=1) / np.sqrt(len(A_psn[i][s])))
+            A_ps.append(A_s)
+            dA_ps.append(dA_s)
+        A_ps = np.array(A_ps)
+        dA_ps = np.array(dA_ps)
+        return (A_ps, dA_ps)
+
+    def computeExpectationsFromAvgStd(self, A_ps, dA_ps, I_s, gridShape):
+        # make grid from shape
+        gridDomain = np.meshgrid(*[np.arange(s) for s in gridShape], indexing='ij')
+        # determine grid indices for sampled states
+        sampleIndices = []
+        linearIdx = 0
+        for idx in np.ndindex(gridShape):
+            if linearIdx in I_s:
+                sampleIndices.append(idx)
+            linearIdx += 1
+        # interpolate property data
+        A_pk = []
+        dA_pk = []
+        numberProps = A_ps.shape[0]
+        for i in range(numberProps):
+            A_k  = np.zeros(tuple(gridShape))
+            dA_k = np.zeros(tuple(gridShape))
+            for sr, si in enumerate(sampleIndices):
+                A_k[si] = A_ps[i,sr]
+                dA_k[si] = dA_ps[i,sr]
+            A_pk.append(A_k)
+            dA_pk.append(dA_k)
+        A_pk = np.array(A_pk)
+        dA_pk = np.array(dA_pk)
+        A_pk = A_pk.reshape((numberProps, A_k.size))
+        dA_pk = dA_pk.reshape((numberProps, dA_k.size))        
+        self.EA_pk = A_pk
+        self.dEA_pk = dA_pk
+        return (A_pk, dA_pk)
+        
+    def computeExpectations(self, A_psn, I_s, gridShape):
+        """
+        Parameters:
+        -----------
+        A_psn :    bi-dimensional list P x S of (np.ndarray, float, shape N(S))
+                      P - number of properties
+                      S - number of sampled states
+                      N - number of uncorrelated configurations
+                      A_psn[p,s,n] - property 'p' for configuration 'n' of sampled state 's'
+
+        I_s   :    np.ndarray of shape (S)
+                      I_s[s] - linear index of sampled state 's'
+        
+        gridShape : tuple (n_1, n_2, ..., n_D), int
+                      n_d - number of partitions for edge 'd'
+
+        Returns:
+        --------
+        (EA_pk, dEA_pk) :    EA_pk :    np.ndarray, float, shape (P,K)
+                            dEA_pk :    np.ndarray, float, shape (P,K)
+
+        """
+        # mean and std for sampled states
+        (A_ps, dA_ps) = self._computeAvgStd(A_psn)
+        return self.computeExpectationsFromAvgStd(A_ps, dA_ps, I_s, gridShape)
 
 class MBAR (SurrogateModel):
 

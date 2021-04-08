@@ -49,7 +49,7 @@ if __name__ == "__main__":
         globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
     else:
-        globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy))
+        globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy, validateFlag))
 
         (base_workdir, # read variables from input file
          grid,
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
     globalLogger.indent()
-    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, validateFlag)
+    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
     globalLogger.unindent()
     globalLogger.putMessage('END MAINLOOP', dated=True)
 

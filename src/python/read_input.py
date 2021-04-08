@@ -132,7 +132,7 @@ class ParameterIO:
 #         # debug
 #         psgen.debugPrint()
         
-def initialize_from_input (input_file, bool_legacy):
+def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     output_grid = None
     output_gridshifter = None
     output_protocols = []
@@ -222,7 +222,10 @@ def initialize_from_input (input_file, bool_legacy):
                 if line.rstrip() == '$end':
                     break
                 propId   = line.split()[0]
-                surrModel = line.split()[1]
+                if (validateFlag):
+                    surrModel = 'empty'
+                else:
+                    surrModel = line.split()[1]
                 propRead = line.split()[2]
                 nameRead = line.split()[3]
 

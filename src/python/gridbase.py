@@ -866,7 +866,7 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False, validateFlag=False):
+    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
         globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         globalLogger.indent()
 
@@ -881,7 +881,7 @@ class ParameterGrid:
         self.writeParameters()
         
         for protocol in protocols:
-            if (protocol.requires_corners()) and not (validateFlag):
+            if (protocol.requires_corners()):
                 self.add_corners()
                 break
 
