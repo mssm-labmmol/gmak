@@ -1,5 +1,6 @@
 from datetime import datetime
 import runcmd
+import os
 
 class Logger (object):
 
@@ -37,4 +38,4 @@ class EmptyLogger (Logger):
     def putMessage(self, msg, dated=False):
         pass
 
-globalLogger = Logger('GLOBAL_LOGGER.log')
+globalLogger = Logger('gmak_{}.log'.format(os.getpid()))
