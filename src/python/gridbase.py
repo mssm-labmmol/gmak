@@ -866,7 +866,7 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
+    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False, validateFlag=False):
         globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         globalLogger.indent()
 
@@ -881,7 +881,7 @@ class ParameterGrid:
         self.writeParameters()
         
         for protocol in protocols:
-            if (protocol.requires_corners()):
+            if (protocol.requires_corners()) and not (validateFlag):
                 self.add_corners()
                 break
 
@@ -943,7 +943,7 @@ class ParameterGrid:
         globalLogger.putMessage('END GRIDSTEP', dated=True)
         self.init = init_flag
         globalState.saveToFile()
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, validateFlag)
             
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            

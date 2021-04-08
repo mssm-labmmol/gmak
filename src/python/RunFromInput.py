@@ -11,7 +11,7 @@ from protocols import LiquidProtocol, GasProtocol, SlabProtocol
 from gridbase import GridPoint, ParameterGrid
 from gridoptimizer import gridOptimizer
 from subgrid import *
-from state import * 
+from state import *
 
 import numpy as np
 import os
@@ -25,7 +25,8 @@ if ('--legacy' in sys.argv):
 else:
     bool_legacy = False
 
-plotFlag = not('--no-plot' in sys.argv)
+plotFlag = not ('--no-plot' in sys.argv)
+validateFlag = ('--validate' in sys.argv)
 
 if __name__ == "__main__":
 
@@ -78,7 +79,7 @@ if __name__ == "__main__":
 
     globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
     globalLogger.indent()
-    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, validateFlag)
     globalLogger.unindent()
     globalLogger.putMessage('END MAINLOOP', dated=True)
 
