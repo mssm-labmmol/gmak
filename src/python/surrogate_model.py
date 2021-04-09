@@ -53,7 +53,7 @@ class SurrogateModel:
     def writeLogToDirectory(self, dir_path):
         return
 
-class EmptySurrogateModel:
+class EmptySurrogateModel(SurrogateModel):
 
     corners = False
     reweight = False
