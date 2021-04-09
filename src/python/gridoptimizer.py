@@ -30,14 +30,17 @@ class gridOptimizer:
     def getCurrentIteration(self):
         return self.nsteps
 
-    def readFromStream (self, stream):
+    def readFromStream (self, stream, validateFlag):
         for line in stream:
             if (line[0] == '#'):
                 continue
             elif (line.rstrip() == '$end'):
                 return
             elif (line.split()[0] == 'maxsteps'):
-                self.maxSteps = int(line.split()[1])
+                if (validateFlag):
+                    self.maxSteps = 0
+                else:
+                    self.maxSteps = int(line.split()[1])
             elif (line.split()[0] == 'ncut'):
                 self.percentCutoff = float(line.split()[1])
             # In all other cases, the line has syntax

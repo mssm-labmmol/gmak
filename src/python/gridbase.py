@@ -358,13 +358,15 @@ class ParameterGrid:
         return obj
 
     @staticmethod
-    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples=False):
+    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples=False, validateFlag=False):
         from gridshifter import EmptyGridShifter
         parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter(), EmptyGridShifter(), workdir)
         parameterGrid.xlabel = xlabel
         parameterGrid.ylabel = ylabel
         parameterGrid.init = True
         parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
+        if (validateFlag):
+            shifterArgs['maxshifts'] = 0
         parameterGrid.shifter    = shifterFactory(parameterGrid, shifterArgs)
         parameterGrid.set_samples(samples)
         if (keep_initial_samples):
@@ -372,7 +374,7 @@ class ParameterGrid:
         return parameterGrid
         
     @staticmethod
-    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir):
+    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir, validateFlag):
         samples       = []
         keep_initial_samples = False
         # Assumes last line read was '$grid'.
@@ -396,7 +398,7 @@ class ParameterGrid:
                     pass
                 else:
                     raise ValueError("fixsamples can only be 'yes' or 'no'")
-        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples)
+        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples, validateFlag)
         return grid
 
     def initProtocolSteps(self, protocols):

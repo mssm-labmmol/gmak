@@ -184,7 +184,7 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
             # This also signifies that no more $variation blocks exist
             # beyond this point.
             outputParameterSpaceGen = parameterIO.getParameterSpaceGenerator()
-            output_grid = ParameterGrid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter, output_workdir)
+            output_grid = ParameterGrid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter, output_workdir, validateFlag)
         if (line.rstrip() == "$protocol"):
             line = next(fp)
             if (line.split()[0] == 'type'):
@@ -322,7 +322,7 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                         print ("ERROR: Property \"%s\" is not supported.\n" % typeRead)
                         exit()
         if (line.rstrip() == '$optimize'):
-            output_optimizer.readFromStream (fp)
+            output_optimizer.readFromStream (fp, validateFlag)
         if (line.rstrip() == '$parameters'):
             output_paramLoop.readFromStream (fp)
         if (line.rstrip() == '$subgrid'):
