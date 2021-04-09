@@ -16,12 +16,16 @@ def read_nsteps_from_mdp (mdp):
 
 def check_simulation_state (workdir, label):
     check_log_loc = "%s/%s/%s.log" % (workdir, label, label)
+    check_gro_loc = "%s/%s/%s.gro" % (workdir, label, label)
     check_cpt_loc = "%s/%s/%s.cpt" % (workdir, label, label)
     if (os.path.isfile(check_log_loc)):
         if (os.path.isfile(check_cpt_loc)):
             return 'FULL'
         else:
-            return 'ONLY_LOG'
+            if (os.path.isfile(check_gro_loc)):
+                return 'COMPLETE_MINIM'
+            else:
+                return 'NONE'
     return 'NONE'
 
 def extend_something (nsteps, workdir, label, nprocs=-1):
@@ -46,7 +50,7 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     runcmd.run("mkdir -p %s/%s" % (workdir, label))
     check_log_loc = "%s/%s/%s.log" % (workdir,label,label)
     simu_state = check_simulation_state(workdir, label)
-    if (simu_state == 'ONLY_LOG'):
+    if (simu_state == 'COMPLETE_MINIM'):
         # This will only happen for minimization, I guess. We can just assume it finished alright with a warning.
         globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
     elif (simu_state == 'FULL'):
