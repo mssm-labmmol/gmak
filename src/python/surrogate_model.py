@@ -57,6 +57,7 @@ class EmptySurrogateModel(SurrogateModel):
 
     corners = False
     reweight = False
+    kind = 'empty'
 
     def __init__(self):
         return
