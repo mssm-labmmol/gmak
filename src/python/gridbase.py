@@ -945,7 +945,7 @@ class ParameterGrid:
         globalLogger.putMessage('END GRIDSTEP', dated=True)
         self.init = init_flag
         globalState.saveToFile()
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag, validateFlag)
+        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
             
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            
