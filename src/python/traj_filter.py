@@ -42,7 +42,7 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
         x = np.loadtxt(propfile, comments=['@','#'], usecols=(0,1,))
         if (methods[i] == 'mbar'):
             x_skipped = x[::actual_skip]
-        if (methods[i] in ['nearest', 'linear', 'cubic', 'gpr']):
+        if (methods[i] in ['nearest', 'linear', 'cubic', 'gpr', 'empty']):
             x_skipped = x[::skips[i]]
         else:
             raise ValueError("Unknown filtering method ", methods[i])
