@@ -12,6 +12,7 @@ from gridbase import GridPoint, ParameterGrid
 from gridoptimizer import gridOptimizer
 from subgrid import *
 from state import *
+from write_input import *
 
 import numpy as np
 import os
@@ -27,6 +28,7 @@ else:
 
 plotFlag = not ('--no-plot' in sys.argv)
 validateFlag = ('--validate' in sys.argv)
+writeNewInput = ('--write-input' in sys.argv)
 
 if __name__ == "__main__":
 
@@ -83,20 +85,31 @@ if __name__ == "__main__":
     globalLogger.unindent()
     globalLogger.putMessage('END MAINLOOP', dated=True)
 
+
+    # *********************** Write new input **********************************
+
+    if (writeNewInput):
+        mod = InputModifier(sys.argv[1])
+        #
+        mod.set_workdir(base_workdir + "_best_points")
+        mod.set_main_variation(grid.parSpaceGen)
+        mod.set_samples(optimizer.getRankedBest(1))
+        mod.write_to_file(sys.argv[1] + "_best_points")
+
     # *********************** Subgrid part           **************************        
 
-    subgridHash['parspacegen'] = copy.deepcopy(subgridHash['parspacegen'])
-    subgridHash['parspacegen'].rescale(subgridHash['factors'])
-    subgridObj = ParameterSubgrid(subgridHash['parspacegen'], grid, properties, subgridHash['method'], bool_legacy)
-    for prop in properties:
-        refValue = optimizer.referenceValues[prop]
-        subgridObj.save_property_values_to_file(prop)
-        subgridObj.save_property_diff_to_file(prop, refValue)
-        subgridObj.save_property_err_to_file(prop)
-        if plotFlag:
-            subgridObj.plot_property_to_file(prop)
-            subgridObj.plot_property_diff_to_file(prop, properties[prop], refValue)
-            subgridObj.plot_property_err_to_file(prop)
-    subgridObj.printAndPlotScores(optimizer, plotFlag)
-    subgridObj.writeParameters()
-    subgridObj.save_to_binary(optimizer)
+    #subgridHash['parspacegen'] = copy.deepcopy(subgridHash['parspacegen'])
+    #subgridHash['parspacegen'].rescale(subgridHash['factors'])
+    #subgridObj = ParameterSubgrid(subgridHash['parspacegen'], grid, properties, subgridHash['method'], bool_legacy)
+    #for prop in properties:
+    #    refValue = optimizer.referenceValues[prop]
+    #    subgridObj.save_property_values_to_file(prop)
+    #    subgridObj.save_property_diff_to_file(prop, refValue)
+    #    subgridObj.save_property_err_to_file(prop)
+    #    if plotFlag:
+    #        subgridObj.plot_property_to_file(prop)
+    #        subgridObj.plot_property_diff_to_file(prop, properties[prop], refValue)
+    #        subgridObj.plot_property_err_to_file(prop)
+    #subgridObj.printAndPlotScores(optimizer, plotFlag)
+    #subgridObj.writeParameters()
+    #subgridObj.save_to_binary(optimizer)

@@ -158,11 +158,26 @@ class NonbondedParameterReference(NonbondedParameter):
         for at in atomtypes:
             if (at.type == typeString):
                 self.reference = at.getNonbondedParameterReference(parString)
+                self.atomtype  = at
                 return
         raise ValueError("Trying to reference an Atomtype/NonbondedParameter which does not exist.")
     
     def dereference(self):
         return self.reference
+
+    def get_atomtype(self):
+        try:
+            return self.atomtype.type
+        except AttributeError: # In old runs, self.atomtype is not
+                               # defined while reading the input file,
+                               # so an AttributeError is raised at
+                               # this point when restarting from an
+                               # old .bin file.
+            return "XX"
+
+    def get_full_string(self):
+        return "{}/{}".format(self.get_atomtype(), self.reference.label())
+        
 
 class ParameterReferenceFactory:
 
@@ -215,6 +230,17 @@ class ParameterSpaceGenerator:
             for j, parRef in enumerate(parList):
                 par = parRef.dereference()
                 par.alter( values[j] )
+
+    def writeMainVariationBlock(self, stream):
+        name = 'main'
+        stream.write("$variation\n")
+        # Writing name and parameter strings requires ParameterSpaceGenerator
+        stream.write("name {}\n".format(name))
+        atomtype_strings = [x.get_full_string() for x in self.members[name][1]]
+        stream.write("pars " + " ".join(atomtype_strings) + "\n")
+        # Writing the rest is delegated to DomainSpace
+        self.members[name][0].write_block_to_stream(stream)
+        stream.write("$end\n\n")
 
     def writeParameters(self, prefix):
         for name in self.members.keys():

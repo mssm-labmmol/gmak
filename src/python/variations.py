@@ -136,12 +136,15 @@ class AbstractVariation(ABC):
     @abstractmethod
     def get_sizes(self): pass
 
+    def get_type(self): return self.type_string
+
 class VariationFromFunction(AbstractVariation):
     
     def __init__(self, dim, size, func):
         self.dim  = dim
         self.size = size
         self.func = func
+        self.type_string = "function"
 
     def gen_data(self):
         _data = np.zeros((self.size, self.dim))
@@ -165,18 +168,25 @@ class VariationFromFile(VariationFromFunction):
         self.size = size
         self.fn = fn
         self.func = VariationFunctionReadFromFile(dim, size, fn)
+        self.type_string = "file"
 
 class VariationConstant(VariationFromFunction):
     def __init__(self, dim, size, constants):
         self.dim = dim
         self.size = size
         self.func = VariationFunctionConstant(constants)
+        self.type_string = "constant"
 
 class VariationCartesian(VariationFromFunction):
     def __init__(self, dim, size, starts, steps, lens):
         self.dim = dim
         self.size = size
         self.func = VariationFunctionCartesian(starts, steps, lens)
+        self.type_string = "cartesian"
+    def write_block_to_stream(self, stream):
+        stream.write("start " + " ".join(map(str, self.func.starts)) + "\n")
+        stream.write("step "  + " ".join(map(str, self.func.steps)) + "\n")
+        stream.write("size "  + " ".join(map(str, self.func.lens)) + "\n")
 
 class VariationFromVariation(AbstractVariation):
     """
@@ -187,6 +197,7 @@ class VariationFromVariation(AbstractVariation):
         self.size = size
         self.variation = deepcopy(variation)
         self.func = func
+        self.type_string = "from_variation"
         if (self.func.domain_dim != self.variation.dim) or (self.func.image_dim != self.dim) or (self.dim != variation.dim):
             raise ValueError("Incompatible sizes in VariationFromVariation.")
 
@@ -210,6 +221,11 @@ class VariationFromVariationScale(VariationFromVariation):
     def __init__(self, dim, size, variation, factors):
         func = VariationFunctionScale(factors)
         super().__init__(dim, size, variation, func)
+        self.type_string = "scale"
+    def write_block_to_stream(self, stream):
+        stream.write("start " + " ".join(map(str, self.func.starts)) + "\n")
+        stream.write("step "  + " ".join(map(str, self.func.steps)) + "\n")
+        stream.write("size "  + " ".join(map(str, self.size)) + "\n")
 
 class AbstractVariationFactory:
 
@@ -323,6 +339,10 @@ class DomainSpace:
         
     def write_to_file(self, fn):
         np.savetxt(fn, self.data)
+
+    def write_block_to_stream(self, stream):
+        for gen in self.generators:
+            gen.write_block_to_stream(stream)
 
 class DomainSpaceFactory:
 
