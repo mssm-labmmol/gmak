@@ -1,0 +1,37 @@
+constraints           =  all-bonds
+constraint-algorithm  =  lincs
+integrator            =  md
+dt                    =  0.002
+nsteps                =  50000
+nstcomm               =  1
+;
+; Output control.
+;
+nstxout         = 0  
+nstvout         = 0
+nstenergy       = 500
+nstxtcout       = 0
+;
+nstlist         =  5
+ns_type         =  grid
+cutoff-scheme   =  Verlet
+rlist           =  1.4
+rcoulomb        =  1.4
+rvdw            =  1.4
+coulombtype     =  cut-off
+vdwtype         =  cut-off
+pbc             =  xyz
+;
+; Temperature coupling is on.
+;
+Tcoupl   =  v_rescale
+tau_t    =  0.10
+tc_grps  =  system
+ref_t = 90.13
+Pcoupl   =  no
+;
+; Generate velocites.
+;
+gen_vel   =  yes
+gen_temp = 90.13
+gen_seed  =  -1

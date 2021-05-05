@@ -1,0 +1,22 @@
+[ moleculetype ]
+AR        3    
+
+[ atoms ]
+ ; nr     type  resnr     resid      atom     cgnr   charge     mass
+    1     AR        1        AR       AR1        0   0.0000  39.9480
+
+[ pairs ]
+;
+
+[ bonds ]
+;
+
+[ angles ]
+;
+
+[ dihedrals ]
+;
+
+[ dihedrals ]
+; improper dihedrals
+

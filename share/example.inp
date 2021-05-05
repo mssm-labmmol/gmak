@@ -17,7 +17,7 @@ names argon
 # Topology (itp) files.
 # These files must contain only the [ atoms ], [ bonds ], [ angles ], [ dihedrals ], [ pairs ] and [ exclusions ] blocks.
 # Do not link to the force-field files---these links will be generated automatically by gridmaker based on the $atomtypes and $variations.
-itp   /home/yan/PROJECTS/mbar_par/nonbonded_comparison/top/argon.itp   
+itp   argon.itp   
 $end
 
 # Variations
@@ -66,9 +66,9 @@ $end
 $protocol
 type liquid
 name liq
-mdps /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/em_pme.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/nvt_pme.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/npt_pme.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/md_pme.mdp
+mdps em_pme.mdp nvt_pme.mdp npt_pme.mdp md_pme.mdp
 molecule argon
-coords /home/yan/PROJECTS/mbar_par/nonbonded_comparison/coords/argon.gro
+coords argon.gro
 length 5.00
 nmols 1500
 $end
@@ -88,7 +88,7 @@ $protocol
 type slab
 name slab
 #nprocs 16
-mdps /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/em_slab.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/nvt_slab.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/md_slab.mdp
+mdps em_slab.mdp nvt_slab.mdp md_slab.mdp
 # This means that the initial coordinates will be taken from the corresponding
 # liquid simulation.
 follow liq

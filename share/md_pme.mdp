@@ -1,0 +1,39 @@
+continuation          =  yes
+constraints           =  all-bonds
+constraint-algorithm  =  lincs
+integrator            =  md
+dt                    =  0.002
+nsteps                =  500000
+nstcomm               =  1
+;
+; Output control.
+;
+nstxout         = 250
+nstvout         = 0
+nstenergy       = 250
+nstxtcout       = 250
+nstcalcenergy   = 250
+;
+nstlist        =  5
+ns_type        =  grid
+cutoff-scheme  =  Verlet
+rlist          =  1.4
+rcoulomb       =  1.4
+rvdw           =  1.4
+coulombtype    =  cut-off
+vdwtype        =  cut-off
+pbc            =  xyz
+;
+; Berendsen temperature coupling is on
+;
+Tcoupl   =  v_rescale
+tau_t    =  0.10
+tc_grps  =  system
+ref_t = 90.13
+; Isotropic pressure coupling is now on
+Pcoupl           =  Berendsen
+Pcoupltype       =  isotropic
+tau_p            =  0.5
+compressibility  =  4.5e-5
+ref_p = 10.79
+gen_vel          =  no
