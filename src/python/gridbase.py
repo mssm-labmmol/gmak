@@ -410,6 +410,9 @@ class ParameterGrid:
         
     def getCartesianGrid(self):
         return self.indexGrid
+
+    def getParameterNames(self):
+        return self.parSpaceGen.getParameterNames()
         
     def get_molecules(self):
         return list(self.topologyBundles.keys())
@@ -868,7 +871,7 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag=False):
+    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag=False):
         globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         globalLogger.indent()
 
@@ -924,6 +927,15 @@ class ParameterGrid:
                         protocolsHashByObject[prop].append(prot)
                         
         nextSample = optimizer.determineNextSample (self, surrogateModelHash, protocolsHashByObject)
+
+        # update results assembler
+        for gs in self.get_samples_id():
+            for prop in properties:
+                est = self[gs].get_property_estimate(prop)
+                err = self[gs].get_property_err(prop)
+                pars = self.parSpaceGen.getParameterValues(gs)
+                resultsAssembler.addData(pars, prop, est, err)
+
         init_flag = False
         if (nextSample == -1):
             if self.shift(optimizer):
@@ -945,7 +957,7 @@ class ParameterGrid:
         globalLogger.putMessage('END GRIDSTEP', dated=True)
         self.init = init_flag
         globalState.saveToFile()
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag)
             
     # type-hinted header is commented because it is not supported in old Python versions
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            

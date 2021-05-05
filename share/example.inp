@@ -1,131 +1,113 @@
 # specify workdir
-workdir run
+workdir THIS_IS_A_TEST
 
-# Grid specification.
-$grid
-# Geometry.
-size 33 33 
-# Names of parameters.
-labels $C_6^{1/2}$ $C_{12}^{1/2}$
-# List of starting samples (zero-indexed).
-#samples 170 181 192 533 544 555 896 907 918
-#samples 170 181 192 429 525 529 533 544 555 558 896 907 918 956
-samples 525 529 533 544 555 558
+# base values for atomtypes 
+$atomtypes
+# type -- 'standard' is the only one available so far
+standard 
+# basic atomtypes
+# name            c6              c12     cs6    cs12
+AR     6.2647225e-03    9.8470440e-06     0.0     0.0
 $end
 
-# Specification of parameters.
-$parameters
-itp          et.itp
-atomtypes    CH3
-c6           9.3471353e-03     
-c12          2.6379573e-05 
-cs6          0.0000000e+00
-cs12         0.0000000e+00
-loop         CH3           c6            c12
-start                      9.3471353e-03 2.6379573e-05
-step                       1.6667000e-05 1.6667000e-08
-size                       33        33
+# specify the topologies of the molecules
+$molecules
+# names of the molecules
+names argon       
+# Topology (itp) files.
+# These files must contain only the [ atoms ], [ bonds ], [ angles ], [ dihedrals ], [ pairs ] and [ exclusions ] blocks.
+# Do not link to the force-field files---these links will be generated automatically by gridmaker based on the $atomtypes and $variations.
+itp   /home/yan/PROJECTS/mbar_par/nonbonded_comparison/top/argon.itp   
 $end
 
-# Protocols.
-
-# Liquid.
-$protocol
-type liquid
-name liq
-mdps mdp/em_pme.mdp mdp/nvt_pme.mdp mdp/npt_pme.mdp mdp/md_pme.mdp
-coords et.gro
-length 4.20
-nmols 512
-$end
-
-## Slab.
-#$protocol
-#type slab
-#name slab
-#mdps /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/mdp/em_slab.mdp /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/mdp/nvt_slab_eq.mdp /home/yan/PROJECTS/alkanes/from_zero/mbar_grids/mdp/nvt_slab.mdp
-## This means that the initial coordinates will be taken from the corresponding
-## liquid simulation.
-#follow liq
-#$end
-
-# Gas.
-$protocol
-type gas
-name gas
-mdps mdp/em_gas.mdp mdp/sd_gas.mdp
-coords et.gro
-gasdipole 1.85
-# infinite polarizability ==> correction == NULL
-polarizability 1e+23
-$end
-
-# Properties.
-# Notation:
-# LP = Liquid protocol.
-# GP = Gas protocol.
-# SP = Slab protocol.
-# CORR = Corrections to dhvap (besides polarization).
-$compute
-# density LP
-density liq
-# dhvap   LP   GP   CORR
-dhvap liq gas 0.00
-$end
-
-# Grid optimization.
-#
-# The optimization stops when maxsteps is reached or when the best ncut percent
-# of the parameters are within the tolerance established for each property.
-#
-$optimize
-maxsteps 1
-ncut 0.90
-# prop    ref     wei  tol    
-density  546.0   1.0  0.4
-dhvap    14.7  1.0  0.1
-#gamma    72.0    1.0  2.0
+# Variations
+$variation
+# the name of the variation; the fundamental variation MUST be named `main'.
+name        main
+# parameters defining the variation, following the syntax ATOMTYPE/PARAMETER.
+pars        AR/c6        AR/c12
+# type of variation---you will most likely use `cartesian'
+type        cartesian
+# starting values for each parameter
+start       5.929722500000000722e-03 9.147044000000001052e-06
+# step values for each parameter
+step        0.005e-03      0.005e-06
+# sizes along each dimension
+size        51            51
 $end
 
 $gridshift
 maxshifts   10
-#       l    r     b   t     
-margins     0.15   0.85  0.15  0.85
-ncut        0.01
+#           min[0]  max[0]  min[1]  max[1]  min[2]  max[2]  ...  min[dim]  max[dim]
+margins     0.25    0.75    0.25    0.75
+# The CG of the `ncut'-times-the-size-of-the-grid best points are checked against the margins.
+ncut        0.0005
+# Keep points from previous grids; you should use `yes' in all cases except interpolation.
+keepsamples no
 $end
 
-$gacover
-maxsamples 12
-nruns 10
-volfrac 0.85
-radius 4.80
-hardness 500
-popsize 200
-ngens 20
-#nostart
+$grid
+# reweight types
+reweight standard_force
+labels $C_6$ $C_12$
+# samples based on linear index
+samples 0 50 650 675 1300 1925 1950 2550 2600
+# for all grids, always use the same samples listed above
+fixsamples yes
 $end
 
-# Reweighting specification.
-$reweight
-# Type can be 'standard' or 'fast'.
-#
-# fast
-# -----
-#
-# In fast reweighting, the number of dofs of the parameter space must be
-# specified in an additional option 'npars'. This number is used to determine
-# the number of extra *.itp files per state, calculated as 2*npars + 1. These
-# extra topologies *MUST* be named after the original *.itp files as
-# PREFFIX_N.itp, where PREFFIX.itp corresponds to the original *.itp file and N
-# runs from 0 to 2*NPARS.
-#
-# The parameters of the grid must also be supplied in a file specified in the
-# option 'parameters'. This file must contain the GRID_SIZE x NPARS matrix
-# specifying the parameters (typically C6 and C12) of each state.
-#
-# Finally, the path of the ANA_RW binary must be given in the 'program' option.
-#
-type fast
-npars 2
-program ../../bin/ana_rw_quiet
+$subgrid
+method linear
+# factors along dimensions 
+factors 4 4
+$end
+
+# Protocols.
+$protocol
+type liquid
+name liq
+mdps /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/em_pme.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/nvt_pme.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/npt_pme.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/md_pme.mdp
+molecule argon
+coords /home/yan/PROJECTS/mbar_par/nonbonded_comparison/coords/argon.gro
+length 5.00
+nmols 1500
+$end
+
+# $protocol
+# type gas
+# name gas
+# molecule argon
+# mdps mdp/argon/em_gas.mdp mdp/argon/sd_gas.mdp
+# coords argon.gro
+# gasdipole 1.85
+# # infinite polarizability ==> correction == NULL
+# polarizability 1e+23
+# $end
+
+$protocol
+type slab
+name slab
+#nprocs 16
+mdps /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/em_slab.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/nvt_slab.mdp /home/yan/PROJECTS/mbar_par/nonbonded_comparison/mdp/argon/SC/md_slab.mdp
+# This means that the initial coordinates will be taken from the corresponding
+# liquid simulation.
+follow liq
+$end
+
+$compute
+# name  method     property   protocols-and-corrections
+dens    linear    density    liq
+dhvap   linear    dhvap      liq    none    0.0
+gamma   linear    gamma      slab
+$end
+
+$optimize
+# maximum steps of MBAR sample optimization
+maxsteps 0
+# cutoff on number of samples used for MBAR optimization
+ncut            0.15
+# propname       ref       wei       tol   
+dens          1378.8       2.0       1.0
+dhvap           6.30       1.0       0.1  
+gamma          11.75       1.0       0.2
 $end

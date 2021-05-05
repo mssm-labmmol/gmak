@@ -9,13 +9,15 @@ def reweightWrapper(inputData, workdir):
     gro     = inputData['gro']
     top     = inputData['top']
     mdp     = inputData['mdp']
-    return reweight(xtc, gro, top, mdp, workdir)
+    tpr     = inputData['tpr']
+    return reweight(xtc, gro, top, mdp, tpr, workdir)
 
-def reweight (xtc, gro, top, mdp, workdir):
+def reweight (xtc, gro, top, mdp, tpr, workdir):
     xtc = os.path.abspath(xtc)
     gro = os.path.abspath(gro)
     top = os.path.abspath(top)
     mdp = os.path.abspath(mdp)
+    tpr = os.path.abspath(tpr)
     workdir = os.path.abspath(workdir)
     check_log_loc = workdir + "/reweight.log"
 
@@ -24,7 +26,7 @@ def reweight (xtc, gro, top, mdp, workdir):
 
     runcmd.run("mkdir -p " + workdir)
 
-    if (os.path.isfile(check_log_loc)):
+    if (os.path.isfile(check_log_loc)) and (os.path.getmtime(check_log_loc) > os.path.getmtime(tpr)):
         #print "log from reweight already exists, will not perform it"
         #print "if it did not exist, would issue commands:"
         #print("gmx grompp -f %s -c %s -o %s -p %s -maxwarn 5" % (mdp,gro,rw_tpr,top))
@@ -40,4 +42,5 @@ def reweight (xtc, gro, top, mdp, workdir):
     output_files['tpr'] = rw_deffnm + ".tpr"
     output_files['trr'] = rw_deffnm + ".trr"
     output_files['gro'] = gro
+    output_files['log'] = check_log_loc
     return output_files

@@ -242,6 +242,12 @@ class ParameterSpaceGenerator:
         self.members[name][0].write_block_to_stream(stream)
         stream.write("$end\n\n")
 
+    def getParameterNames(self):
+        return [x.get_full_string() for x in self.members['main'][1]]
+
+    def getParameterValues(self, state):
+        return self.members['main'][0].get(state)
+
     def writeParameters(self, prefix):
         for name in self.members.keys():
             domainSpace, parList = self.members[name]

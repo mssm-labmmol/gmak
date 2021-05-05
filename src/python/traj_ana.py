@@ -19,7 +19,11 @@ def analyzeWrapper(inputData, prop, out):
     edr = inputData['edr']
     gro = inputData['gro']
     tpr = inputData['tpr']
-    obtain_property(xtc, edr, gro, tpr, prop, out)
+    if os.path.isfile(out) and (os.path.getmtime(out) > os.path.getmtime(tpr)):
+        # i.e., the property file is newer than the trajectory
+        pass
+    else:
+        obtain_property(xtc, edr, gro, tpr, prop, out)
     return np.loadtxt(out, comments=['@','#'], usecols=(1,))
 
 def obtain_property (xtc, edr, gro, tpr, name, output_file):

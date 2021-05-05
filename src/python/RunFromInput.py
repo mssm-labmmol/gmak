@@ -13,6 +13,7 @@ from gridoptimizer import gridOptimizer
 from subgrid import *
 from state import *
 from write_input import *
+from results_assembler import *
 
 import numpy as np
 import os
@@ -79,11 +80,20 @@ if __name__ == "__main__":
 
         # *********************** End of checks for run  **************************        
 
+    # Initialize results assembler
+    resultsAssembler = ResultsAssembler(grid.getParameterNames())
+
     globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
     globalLogger.indent()
-    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, plotFlag)
+    grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag)
     globalLogger.unindent()
     globalLogger.putMessage('END MAINLOOP', dated=True)
+
+    # DEBUG
+    resultsAssembler.print(sys.stdout)
+
+    # Write assembled results to a file
+    resultsAssembler.writeToFile(grid.makeCurrentWorkdir() + "/assembled")
 
 
     # *********************** Write new input **********************************
