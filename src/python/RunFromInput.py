@@ -14,6 +14,7 @@ from subgrid import *
 from state import *
 from write_input import *
 from results_assembler import *
+from gridpoint_selector import *
 
 import numpy as np
 import os
@@ -80,8 +81,11 @@ if __name__ == "__main__":
 
         # *********************** End of checks for run  **************************        
 
-    # Initialize results assembler
+    # Initialize results assembler - hard-coded for now, will go into input file
     resultsAssembler = ResultsAssembler(grid.getParameterNames())
+
+    # Initialize selector - hard-coded for now, will go into input file
+    selector = createSelector('best', gridOptimizer=optimizer, howMany=9)
 
     globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
     globalLogger.indent()
@@ -103,7 +107,7 @@ if __name__ == "__main__":
         #
         mod.set_workdir(base_workdir + "_best_points")
         mod.set_main_variation(grid.parSpaceGen)
-        mod.set_samples(optimizer.getRankedBest(1))
+        mod.set_samples(selector.selectPoints())
         mod.write_to_file(sys.argv[1] + "_best_points")
 
     # *********************** Subgrid part           **************************        
