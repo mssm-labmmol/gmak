@@ -184,6 +184,7 @@ class VariationCartesian(VariationFromFunction):
         self.func = VariationFunctionCartesian(starts, steps, lens)
         self.type_string = "cartesian"
     def write_block_to_stream(self, stream):
+        stream.write("type " + self.type_string + "\n")
         stream.write("start " + " ".join(map(str, self.func.starts)) + "\n")
         stream.write("step "  + " ".join(map(str, self.func.steps)) + "\n")
         stream.write("size "  + " ".join(map(str, self.func.lens)) + "\n")
