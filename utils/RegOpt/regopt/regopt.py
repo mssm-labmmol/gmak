@@ -1,9 +1,11 @@
 import numpy as np
+import random
 import pandas as pd
 import sys
 from   . import normalization
 from   . import regression
 from   . import optimizer
+from   functools import partial
 from sklearn.model_selection import train_test_split
 
 class IOptimizationDriverNormalizationFactory:
@@ -30,10 +32,11 @@ class OptimizationDriverDefaultNormalizationFactory(IOptimizationDriverNormaliza
 
 class OptimizationDriver:
 
-    def __init__(self):
+    def __init__(self, test_size=0.25):
         # TODO: Specify factories for normalization, regressor, 
         # optimizer and function based on input strings.
         self._data = dict()
+        self.test_size = test_size
         return
 
     def minimFunc(self, x):
@@ -69,7 +72,7 @@ class OptimizationDriver:
 
         self._data[_cols[-2]]['regressor'] = regression.GaussianProcessRegressor(
             normalization=norm,
-            train_test_split_funct=train_test_split,
+            train_test_split_funct=partial(train_test_split, test_size=self.test_size),
             noise_level=np.mean(self._data[_cols[-2]]['output_error_values']),
         )
 
@@ -84,7 +87,7 @@ class OptimizationDriver:
     def optimize(self):
         print("Optimizing...")
         name = list(self._data.keys())[0]
-        out = self.optimizer.optimize(self.minimFunc, x_0=self._data[name]['input_values'][0])
+        out = self.optimizer.optimize(self.minimFunc, x_0=random.choice(self._data[name]['input_values']))
         print("Done.")
         return out
 
