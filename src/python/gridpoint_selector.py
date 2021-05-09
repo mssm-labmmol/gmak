@@ -23,7 +23,7 @@ class BestSelector(GridpointSelectorInterface):
         self.howMany = howMany
 
     def selectPoints(self):
-        return self.gridOptimizer.getRankedBest(howMany)
+        return self.gridOptimizer.getRankedBest(self.howMany)
 
 def createSelector(typeString, *args, **kwargs):
     options_dict = {
