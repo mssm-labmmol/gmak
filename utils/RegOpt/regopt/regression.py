@@ -34,6 +34,9 @@ class RegressorBase:
     def printInfo(self, stream=sys.stdout):
         pass
 
+    def getQuality(self):
+        pass
+
     # Interface
     # ---------
 
@@ -126,6 +129,9 @@ class GaussianProcessRegressor(RegressorBase):
 
     def estimate(self, x):
         return self.model.predict(x, return_std=True)
+
+    def getQuality(self):
+        return self.log_marginal_likelihood_
 
     def printResults(self, stream=sys.stdout):
         stream.write(self.model.__repr__())

@@ -56,7 +56,7 @@ class OptimizationDriver:
     def getInputData(self, output_name):
         return self._data[output_name]['input_values']
 
-    def addPropertyFromCSV(self, csv_fn, weight, referenceValue, sep=' '):
+    def addPropertyFromCSV(self, csv_fn, weight, referenceValue, sep='\s+'):
         _df = pd.read_csv(csv_fn, sep=sep)
         _cols = list(_df.columns.values)
         self._data[_cols[-2]] = {
@@ -91,12 +91,19 @@ class OptimizationDriver:
         print("Done.")
         return out
 
+    def getAverageQuality(self):
+        outs = []
+        for k in self._data.keys():
+            outs.append( self._data[k]['regressor'].getQuality() )
+        return np.mean(outs)
+
     def printResults(self, stream=sys.stdout):
         """
         Prints the following to `stream':
             - optimal parameter set
             - expected values of the properties (and errors) for the optimal parameter set
             - information about the regression model, which depends on the model used
+            - average quality of the models
         """
         self.optimizer.printResults(stream)
 
@@ -108,6 +115,8 @@ class OptimizationDriver:
         
         for prop in self._data.keys():
             self._data[prop]['regressor'].printResults(stream)
+
+        stream.write("Average qualiy metric: {}\n".format(self.getAverageQuality()))
         
 
 class OptimizerDriverTest:
