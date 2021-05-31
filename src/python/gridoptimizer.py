@@ -190,16 +190,19 @@ class gridOptimizer:
                 propErr = grid[x[0]].get_property_err(prop)
                 if (propErr > self.referenceTolerances[prop]):
                     if (x[0] in grid.get_samples_id()):
-                        # This sample is not converged for this property.
-                        areAllSamplesConverged = False
                         scalingFactor = (propErr / self.referenceTolerances[prop]) ** 2
                         for protocol in protocols:
                             for exp_protocol in protocol.expand():
                                 currentSteps = grid[x[0]].getProtocolSteps(exp_protocol)
                                 newSteps = int(scalingFactor * currentSteps)
-                                globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} : Steps : {}->{}'.format(x[0], exp_protocol.name, currentSteps, newSteps))
-                                grid[x[0]].unsetProtocolAsSimulated(exp_protocol)
-                                grid[x[0]].setProtocolSteps(exp_protocol, newSteps)
+                                if (currentSteps == newSteps):
+                                    globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} : Steps have reached machine precision.'.format(x[0], exp_protocol.name, currentSteps, newSteps))
+                                else:
+                                    # This sample is not converged for this property.
+                                    areAllSamplesConverged = False
+                                    globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} : Steps : {}->{}'.format(x[0], exp_protocol.name, currentSteps, newSteps))
+                                    grid[x[0]].unsetProtocolAsSimulated(exp_protocol)
+                                    grid[x[0]].setProtocolSteps(exp_protocol, newSteps)
                         
         if (areAllSamplesConverged):
             globalLogger.putMessage('MESSAGE: Estimates are converged and simulations will not be extended.')
