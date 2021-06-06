@@ -71,10 +71,7 @@ if __name__ == "__main__":
             # Check only production run.
             mdp_ut.parse_file(protocol.mdps[-1])
             efreq = mdp_ut.get_writefreq_energy()
-            if (protocol.type == 'slab'):
-                xfreq = mdp_ut.get_writefreq_pos()
-            else:
-                xfreq = mdp_ut.get_writefreq_compressedpos()
+            xfreq = mdp_ut.get_writefreq_compressedpos()
             if (efreq != xfreq):
                 raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
                     protocol.name, efreq, xfreq))
