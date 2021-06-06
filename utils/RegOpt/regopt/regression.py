@@ -8,6 +8,39 @@ from sklearn.model_selection import train_test_split
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, Matern, DotProduct, ExpSineSquared, RationalQuadratic
 
+def plot_train_test_data(fn, Xtrain, Xtest, Ypred_train, Ystd_train, Ytrain, Ypred_test, Ystd_test, Ytest):
+    
+    fig = plt.figure()
+    ax  = plt.gca()
+
+    ax.errorbar(Ytrain, Ypred_train, yerr=Ystd_train, label='Train', fmt='o')
+
+    ax.errorbar(Ytest,  Ypred_test,  yerr=Ystd_test,  label='Test', fmt='o')
+
+    Yfull = np.append(Ytrain, Ytest, axis=0)
+
+    limits = [np.min(Yfull), np.max(Yfull)]
+
+    ax.plot(limits, limits, 'k--')
+
+    plt.legend()
+
+    plt.savefig(fn)
+
+def save_train_test_data(fn, Xtrain, Xtest, Ypred_train, Ystd_train, Ytrain, Ypred_test, Ystd_test, Ytest):
+
+    fp = open(fn, 'w')
+
+    fp.write("# Train\n")
+    for yt, yp, yerr in zip(Ytrain, Ypred_train, Ystd_train):
+        fp.write("%14.3f%14.3f%14.3f\n" % (yt, yp, yerr))
+
+    fp.write("# Test\n")
+    for yt, yp, yerr in zip(Ytest, Ypred_test, Ystd_test):
+        fp.write("%14.3f%14.3f%14.3f\n" % (yt, yp, yerr))
+
+    fp.close()
+
 class RegressorBase:
 
     def __init__(self, normalization=None, train_test_split_funct=None):
@@ -40,11 +73,14 @@ class RegressorBase:
     # Interface
     # ---------
 
-    def predict(self, x):
-        xn_ = self.normalization.normalize(x)
-        return self.estimate(xn_)
+    def predict(self, x, normalize=True):
+        if (normalize):
+            xn_ = self.normalization.normalize(x)
+            return self.estimate(xn_)
+        else:
+            return self.estimate(x)
 
-    def fit(self, x, y):
+    def _fit(self, x, y):
         if (self.normalization is None):
             xn_ = x
         else:
@@ -53,8 +89,8 @@ class RegressorBase:
 
         self.train(Xtrain_, Ytrain_)
 
-        Ypred_train_, Ystd_train_ = self.predict(Xtrain_)
-        Ypred_test_, Ystd_test_ = self.predict(Xtest_)
+        Ypred_train_, Ystd_train_ = self.predict(Xtrain_, normalize=False)
+        Ypred_test_, Ystd_test_ = self.predict(Xtest_, normalize=False)
 
         self.train_rmse_ = np.sqrt(np.mean((Ypred_train_ - Ytrain_)**2))
         self.test_rmse_ = np.sqrt(np.mean((Ypred_test_ - Ytest_)**2))
@@ -91,6 +127,15 @@ class RegressorBase:
 
         return Xtrain_, Xtest_, Ypred_train_, Ystd_train_, Ytrain_, Ypred_test_, Ystd_test_, Ytest_
 
+    def fit(self, x, y, plot=None, data=None):
+
+        fit_results = self._fit(x, y)
+
+        if (plot is not None):
+            plot_train_test_data(plot, *fit_results)
+
+        if (data is not None):
+            save_train_test_data(data, *fit_results)
 
 class GaussianProcessRegressor(RegressorBase):
 
