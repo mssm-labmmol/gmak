@@ -14,6 +14,7 @@ from subgrid import *
 from state import *
 from write_input import *
 from results_assembler import *
+from gridpoint_selector import *
 
 import numpy as np
 import os
@@ -21,6 +22,7 @@ import sys
 import copy
 import runcmd
 import pickle
+import simulate
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
@@ -30,6 +32,12 @@ else:
 plotFlag = not ('--no-plot' in sys.argv)
 validateFlag = ('--validate' in sys.argv)
 writeNewInput = ('--write-input' in sys.argv)
+
+try:
+    cmdNprocs = sys.argv[sys.argv.index('-np') + 1]
+    simulate.mdrun_nprocs = int(cmdNprocs)
+except ValueError:
+    pass
 
 if __name__ == "__main__":
 
@@ -70,18 +78,18 @@ if __name__ == "__main__":
             # Check only production run.
             mdp_ut.parse_file(protocol.mdps[-1])
             efreq = mdp_ut.get_writefreq_energy()
-            if (protocol.type == 'slab'):
-                xfreq = mdp_ut.get_writefreq_pos()
-            else:
-                xfreq = mdp_ut.get_writefreq_compressedpos()
+            xfreq = mdp_ut.get_writefreq_compressedpos()
             if (efreq != xfreq):
                 raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
                     protocol.name, efreq, xfreq))
 
         # *********************** End of checks for run  **************************        
 
-    # Initialize results assembler
+    # Initialize results assembler - hard-coded for now, will go into input file
     resultsAssembler = ResultsAssembler(grid.getParameterNames())
+
+    # Initialize selector - hard-coded for now, will go into input file
+    selector = createSelector('best', gridOptimizer=optimizer, howMany=9)
 
     globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
     globalLogger.indent()
@@ -103,7 +111,7 @@ if __name__ == "__main__":
         #
         mod.set_workdir(base_workdir + "_best_points")
         mod.set_main_variation(grid.parSpaceGen)
-        mod.set_samples(optimizer.getRankedBest(1))
+        mod.set_samples(selector.selectPoints())
         mod.write_to_file(sys.argv[1] + "_best_points")
 
     # *********************** Subgrid part           **************************        

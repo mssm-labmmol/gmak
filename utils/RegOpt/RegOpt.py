@@ -7,12 +7,16 @@ def read_args(argv):
     """
     Returns
     -------
-    args_dict : dictionary with the following key-value pairs
+    args_dict       : dictionary with the following key-value pairs
         'csv_files' : list of csv_files, one for each property
              'refs' : list of reference values for properties
           'weights' : list of weights for properties
+        'test_size' : float between 0 and 1 indicating fraction of test data
+           'prefix' : prefix for output files
     """
     args_dict = dict()
+    args_dict['test_size'] = 0.25
+    args_dict['prefix'] = None
     for i, arg in enumerate(argv):
         if (arg == '-f'):
             args_dict['csv_files'] = list()
@@ -35,17 +39,21 @@ def read_args(argv):
                     break
                 else:
                     args_dict['refs'].append(float(subarg))
+        if (arg == '-ts'):
+            args_dict['test_size'] = float(argv[i+1])
+        if (arg == '-p'):
+            args_dict['prefix'] = argv[i+1]
     return args_dict
 
 if __name__ == '__main__':
 
     if (len(sys.argv) == 1):
-        print(f"usage: {sys.argv[0]} -f CSV_FILE... -r REF_VALUE... -w WEIGHT...")
+        print(f"usage: {sys.argv[0]} -f CSV_FILE... -r REF_VALUE... -w WEIGHT... [-ts TEST_SIZE] [-p PREFIX]")
         exit(1)
 
     args_dict = read_args(sys.argv)
 
-    driver = OptimizationDriver()
+    driver = OptimizationDriver(test_size=args_dict['test_size'], prefix=args_dict['prefix'])
 
     for csv_file, ref, wei in zip(args_dict['csv_files'], args_dict['refs'], args_dict['weights']):
         driver.addPropertyFromCSV(csv_file, wei, ref)

@@ -1,9 +1,11 @@
 import numpy as np
+import random
 import pandas as pd
 import sys
 from   . import normalization
 from   . import regression
 from   . import optimizer
+from   functools import partial
 from sklearn.model_selection import train_test_split
 
 class IOptimizationDriverNormalizationFactory:
@@ -30,10 +32,12 @@ class OptimizationDriverDefaultNormalizationFactory(IOptimizationDriverNormaliza
 
 class OptimizationDriver:
 
-    def __init__(self):
+    def __init__(self, test_size=0.25, prefix=None):
         # TODO: Specify factories for normalization, regressor, 
         # optimizer and function based on input strings.
         self._data = dict()
+        self.test_size = test_size
+        self.prefix = prefix
         return
 
     def minimFunc(self, x):
@@ -53,7 +57,7 @@ class OptimizationDriver:
     def getInputData(self, output_name):
         return self._data[output_name]['input_values']
 
-    def addPropertyFromCSV(self, csv_fn, weight, referenceValue, sep=' '):
+    def addPropertyFromCSV(self, csv_fn, weight, referenceValue, sep='\s+'):
         _df = pd.read_csv(csv_fn, sep=sep)
         _cols = list(_df.columns.values)
         self._data[_cols[-2]] = {
@@ -69,24 +73,33 @@ class OptimizationDriver:
 
         self._data[_cols[-2]]['regressor'] = regression.GaussianProcessRegressor(
             normalization=norm,
-            train_test_split_funct=train_test_split,
+            train_test_split_funct=partial(train_test_split, test_size=self.test_size),
             noise_level=np.mean(self._data[_cols[-2]]['output_error_values']),
         )
 
         self.optimizer = optimizer.OptimizerSimplex()
 
-    def fit(self):
+    def fit(self, format='pdf'):
         for k in self._data.keys():
             print(f"Fitting model for property `{k}'...")
-            self._data[k]['regressor'].fit(self._data[k]['input_values'], self._data[k]['output_values'])
+            if (self.prefix is not None):
+                self._data[k]['regressor'].fit(self._data[k]['input_values'], self._data[k]['output_values'], plot=(self.prefix + "_" + k + "." + format), data=(self.prefix + "_" + k + ".dat"))
+            else:
+                self._data[k]['regressor'].fit(self._data[k]['input_values'], self._data[k]['output_values'])
             print("Done.")
 
     def optimize(self):
         print("Optimizing...")
         name = list(self._data.keys())[0]
-        out = self.optimizer.optimize(self.minimFunc, x_0=self._data[name]['input_values'][0])
+        out = self.optimizer.optimize(self.minimFunc, x_0=random.choice(self._data[name]['input_values']))
         print("Done.")
         return out
+
+    def getAverageQuality(self):
+        outs = []
+        for k in self._data.keys():
+            outs.append( self._data[k]['regressor'].getQuality() )
+        return np.mean(outs)
 
     def printResults(self, stream=sys.stdout):
         """
@@ -94,17 +107,35 @@ class OptimizationDriver:
             - optimal parameter set
             - expected values of the properties (and errors) for the optimal parameter set
             - information about the regression model, which depends on the model used
+            - average quality of the models
         """
-        self.optimizer.printResults(stream)
+        #self.optimizer.printResults(stream)
+
+        #for prop in self._data.keys():
+        #    self._data[prop]['regressor'].printResults(stream)
+
+        stream.write("----------------------------------------------------------------------\n")
+
+        stream.write("Average quality metric: {}\n".format(self.getAverageQuality()))
+
+        stream.write("----------------------------------------------------------------------\n")
 
         # Expected values and errors for each property
         x, y = self.optimizer.getResults()
-        # Print as a dict
-        stream.write(self.predict(x).__repr__())
+
+        stream.write("%-14s = " % ("X"))
+        for xi in x:
+            stream.write("%14.3e" % xi)
         stream.write("\n")
-        
-        for prop in self._data.keys():
-            self._data[prop]['regressor'].printResults(stream)
+
+        prediction = self.predict(x)
+
+        for prop in prediction.keys():
+            stream.write("%-14s = %14.3e +/- %-14.3e\n" % (prop,
+                                                          prediction[prop][0][0],
+                                                          prediction[prop][1][0]))
+
+        stream.write("%-14s = %14.3e\n" % ("Score", y))
         
 
 class OptimizerDriverTest:
