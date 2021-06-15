@@ -22,6 +22,7 @@ import sys
 import copy
 import runcmd
 import pickle
+import simulate
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
@@ -31,6 +32,12 @@ else:
 plotFlag = not ('--no-plot' in sys.argv)
 validateFlag = ('--validate' in sys.argv)
 writeNewInput = ('--write-input' in sys.argv)
+
+try:
+    cmdNprocs = sys.argv[sys.argv.index('-np') + 1]
+    simulate.mdrun_nprocs = cmdNprocs
+except ValueError:
+    pass
 
 if __name__ == "__main__":
 

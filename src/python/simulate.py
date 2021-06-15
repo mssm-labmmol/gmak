@@ -9,6 +9,20 @@ from mdputils import *
 from logger import *
 from config import ConfigVariables
 
+# gmx_nprocs is set via a cmd-line option '-np'
+# It is the default number of processors in each gmx mdrun job.
+mdrun_nprocs = -1
+
+# Creates a call to 'gmx mdrun' with the appropriate number of processors.
+def create_mdrun_call(nprocs):
+    if (nprocs > 0):
+        return ("%s mdrun -nt %d" % (ConfigVariables.gmx, nprocs))
+    else:
+        if (mdrun_nprocs > 0):
+            return ("%s mdrun -nt %d" % (ConfigVariables.gmx, mdrun_nprocs))
+        else:
+            return ("%s mdrun" % ConfigVariables.gmx)
+
 def read_nsteps_from_mdp (mdp):
     mu = mdpUtils()
     mu.parse_file(mdp)
@@ -35,12 +49,9 @@ def extend_something (nsteps, workdir, label, nprocs=-1):
     workdir = os.path.abspath(workdir)
     runcmd.run("%s convert-tpr -s %s/%s/%s.tpr -nsteps %d -o %s/%s/tmp.tpr" % (ConfigVariables.gmx, workdir, label, label, nsteps, workdir, label))
     runcmd.run("mv %s/%s/tmp.tpr %s/%s/%s.tpr" % (workdir, label, workdir, label, label))
-    if (nprocs == -1):
-        os.system("%s mdrun -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label,
+    runcmd.run("%s -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (create_mdrun_call(nprocs), workdir, label, label,
                                                                                     workdir, label, label,
                                                                                     workdir, label, label))
-    else:
-        runcmd.run("%s mdrun -nt %d -cpi %s/%s/%s.cpt -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label, workdir, label, label))
 
 def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     conf = os.path.abspath(conf)
@@ -55,18 +66,12 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
         globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
     elif (simu_state == 'FULL'):
         globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
-        if (nprocs == -1):
-            runcmd.run("%s mdrun -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label, workdir, label, label))
-        else:
-            runcmd.run("%s mdrun -nt %d -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label, workdir, label, label))
+        runcmd.run("%s -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (create_mdrun_call(nprocs), workdir, label, label, workdir, label, label, workdir, label, label))
     elif (simu_state == 'NONE'):
         globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
         command = "%s grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (ConfigVariables.gmx, mdp, conf, top, workdir, label, label)
         runcmd.run(command)
-        if (nprocs == -1):
-            command = "%s mdrun -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, workdir, label, label, workdir, label, label)
-        else:
-            command = "%s mdrun -nt %d -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (ConfigVariables.gmx, nprocs, workdir, label, label, workdir, label, label)
+        command = "%s -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (create_mdrun_call(nprocs), workdir, label, label, workdir, label, label)
         runcmd.run(command)
 
 
