@@ -35,7 +35,7 @@ writeNewInput = ('--write-input' in sys.argv)
 
 try:
     cmdNprocs = sys.argv[sys.argv.index('-np') + 1]
-    simulate.mdrun_nprocs = cmdNprocs
+    simulate.mdrun_nprocs = int(cmdNprocs)
 except ValueError:
     pass
 
