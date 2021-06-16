@@ -366,11 +366,11 @@ class GaussianProcessRegressionInterpolation (Interpolation):
             Xpred_ = Xpred.reshape(-1, 1)
         if (coreKernel is None):
             # Loop over test core Kernels
-            kernels = [ConstantKernel() * RBF(),
-                    ConstantKernel() * Matern(),
-                    ConstantKernel() * DotProduct(),
-                    ConstantKernel() * ExpSineSquared(),
-                    ConstantKernel() * RationalQuadratic()]
+            kernels = [ConstantKernel(constant_value_bounds=(1e-10,1e+10)) * RBF(),
+                       ConstantKernel(constant_value_bounds=(1e-10,1e+10)) * Matern(),
+                       ConstantKernel(constant_value_bounds=(1e-10,1e+10)) * DotProduct(),
+                       ConstantKernel(constant_value_bounds=(1e-10,1e+10)) * ExpSineSquared(),
+                       ConstantKernel(constant_value_bounds=(1e-10,1e+10)) * RationalQuadratic()]
         else:
             # Use given kernel only
             kernels = [coreKernel,]
@@ -414,7 +414,7 @@ class GaussianProcessRegressionInterpolation (Interpolation):
         dA_pk = []
         numberProps = A_ps.shape[0]
         for i in range(numberProps):
-            noise_level = np.mean(dA_ps[i,:])**2
+            noise_level = np.mean(dA_ps[i,:]**2)
             A_k, dA_k  = GaussianProcessRegressionInterpolation._GPfit(sampleIndices, A_ps[i,:], gridIndices, noiseLevel=noise_level)
             A_pk.append(A_k)
             dA_pk.append(dA_k)
