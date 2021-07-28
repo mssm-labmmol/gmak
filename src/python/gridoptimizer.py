@@ -5,6 +5,30 @@ import copy
 import scipy.stats as st
 from   logger import *
 
+def computeNumericError(propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=.95):
+    scoreMax = 0.0
+    scoreMin = 0.0
+    numberOfProperties = len(propertyEstimates)
+    K = (confidenceLevel) **(1.0/numberOfProperties)
+    for p in range(numberOfProperties):
+        Z = st.norm.ppf(1 - 0.5 * (1 - K), scale=propertyErrors[p])
+        if (propertyEstimates[p] >= propertyReferences[p]):
+            devMax = propertyEstimates[p] + Z - propertyReferences[p]
+            devMin = propertyEstimates[p] - Z - propertyReferences[p]
+            if (devMin < 0):
+                devMin = 0
+        else:
+            devMax = propertyReferences[p] - propertyEstimates[p] + Z
+            devMin = propertyReferences[p] - propertyEstimates[p] - Z
+            if (devMin < 0):
+                devMin = 0
+        scoreMax += propertyWeis[p] * (devMax/propertyReferences[p]) ** 2
+        scoreMin += propertyWeis[p] * (devMin/propertyReferences[p]) ** 2
+    scoreMax = np.sqrt(scoreMax/np.sum(propertyWeis))
+    scoreMin = np.sqrt(scoreMin/np.sum(propertyWeis))
+    return (scoreMin, scoreMax)
+
+
 class gridOptimizer:
     """
     Class responsible for building a score from the property estimates
@@ -59,30 +83,10 @@ class gridOptimizer:
         self.stateScoreIntervals[:] = [self.stateScoreIntervals[x[0]] for x in self.stateScores]
 
     def getRankedBest(self, n):
-        return [self.stateScores[i][0] for i in range(n)]
-
-    def computeNumericError(self, propertyEstimates, propertyErrors, propertyReferences, propertyWeis, confidenceLevel=.95):
-        scoreMax = 0.0
-        scoreMin = 0.0
-        numberOfProperties = len(propertyEstimates)
-        K = (confidenceLevel) **(1.0/numberOfProperties)
-        for p in range(numberOfProperties):
-            Z = st.norm.ppf(1 - 0.5 * (1 - K), scale=propertyErrors[p])
-            if (propertyEstimates[p] >= propertyReferences[p]):
-                devMax = propertyEstimates[p] + Z - propertyReferences[p]
-                devMin = propertyEstimates[p] - Z - propertyReferences[p]
-                if (devMin < 0):
-                    devMin = 0
-            else:
-                devMax = propertyReferences[p] - propertyEstimates[p] + Z
-                devMin = propertyReferences[p] - propertyEstimates[p] - Z
-                if (devMin < 0):
-                    devMin = 0
-            scoreMax += propertyWeis[p] * (devMax/propertyReferences[p]) ** 2
-            scoreMin += propertyWeis[p] * (devMin/propertyReferences[p]) ** 2
-        scoreMax = np.sqrt(scoreMax/np.sum(propertyWeis))
-        scoreMin = np.sqrt(scoreMin/np.sum(propertyWeis))
-        return (scoreMin, scoreMax)
+        try:
+            return [self.stateScores[i][0] for i in range(n)]
+        except IndexError:
+            return self.stateScores[:][0] 
 
     def fillWithScores (self, grid):
         # Clean stateScores first
@@ -112,7 +116,7 @@ class gridOptimizer:
             self.stateScores.append((gP.id, gPScore))
             self.stateScoreIntervals[gP.id][0] = gP.id
             for ci, cl in enumerate(self.confidenceLevels):
-                self.stateScoreIntervals[gP.id][1][ci] = self.computeNumericError(propertyEstimates, propertyErrs, propertyReferences, propertyWeis, confidenceLevel=cl)
+                self.stateScoreIntervals[gP.id][1][ci] = computeNumericError(propertyEstimates, propertyErrs, propertyReferences, propertyWeis, confidenceLevel=cl)
         self.rankScores()
 
     def printToFile (self, grid, filename, sorted=True):

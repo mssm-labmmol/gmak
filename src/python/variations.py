@@ -138,6 +138,8 @@ class AbstractVariation(ABC):
 
     def get_type(self): return self.type_string
 
+    def write_block_to_stream(self, stream): raise NotImplementedError
+
 class VariationFromFunction(AbstractVariation):
     
     def __init__(self, dim, size, func):
@@ -189,6 +191,33 @@ class VariationCartesian(VariationFromFunction):
         stream.write("step "  + " ".join(map(str, self.func.steps)) + "\n")
         stream.write("size "  + " ".join(map(str, self.func.lens)) + "\n")
 
+class VariationExplicit(AbstractVariation):
+    """
+    Parameter values are specified explicitly in batches of size `dim'.
+    """
+    def __init__(self, dim, values):
+        """
+        dim(int): number of dimensions
+        values(list of float): list of size `dim' * `size', where `size' 
+                               is the number of parameters
+        """
+        self.size = int(len(values)/dim)
+        self.dim  = dim
+        self.type_string = "explicit"
+        self._data = np.reshape(np.array(values), (self.size, self.dim))
+    
+    def gen_data(self):
+        return self._data
+        
+    def set_new_center(self, i):
+        raise ValueError("Can't set new center for explicit variation.")
+
+    def rescale(self, factors):
+        raise ValueError("Can't rescale explicit variation.")
+
+    def get_sizes(self):
+        return (self.size,)
+
 class VariationFromVariation(AbstractVariation):
     """
     Function is applied to output of source variation.
@@ -223,10 +252,6 @@ class VariationFromVariationScale(VariationFromVariation):
         func = VariationFunctionScale(factors)
         super().__init__(dim, size, variation, func)
         self.type_string = "scale"
-    def write_block_to_stream(self, stream):
-        stream.write("start " + " ".join(map(str, self.func.starts)) + "\n")
-        stream.write("step "  + " ".join(map(str, self.func.steps)) + "\n")
-        stream.write("size "  + " ".join(map(str, self.size)) + "\n")
 
 class AbstractVariationFactory:
 
@@ -261,13 +286,22 @@ class AbstractVariationFactory:
         factors      = np.array(options_dict['factors'], dtype=float)
         dim          = len(options_dict['factors'])
         size         = used.get_linear_size()
-        return VariationFromVariationScale(dim, size, variation, factors) 
+        return VariationFromVariationScale(dim, size, variation, factors)
+
+    @staticmethod
+    def _createExplicit(stream, used):
+        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        dim = int(options_dict['dim'][0])
+        # values are read in batches of size dim
+        values = [float(x) for x in options_dict['values']]
+        return VariationExplicit(dim, values)
         
     @staticmethod
     def readFromTypeAndStream(typestring, stream, used):
         func_dict = {
             'cartesian' : AbstractVariationFactory._createCartesian,
-            'scale'     : AbstractVariationFactory._createScale
+            'scale'     : AbstractVariationFactory._createScale,
+            'explicit'  : AbstractVariationFactory._createExplicit,
         }
         try:
             return func_dict[typestring](stream, used)
@@ -283,7 +317,7 @@ class DomainSpace:
     Attributes:
     -----------
 
-        2D np.ndarray data
+        2D np.ndarray data of shape (linear_size, dim)
         AbstractVariation generators[]
 
     Methods:
