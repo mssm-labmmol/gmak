@@ -52,7 +52,14 @@ class ParameterIO:
     def _addParameterReferences(self, options):
         _theseParameters = []
         for refstring in options:
-            [atom, parameter] = refstring.split('/')
+            splitted_refstring = refstring.split('/')
+            if len(splitted_refstring) == 2:
+                [atom, parameter] = splitted_refstring
+            elif len(splitted_refstring) == 1:
+                atom, = splitted_refstring
+                parameter = None
+            else:
+                raise ValueError("Can't parse refstring %s" % refstring)
             newReference = self.parRefFactory.create(atom, parameter)
             _theseParameters.append(newReference)
         # Add list of parameter references to list of list of parameter references.

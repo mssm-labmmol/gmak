@@ -23,66 +23,69 @@ class InputModifier:
         return (line.rstrip() == "$end")
         
     def write_to_file(self, dest):
-        fpi = open(self.src, 'r')
-        fpo = open(dest, 'w')
-        line = fpi.readline()
-        while line:
-            if (len(line.split()) < 1):
-                fpo.write(line)
-                line = fpi.readline()
-                continue
-            # test workdir
-            if (line.split()[0] == 'workdir'):
-                if (self.workdir is not None):
-                    fpo.write("workdir " + self.workdir + "\n")
-                else:
+        try:
+            fpi = open(self.src, 'r')
+            fpo = open(dest, 'w')
+            line = fpi.readline()
+            while line:
+                if (len(line.split()) < 1):
                     fpo.write(line)
-
-                line = fpi.readline()
-                continue
-            # test variation
-            elif (line.split()[0] == '$variation'):
-                if (self.main_variation is not None):
-                    # store current position
-                    start_pos = fpi.tell()
-                    # check if variation is main
-                    for line in fpi:
-                        flds = line.split()
-                        if (flds[0] == 'name'):
-                            if (flds[1] == 'main'):
-                                self.main_variation.writeMainVariationBlock(fpo)
-                                for line in fpi:
-                                    if self._checkEndOfBlock(line):
-                                        break
-                            else:
-                                fpi.seek(start_pos, os.SEEK_SET)
-                                for line in fpi:
-                                    fpo.write(line)
-                                    if self._checkEndOfBlock(line):
-                                        break
-                        if self._checkEndOfBlock(line):
-                            break
-                else:
-                    for line in fpi:
+                    line = fpi.readline()
+                    continue
+                # test workdir
+                if (line.split()[0] == 'workdir'):
+                    if (self.workdir is not None):
+                        fpo.write("workdir " + self.workdir + "\n")
+                    else:
                         fpo.write(line)
-                        if self._checkEndOfBlock(line):
-                            break
-                line = fpi.readline()
-                continue
-            # test samples
-            elif (line.split()[0] == 'samples'):
-                if (self.samples is not None):
-                    fpo.write("samples ")
-                    fpo.write(" ".join(map(str, self.samples)))
-                    fpo.write("\n")
+            
+                    line = fpi.readline()
+                    continue
+                # test variation
+                elif (line.split()[0] == '$variation'):
+                    if (self.main_variation is not None):
+                        # store current position
+                        start_pos = fpi.tell()
+                        # check if variation is main
+                        for line in fpi:
+                            flds = line.split()
+                            if (flds[0] == 'name'):
+                                if (flds[1] == 'main'):
+                                    self.main_variation.writeMainVariationBlock(fpo)
+                                    for line in fpi:
+                                        if self._checkEndOfBlock(line):
+                                            break
+                                else:
+                                    fpi.seek(start_pos, os.SEEK_SET)
+                                    for line in fpi:
+                                        fpo.write(line)
+                                        if self._checkEndOfBlock(line):
+                                            break
+                            if self._checkEndOfBlock(line):
+                                break
+                    else:
+                        for line in fpi:
+                            fpo.write(line)
+                            if self._checkEndOfBlock(line):
+                                break
+                    line = fpi.readline()
+                    continue
+                # test samples
+                elif (line.split()[0] == 'samples'):
+                    if (self.samples is not None):
+                        fpo.write("samples ")
+                        fpo.write(" ".join(map(str, self.samples)))
+                        fpo.write("\n")
+                    else:
+                        fpo.write(line)
+                    line = fpi.readline()
+                    continue
+                # other cases
                 else:
                     fpo.write(line)
-                line = fpi.readline()
-                continue
-            # other cases
-            else:
-                fpo.write(line)
-                line = fpi.readline()
-
-        fpo.close()
-        fpi.close()
+                    line = fpi.readline()
+            
+            fpo.close()
+            fpi.close()
+        except NotImplementedError: # missing write_to_block
+            pass

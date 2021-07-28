@@ -21,6 +21,20 @@ import pickle
 from   logger          import *
 from   state           import *
 
+def replaceMacros(fn, macros):
+    print("Replacing macros in %s:" % fn)
+    fp = open(fn, 'r')
+    data = fp.read()
+    for macro in macros:
+        token = macro.token
+        value = macro.value
+        print("\t%s -> %s" % (token, value))
+        data = data.replace(token, value)
+    fp.close()
+    fp = open(fn, 'w')
+    fp.write(data)
+    fp.close()
+
 def reweightItpChanger (inputTopology, index, outputTopology):
     fp = open(inputTopology, 'r')
     fp_out = open(outputTopology, 'w')
@@ -388,9 +402,14 @@ class ParameterGrid:
             if (line.split()[0] == 'reweight'):
                 reweighterType = line.split()[1]
             if (line.split()[0] == 'labels'):
+                xlabel = ""
+                ylabel = ""
                 splitted = shlex.split(line)
-                xlabel = splitted[1]
-                ylabel = splitted[2]
+                try:
+                    xlabel = splitted[1]
+                    ylabel = splitted[2]
+                except IndexError:
+                    pass
             if (line.split()[0] == 'fixsamples'):
                 if (line.split()[1] == 'yes'):
                     keep_initial_samples = True
@@ -422,10 +441,18 @@ class ParameterGrid:
             topoBundle.incrementPrefix()
 
     def writeTopologies(self):
+        macros = self.parSpaceGen.getMacros()
+        print("MACROS: ", macros)
         for t, topoBundle in enumerate(self.topologyBundles.values()):
             for i in range(self.get_linear_size()):
                 self.parSpaceGen.setState(i)
                 topoBundle.writeFilesForStatepath(i)
+                files = topoBundle.getPathsForStatepath(i)
+                if (type(files) is list):
+                    for fn in files:
+                        replaceMacros(fn, macros)
+                else:
+                    replaceMacros(files, macros)
 
     def writeParameters(self):
         self.parSpaceGen.writeParameters(self.makePrefixOfParameters())

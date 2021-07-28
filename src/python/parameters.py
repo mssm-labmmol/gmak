@@ -12,6 +12,25 @@ def geometric_mean(x, y):
 # base classes for parameters
 # -----------------------------------------------------------------------------
 
+# Macro parameter
+class MacroParameter:
+    def __init__(self, token, value=None):
+        self.token = str(token)
+        if (value is not None):
+            self.value = str(value)
+        else:
+            self.value = "0"
+
+    # this is just for compatibility with other parts of the code
+    def dereference(self):
+        return self
+
+    def alter(self, value):
+        self.value = str(value)
+
+    def get_full_string(self):
+        return self.token
+
 # Interface for NonbondedParameter
 class NonbondedParameter:
     def value(self): 
@@ -193,7 +212,10 @@ class ParameterReferenceFactory:
         str parameter  : string identifying parameter (e.g. 'c6', 'q')
         """
         if ('-' in typestring):
-            raise NotImplementedError("Creation of bonded types is not implemented.")
+            raise NotImplementedError("Creation of bonded types is not"
+                                      " implemented.")
+        elif (typestring[0] == '@'):
+            return MacroParameter(typestring)
         else:
             if parameter in self.bondedStrings:
                 raise NotImplementedError("Creation of bonded types is not implemented.")
@@ -206,8 +228,13 @@ class ParameterReferenceFactory:
 # -----------------------------------------------------------------------------
 
 class ParameterSpaceGenerator:
-    """Contains tuples of (DomainSpace, [NonbondedParameterReference]) indexed in a dictionary.
-    Handles connecting data from DomainSpace with parameter values."""
+    """
+    Contains tuples of (DomainSpace,
+    [NonbondedParameterReference/MacroParameter]) indexed in a
+    dictionary.  Handles connecting data from DomainSpace with
+    parameter values.
+
+    """
     def __init__(self):
         self.members = {}
 
@@ -247,6 +274,14 @@ class ParameterSpaceGenerator:
 
     def getParameterValues(self, state):
         return self.members['main'][0].get(state)
+
+    def getMacros(self):
+        macros = []
+        for name in self.members.keys():
+            for refs in self.members[name][1]:
+                if isinstance(refs, MacroParameter):
+                    macros.append(refs)
+        return macros
 
     def writeParameters(self, prefix):
         for name in self.members.keys():

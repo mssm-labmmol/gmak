@@ -9,6 +9,7 @@ class Logger (object):
         self.fp = open(fn, 'w')
         self.indentation = indentString
         self._currentIndentation = 0
+        print(f"Starting log file {fn}.")
 
     def __del__(self):
         self.fp.close()
