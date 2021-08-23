@@ -38,7 +38,6 @@ class BaseGridShifterMixin(ABC):
     @abstractmethod
     def shift_grid(self, new_center):
         pass
-    
 
 
 class StandardGridShifterMixin(BaseGridShifterMixin):
@@ -62,8 +61,7 @@ class StandardGridShifterMixin(BaseGridShifterMixin):
             self.update_samples(new_samples)
         if self.keep:
             raise NotImplementedError
-        
-    
+
 # Determination of new center.
 
 class BaseCenterUpdateMixin(ABC):
@@ -91,13 +89,16 @@ class StandardCenterUpdateMixin(BaseCenterUpdateMixin):
         if self.snap_to_grid:
             cg = self.grid.snap_to_grid(cg)
         return cg
-        
+
 # ===================== End of Shifter Hierarchy =====================
 
 class BaseGridMaker(ABC):
     def calc_obj_func(self, xs):
         return self.objective_function.eval(xs)
-        
+
+    def get_ncalls(self):
+        return self.objective_function.get_estimators()[0].sampler.ncalls
+
     def get_samples(self):
         return self.objective_function.get_estimators()[0].samples
 
@@ -143,7 +144,7 @@ class BaseGridMaker(ABC):
 class StandardGridMaker(BaseGridMaker,
                         StandardGridShifterMixin,
                         StandardCenterUpdateMixin):
-    
+
     def __init__(self,
                  grid,
                  objective_function,
