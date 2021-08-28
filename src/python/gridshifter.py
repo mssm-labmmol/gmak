@@ -124,10 +124,16 @@ class GridShifter:
 
     @staticmethod
     def createFromGridAndDict (grid, dictargs):
-        maxshifts = int(dictargs['maxshifts'][0])
-        margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
-        ncut      = float(dictargs['ncut'][0])
-        keepsamples = True if dictargs['keepsamples'] == 'yes' else False
+        if dictargs is not None:
+            maxshifts = int(dictargs['maxshifts'][0])
+            margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
+            ncut      = float(dictargs['ncut'][0])
+            keepsamples = True if dictargs['keepsamples'] == 'yes' else False
+        else:
+            maxshifts = 0
+            margins   = None
+            ncut      = 0.0
+            keepsamples = True
         return GridShifter(grid, maxshifts, margins, ncut, keepsamples)
 
 class EmptyGridShifter(GridShifter):

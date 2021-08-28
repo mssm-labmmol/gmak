@@ -380,7 +380,8 @@ class ParameterGrid:
         parameterGrid.init = True
         parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
         if (validateFlag):
-            shifterArgs['maxshifts'] = [0,] # must be a list to mimim reading from input
+            if shifterArgs is not None:
+                shifterArgs['maxshifts'] = [0,] # must be a list to mimim reading from input
         parameterGrid.shifter    = shifterFactory(parameterGrid, shifterArgs)
         parameterGrid.set_samples(samples)
         if (keep_initial_samples):

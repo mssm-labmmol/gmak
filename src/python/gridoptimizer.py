@@ -34,7 +34,7 @@ class gridOptimizer:
     Class responsible for building a score from the property estimates
     and determining the next promising sampling point.
     """
-    def __init__ (self, maxSteps=5, percentCutoff=.25):
+    def __init__ (self, maxSteps=0, percentCutoff=1.0):
         self.maxSteps = maxSteps
         self.nsteps   = 0
         self.length_nsteps = 0
