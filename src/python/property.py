@@ -2,6 +2,7 @@ import numpy as np
 import runcmd
 import os
 from shutil import copyfile
+import atomic_properties
 
 def init_property_from_string(property_string, value, err):
     if (property_string == 'density'):
@@ -25,8 +26,9 @@ def init_property_from_string(property_string, value, err):
         gamma_ced.err   = err
         return gamma_ced
     else:
-        raise ValueError("Property {} is not recognized.".format(property_string))
-    
+        # custom property
+        return CustomProperty(property_string, value, err)
+
 class PropertyBase:
 
     def __init__ (self):
@@ -53,6 +55,8 @@ class PropertyBase:
 
 class Density (PropertyBase):
 
+    id_string = "density"
+
     def __init__ (self, value, err):
         self.set_textual_elements ("density", "kg m$^{-3}$", "$\\rho_\\mathrm{liq}$")
         self.value = value
@@ -60,12 +64,16 @@ class Density (PropertyBase):
 
 class Gamma (PropertyBase):
 
+    id_string = "gamma"
+
     def __init__ (self, value, err, nsurf=2):
         self.set_textual_elements ("gamma", "mN m$^{-1}$", "$\\gamma$")
         self.value = 0.1 * value/nsurf
         self.err = 0.1 * err/nsurf
 
 class dHvap (PropertyBase):
+
+    id_string = "dhvap"
 
     # corrs are taken into account as dHvap_corr = dHvap - value_pol + corrs
     def __init__ (self, value_liq, value_gas, value_pol, err_liq, err_gas, err_pol,\
@@ -85,6 +93,7 @@ class dHvap (PropertyBase):
 
 class CohesiveEnergyDensity(PropertyBase):
 
+    id_string = "ced"
     avogadroConstant = 6.02214076e+23
 
     def __init__(self, u_liq, u_gas, v, pol, err_liq, err_gas, err_v, err_pol, corrs, nmols):
@@ -101,6 +110,8 @@ class CohesiveEnergyDensity(PropertyBase):
 
 class GammaViaCohesiveEnergyDensity(PropertyBase):
 
+    id_string = "gced"
+
     # see https://www.sciencedirect.com/science/article/abs/pii/0021979772902457
     # we use the "quasi-thermodynamic" value derived in the last section of this paper, converted to our units
     # (in the paper, delta2 is in cal/cm3, gamma is is dynes/cm and vm is in cm3/mol)
@@ -114,8 +125,10 @@ class GammaViaCohesiveEnergyDensity(PropertyBase):
         self.value = (v_m**(1.0/3)) * ced.value / self.conversionConstant
         #self.err   = np.abs( ced.value * (1.0/3)*(v_m)**(-2.0/3)*err_v_m + ced.err * (v_m**(1.0/3)) ) / self.conversionConstant
         self.err   = self.value * np.sqrt( (((1.0/3) * v_m**(-2.0/3) * err_v_m)/(v_m**(1./3)))**2 + (ced.err/ced.value)**2)
-        
+
 class DGsolvAlchemicalAnalysis(PropertyBase):
+
+    id_string = "dgsolv"
 
     def __init__(self, value, err):
         # Set attributes
@@ -157,3 +170,16 @@ class DGsolvAlchemicalAnalysis(PropertyBase):
         _fp = open(output, 'w')
         _fp.write('Value{:>10.3f}\nError{:>10.4f}\n'.format(df, ddf))
         _fp.close()
+
+
+class CustomProperty(PropertyBase):
+    # NOTE: A CustomProperty is always associated with a CustomAtomicProperty.
+    def __init__ (self, name, value, err):
+        # Just to check if it works.
+        _ = atomic_properties.\
+            CustomAtomicPropertyFactory.\
+            create_custom_atomic_property(name)
+        # Now do stuff.
+        self.set_textual_elements(name, f"{name} units", name)
+        self.value = value
+        self.err = err

@@ -6,12 +6,12 @@ from gridshifter import *
 from parameters import *
 from variations import *
 from gridbase import *
-from topology import * 
+from topology import *
+from atomic_properties import create_atomic_property, PropertyNotInitialized
 from coverage import coverInterface
 from protocols import LiquidProtocol, GasProtocol, SlabProtocol, SolvationProtocol, SolvationFreeEnergyFactory, DummyProtocol
 
 import os
-import sys 
 
 def block2dict(stream, endString, comment):
     out_dict = {}
@@ -23,6 +23,7 @@ def block2dict(stream, endString, comment):
         splittedLine = line.split()
         out_dict[splittedLine[0]] = splittedLine[1:]
     return out_dict
+
 
 class ParameterIO:
     def __init__(self, stream, parRefFactory, domainSpaceFactory):
@@ -262,7 +263,6 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                             output_protocolsHash[propId] = [nameLiq, nameGas, corr]
                         else:
                             output_protocolsHash[propId] = [nameLiq, nameGas]
-                            
                         # find protocol with name given - Liq
                         protocols = filter (lambda x: x.name == nameLiq, output_protocols)
                         for protocol in protocols:
@@ -326,8 +326,23 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                         for protocol in protocols:
                             protocol.surrogate_models = []
                     else:
-                        print ("ERROR: Property \"%s\" is not supported.\n" % typeRead)
-                        exit()
+                        # Perhaps it is a custom property, try to create it
+                        # just to check.
+                        try:
+                            atomic_property = create_atomic_property(propRead)
+                        except PropertyNotInitialized:
+                            # If it's not, then it's nothing.
+                            print("ERROR: Property \"%s\" is not supported.\n"
+                                  % typeRead)
+                            exit()
+                        output_protocolsHash[propId] = [nameRead]
+                        protocols = filter(lambda x: x.name == nameRead,
+                                           output_protocols)
+                        for protocol in protocols:
+                            protocol.add_surrogate_model(surrModel,
+                                                         propRead,
+                                                         bool_legacy)
+                            protocol.properties.append(propRead)
         if (line.rstrip() == '$optimize'):
             output_optimizer.readFromStream (fp, validateFlag)
         if (line.rstrip() == '$parameters'):

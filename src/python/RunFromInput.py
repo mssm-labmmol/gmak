@@ -23,13 +23,15 @@ import copy
 import runcmd
 import pickle
 import simulate
+import custom_atomic_properties
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
 else:
     bool_legacy = False
 
-plotFlag = not ('--no-plot' in sys.argv)
+#plotFlag = not ('--no-plot' in sys.argv)
+plotFlag = False # never plot
 validateFlag = ('--validate' in sys.argv)
 writeNewInput = ('--write-input' in sys.argv)
 

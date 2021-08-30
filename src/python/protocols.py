@@ -9,11 +9,15 @@ import copy
 import os
 from logger import *
 from mdputils import *
+import atomic_properties
 
 class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
     def get_filtering_properties (self):
-        standard_properties = self.get_properties()
+        raw_properties = self.get_properties()
+        # filter those that are timeseries
+        standard_properties = [p for p in raw_properties if
+                               atomic_properties.create_atomic_property(p).is_timeseries]
         if ('potential' not in standard_properties) and (self.get_mbar_model() is not None):
             standard_properties.append('potential')
         if self.has_pv():
@@ -21,12 +25,17 @@ class BaseProtocol:
                 standard_properties.append('pV')
         return standard_properties
 
+    def get_nonfiltering_properties(self):
+        raw_properties = self.get_properties()
+        return [p for p in raw_properties if not
+                atomic_properties.create_atomic_property(p).is_timeseries]
+
     def expand(self):
         return [self,]
-    
+
     def get_properties (self):
         return self.properties
-    
+
     def get_temperature (self):
         temp = 0.0
         fp = open(self.mdps[-1], "r")
@@ -155,7 +164,7 @@ class SlabProtocol(BaseProtocol):
 
     def set_follow (self, pro_name):
         self.follow = pro_name
-        
+
     def run_gridpoint_at_dir (self, gridpoint, workdir):
         labels   =  [str(x) for x in range(len(self.mdps))]
         conf     =  gridpoint.protocol_outputs[self.follow]['gro']

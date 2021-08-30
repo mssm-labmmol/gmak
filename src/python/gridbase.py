@@ -1,4 +1,5 @@
 import runcmd
+import sys
 import re
 import os
 import shlex
@@ -20,6 +21,7 @@ import copy
 import pickle
 from   logger          import *
 from   state           import *
+import atomic_properties
 
 def replaceMacros(fn, macros):
     print("Replacing macros in %s:" % fn)
@@ -208,7 +210,7 @@ class GridPoint:
         return self.is_sample
 
     # obj is a PropertyBase::X object (X=Density,Gamma,dHvap)
-    def add_property_estimate (self, prop_id, prop_name, obj):
+    def add_property_estimate(self, prop_id, prop_name, obj):
         if (prop_name != obj.name):
             raise ValueError ("ERROR: expected {} but got {}.\n".format(prop_name, obj.name))
         self.estimated_properties[prop_id] = obj
@@ -230,23 +232,16 @@ class GridPoint:
             self.rw_outputs[gp_other.id] = {}
             self.rw_outputs[gp_other.id][protocol.name] = output
 
-    def get_atomic_property_from_protocol (self, name, protocol, output):
-        # just to make sure absolute paths are used
+    def get_atomic_property_from_protocol(self, name, protocol, output):
         output = os.path.abspath(output)
-        # from traj_ana.py
-        if (name == 'polcorr'):
-            obtain_polcorr (self.protocol_outputs[protocol.name]['xtc'],\
-                    self.protocol_outputs[protocol.name]['edr'],\
-                    self.protocol_outputs[protocol.name]['gro'],\
-                    self.protocol_outputs[protocol.name]['tpr'],\
-                    protocol.dipole, protocol.polar, output)
+        if name == 'polcorr':
+            mu = protocol.dipole
+            alpha = protocol.polar
+            ap = atomic_properties.create_atomic_property(name, mu, alpha)
         else:
-            obtain_property (self.protocol_outputs[protocol.name]['xtc'],\
-                    self.protocol_outputs[protocol.name]['edr'],\
-                    self.protocol_outputs[protocol.name]['gro'],\
-                    self.protocol_outputs[protocol.name]['tpr'],\
-                    name, output)
-        self.add_atomic_property_output (name, protocol, output)
+            ap = atomic_properties.create_atomic_property(name)
+        ap.calc(self.protocol_outputs[protocol.name], output)
+        self.add_atomic_property_output(name, protocol, output)
 
     def get_atomic_property_from_protocol_sequence (self, name, protocol_sequence_name, protocol_sequence, output):
         # just to make sure absolute paths are used
@@ -309,15 +304,15 @@ class GridPoint:
                 # NOTE: dgsolv is already filtered
                 self.get_atomic_property_from_protocol_sequence (prop, protocol.name, protocol.expand(), odir + "/filtered_" + prop + ".xvg")
             else:
-                self.get_atomic_property_from_protocol (prop, protocol, odir + "/" + prop + ".xvg")
+                self.get_atomic_property_from_protocol(prop, protocol, odir + "/" + prop + ".xvg")
         # from traj_filter
         if ('dgsolv' not in properties):
-            extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],\
-                    self.protocol_outputs[protocol.name]['tpr'], \
-                    [self.atomic_properties[protocol.name][x] for x in properties],\
-                    odir + '/filtered_trajectory.' + ext,\
-                    [odir + '/filtered_' + prop + '.xvg' for prop in properties],
-                    methods=kinds)
+            extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],
+                                         self.protocol_outputs[protocol.name]['tpr'],
+                                         [self.atomic_properties[protocol.name][x] for x in properties],
+                                         odir + '/filtered_trajectory.' + ext,
+                                         [odir + '/filtered_' + prop + '.xvg' for prop in properties],
+                                         methods=kinds)
             # update gridpoint trajectory
             self.protocol_outputs[protocol.name][ext] = \
                     os.path.abspath(odir + '/filtered_trajectory.' + ext)
@@ -564,15 +559,23 @@ class ParameterGrid:
                 else:
                     gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
 
+    def nonfilter_with_protocol_at_dir (self, protocol, workdir):
+        for i,gp in enumerate(self.grid_points):
+            if gp.is_sample:
+                for prop in protocol.get_nonfiltering_properties():
+                    gp.get_atomic_property_from_protocol(prop,
+                                                         protocol,
+                                                         workdir + "/" + prop + ".xvg")
+
     def reweight(self, protocol, workdir):
         self.reweighter.run(protocol, workdir)
 
     def retrieveReweightProperty(self, prop):
         return self.reweighter.getPropertyMatrix(prop)
-        
+
     def retrieveReweightProperties(self):
         return self.reweighter.getFullPropertyMatrix()
-        
+
     def retrieveReweightNumberOfConfigurations(self):
         return self.reweighter.getConfigurationMatrix()
 
@@ -588,12 +591,12 @@ class ParameterGrid:
             for gp in self.grid_points:
                 estimateObj   = Density (estimateValue[gp.id], estimateErr[gp.id])
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'gamma'):
+        elif (prop == 'gamma'):
             estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(prop, kind)
             for gp in self.grid_points:
-                estimateObj   = Gamma (estimateValue[gp.id], estimateErr[gp.id])                
+                estimateObj   = Gamma (estimateValue[gp.id], estimateErr[gp.id])
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'dhvap'):
+        elif (prop == 'dhvap'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols = protocolObjs[0].nmols
             # for 'none' gas
@@ -613,7 +616,7 @@ class ParameterGrid:
                 estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],
                                        estimateErrLiq[gp.id], estimateErrGas[gp.id], estimateErrPol[gp.id], corr, nmols, temp)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'ced'):
+        elif (prop == 'ced'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols            = protocolObjs[0].nmols
             #
@@ -631,7 +634,7 @@ class ParameterGrid:
                                                        estimateErrLiq[gp.id], estimateErrGas[gp.id],
                                                        estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'gced'):
+        elif (prop == 'gced'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols            = protocolObjs[0].nmols
             #
@@ -649,11 +652,20 @@ class ParameterGrid:
                                                        estimateErrLiq[gp.id], estimateErrGas[gp.id],
                                                        estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'dgsolv'):
+        elif (prop == 'dgsolv'):
             estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property('dgsolv', kind)
             for gp in self.grid_points:
                 estimateObj = DGsolvAlchemicalAnalysis(estimateValue[gp.id], estimateErr[gp.id])
                 gp.add_property_estimate (prop_id, prop, estimateObj)
+        else:
+            # Custom property
+            estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(
+                prop, kind)
+            for gp in self.grid_points:
+                estimateObj = init_property_from_string(prop,
+                                                        estimateValue[gp.id],
+                                                        estimateErr[gp.id])
+                gp.add_property_estimate(prop_id, prop, estimateObj)
 
     def setNewCenterForParameters(self, i):
         self.parSpaceGen.setNewCenter(i)
@@ -853,7 +865,10 @@ class ParameterGrid:
         # this also calculates the properties
         for protocol in protocols:
             simu_dir = self.makeProtocolSimudir(protocol)
-            self.filter_with_protocol_at_dir (protocol, simu_dir)
+            # this deals with timeseries properties that can be filtered
+            self.filter_with_protocol_at_dir(protocol, simu_dir)
+            # this deals with the other properties (avg +/- err)
+            self.nonfilter_with_protocol_at_dir(protocol, simu_dir)
 
         # reweight
         for protocol in protocols:
@@ -868,7 +883,7 @@ class ParameterGrid:
                     pv_kn = self.retrieveReweightProperty('pV')
                     u_kn  = (u_kn + pv_kn) / (0.83144626 * protocol.get_temperature())
                 else:
-                    u_kn  = u_kn / (0.83144626 * protocol.get_temperature())                
+                    u_kn  = u_kn / (0.83144626 * protocol.get_temperature())
                 N_k   = self.retrieveReweightNumberOfConfigurations()
                 # retrieve MBAR model (one model for all properties!)
                 mbar_model = protocol.get_mbar_model()
@@ -889,9 +904,12 @@ class ParameterGrid:
             for p, (model, prop) in enumerate(interp_models_props):
                 A_psn.append([])
                 for s, gs in enumerate(self.get_samples()):
-                    prop_file = gs.retrieve_atomic_property_from_protocol (prop, protocol)                
+                    prop_file = gs.retrieve_atomic_property_from_protocol (prop, protocol)
                     A_psn[p].append([])
-                    A_psn[p][s] = np.loadtxt(prop_file, usecols=(1,))
+                    if prop in protocol.get_filtering_properties():
+                        A_psn[p][s] = np.loadtxt(prop_file, usecols=(1,))
+                    else:
+                        A_psn[p][s] = np.loadtxt(prop_file, usecols=(0,))
             I_s = self.get_samples_id()
             # estimate properties
             for p, (model, prop) in enumerate(interp_models_props):
@@ -912,7 +930,7 @@ class ParameterGrid:
 
         # create parameters file
         self.writeParameters()
-        
+
         for protocol in protocols:
             if (protocol.requires_corners()):
                 self.add_corners()
@@ -921,7 +939,7 @@ class ParameterGrid:
         self.add_fixed_points()
 
         self.make_grid_for_protocols(protocols, optimizer)
-        
+
         for prop in properties:
             referenceValue = optimizer.referenceValues[prop]
             kind = surrogateModelHash[prop]
