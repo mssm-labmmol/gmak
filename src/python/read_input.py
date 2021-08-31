@@ -7,11 +7,11 @@ from parameters import *
 from variations import *
 from gridbase import *
 from topology import *
-from atomic_properties import create_atomic_property, PropertyNotInitialized
+import atomic_properties
 from coverage import coverInterface
-from protocols import LiquidProtocol, GasProtocol, SlabProtocol, SolvationProtocol, SolvationFreeEnergyFactory, DummyProtocol
-
+from protocols import create_protocols
 import os
+
 
 def block2dict(stream, endString, comment):
     out_dict = {}
@@ -183,46 +183,31 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                 prefix                     = "{}/{}/{}_0".format(output_workdir, name, name)
                 moleculesDict[name]        = {}
                 moleculesDict[name]['itp'] = blockDict['itp'][i]
-                #moleculesDict[name]['gro'] = blockDict['gro'][i]
-                outputTopoBundles[name]    = TopologyBundleFactory.createBundle('gromacs', blockDict['itp'][i], prefix,
-                                                outputNonbondedForcefield, outputBondedForcefield)
+                # Extension of 'itp' file determines the type of topology---if it is
+                # 'itp', then it is not a full topology; if it is 'top', then it is a
+                # full topology
+                if moleculesDict[name]['itp'].endswith('.itp'):
+                    full_top = False
+                elif moleculesDict[name]['itp'].endswith('.top'):
+                    full_top = True
+                else:
+                    raise ValueError("Topologies must be either .itp or .top.")
+                outputTopoBundles[name] = TopologyBundleFactory.createBundle('gromacs',
+                                                                             blockDict['itp'][i],
+                                                                             prefix,
+                                                                             outputNonbondedForcefield,
+                                                                             outputBondedForcefield,
+                                                                             full_top)
                 runcmd.run("mkdir -p {}/{}".format(output_workdir, name))
-                                                                                
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist
             # beyond this point.
             outputParameterSpaceGen = parameterIO.getParameterSpaceGenerator()
             output_grid = ParameterGrid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter, output_workdir, validateFlag)
         if (line.rstrip() == "$protocol"):
-            line = next(fp)
-            if (line.split()[0] == 'type'):
-                typeRead = line.split()[1]
-                if (typeRead == 'liquid'):
-                    new_protocol = LiquidProtocol("",0,"",[""],[],[])
-                    new_protocol.read_from_stream (fp)
-                    output_protocols.append(new_protocol)
-                elif (typeRead == 'gas'):
-                    new_protocol = GasProtocol("","",0.0,0.0,[],[])
-                    new_protocol.read_from_stream (fp)
-                    output_protocols.append(new_protocol)
-                elif (typeRead == 'slab'):
-                    new_protocol = SlabProtocol("",[],5.0,[],-1)
-                    new_protocol.read_from_stream (fp)
-                    output_protocols.append(new_protocol)
-                elif (typeRead == 'dgsolv'):
-                    argsdict = block2dict(fp, '$end', '#')
-                    new_protocols = SolvationFreeEnergyFactory().createSolvationProtocolFromDict(argsdict)
-                    base_protocol = DummyProtocol(argsdict['name'][0], new_protocols[0])
-                    base_protocol.point_to(new_protocols)
-                    for prot in new_protocols:
-                        output_protocols.append(prot)
-                    output_protocols.append(base_protocol)
-                else:
-                    print ("ERROR: Type \"%s\" is not supported.\n" % typeRead)
-                    exit()
-            else:
-                print ("ERROR: First line after a $protocol flag MUST assign its type.\n")
-                exit()
+            blockDict = block2dict(fp, '$end', '#')
+            new_protocols = create_protocols(blockDict)
+            output_protocols += new_protocols
         if (line.rstrip() == '$compute'):
             for line in fp:
                 if line[0] == '#':
@@ -250,7 +235,7 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                         # actually no list -- this is only one protocol
                         for protocol in protocols:
                             protocol.add_surrogate_model(surrModel, 'density', bool_legacy)
-                            protocol.properties.append('density') 
+                            protocol.properties.append('density')
                             # always add potential for safety
                             #if 'potential' not in protocol.properties:
                             #    protocol.properties.append('potential')
@@ -329,8 +314,8 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                         # Perhaps it is a custom property, try to create it
                         # just to check.
                         try:
-                            atomic_property = create_atomic_property(propRead)
-                        except PropertyNotInitialized:
+                            atomic_property = atomic_properties.create_atomic_property(propRead)
+                        except atomic_properties.PropertyNotInitialized:
                             # If it's not, then it's nothing.
                             print("ERROR: Property \"%s\" is not supported.\n"
                                   % typeRead)

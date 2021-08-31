@@ -117,6 +117,10 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         self.itp_input = itp_input
 
     def _l2z(self, name):
+        # TODO More atoms???
+        if name[0] == 'X':
+            # this is for testing purposes only
+            return 1
         if name[0] == 'H':
             return 1
         if name[0] == 'O':
@@ -150,7 +154,7 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
         fp.write("[ nonbond_params ]\n")
         for label, pars in pairtypes:
             parameters = dict(pars)
-            if (label[0] != label[1]):            
+            if (label[0] != label[1]):
                 fp.write("%-6s%-6s%6d%18.7e%18.7e\n" % (label[0], label[1], 1,
                             parameters['c6'], parameters['c12']))
         fp.write('\n')
@@ -171,7 +175,7 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
 
     def getFiles(self):
         return self.fn
-    
+
     def writeToFiles(self, topology):
         fp = open(self.fn, 'w')
 
@@ -189,7 +193,7 @@ class GromacsDummyTopologyOutput(AbstractTopologyOutput):
 
         # Write topo info.
         self._writeTopoInfo(fp, topology)
-        
+
         fp.close()
 
 # ----------------------------------------------------------------------
@@ -258,8 +262,9 @@ class AbstractTopologyOutputSetter(ABC):
 
 class GromacsDummyTopologyOutputSetter(AbstractTopologyOutputSetter):
 
-    def __init__(self, itpOutputPrefix):
+    def __init__(self, itpOutputPrefix, fullTop):
         self.prefix = itpOutputPrefix
+        self.fullTop = fullTop
 
     def incrementPrefix(self):
         indexOfUnderscore = self.prefix.rfind('_')
@@ -267,9 +272,12 @@ class GromacsDummyTopologyOutputSetter(AbstractTopologyOutputSetter):
         front             = self.prefix[:indexOfUnderscore]
         number           += 1
         self.prefix       = "{}_{}".format(front, number)
-        
+
     def setState(self, abstractTopologyOutput, state):
-        newFile = "{}_{}.itp".format(self.prefix, state)
+        if self.fullTop:
+            newFile = "{}_{}.top".format(self.prefix, state)
+        else:
+            newFile = "{}_{}.itp".format(self.prefix, state)
         newFile = os.path.abspath(newFile)
         abstractTopologyOutput._alterFile(newFile)
 
@@ -298,7 +306,9 @@ class TopologyBundle:
 class TopologyBundleFactory:
 
     @staticmethod
-    def _createBundleGromacs(itpPath, itpOutputPrefix, nonbondedForcefield, bondedForcefield):
+    def _createBundleGromacs(itpPath, itpOutputPrefix,
+                             nonbondedForcefield, bondedForcefield,
+                             fullTop):
         """
         Input object is an itp path.
         Output object is an itp path prefix.
@@ -306,7 +316,7 @@ class TopologyBundleFactory:
         # Initialize objects.
         _inp = GromacsDummyTopologyInput(itpPath)
         _top = _inp.getTopology()
-        _set = GromacsDummyTopologyOutputSetter(itpOutputPrefix) 
+        _set = GromacsDummyTopologyOutputSetter(itpOutputPrefix, fullTop)
         _out = GromacsDummyTopologyOutput(itpPath, '')
         # By default, set output to state zero.
         _set.setState(_out, 0) 
@@ -317,11 +327,15 @@ class TopologyBundleFactory:
         return TopologyBundle(_top, _out, _set)
 
     @staticmethod
-    def createBundle(ctrlString, inputObject, outputObject, nonbondedForcefield, bondedForcefield):
+    def createBundle(ctrlString, inputObject, outputObject,
+                     nonbondedForcefield, bondedForcefield,
+                     fullTop):
         funct_dict = {
             'gromacs': TopologyBundleFactory._createBundleGromacs,
         }
-        return funct_dict[ctrlString](inputObject, outputObject, nonbondedForcefield, bondedForcefield)
+        return funct_dict[ctrlString](inputObject, outputObject,
+                                      nonbondedForcefield, bondedForcefield,
+                                      fullTop)
 
 class TestTopologyBundleGromacs:
     def __init__(self, itpFile, itpPrefix, nonbondedForcefield, bondedForcefield, spacegen):

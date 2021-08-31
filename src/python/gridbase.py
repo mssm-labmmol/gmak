@@ -172,7 +172,7 @@ class GridPoint:
     def unsetProtocolAsSimulated(self, protocol):
         if (protocol.name in self.is_simulated):
             self.is_simulated.remove(protocol.name)
-    
+
     def getTopologyPath(self, molecule):
         return self.baseGrid.topologyBundles[molecule].getPathsForStatepath(self.id)
 
@@ -261,7 +261,7 @@ class GridPoint:
 
     def get_number_of_configurations_for_protocol(self, protocol):
         if (self.is_sample):
-            confs = [0] * len(self.atomic_properties[protocol.name])      
+            confs = [0] * len(self.atomic_properties[protocol.name])
             for i, prop_keys in enumerate(self.atomic_properties[protocol.name]):
                 confs[i] = np.loadtxt(self.atomic_properties[protocol.name][prop_keys], comments=['@','#'], usecols=(0,)).shape[0]
                 if (i > 0):
@@ -917,7 +917,8 @@ class ParameterGrid:
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag=False):
+    def run(self, protocols, optimizer, surrogateModelHash, properties,
+            protocolsHash, resultsAssembler, plotFlag=False):
         globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         globalLogger.indent()
 

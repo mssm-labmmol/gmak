@@ -139,7 +139,7 @@ def make_solvation_box_and_topology (confs, nmols, outconf, outtop, itps, makeBo
     # create box if it does not exist
     if not (os.path.isfile(outconf)) and makeBox:
         # first, create a box with one solute molecule
-        command = "{} editconf -bt cubic -f {} -d 1.4 -o _box-1.gro".format(ConfigVariables.gmx, confs['solute'])
+        command = "{} editconf -bt cubic -f {} -d 2.8 -o _box-1.gro".format(ConfigVariables.gmx, confs['solute'])
         runcmd.run(command)
         # complete solutes
         if (nmols['solute'] > 1):
@@ -384,3 +384,49 @@ def dummy_protocol_slab (conf, top, mdps, labels, workdir):
     output_dict['top'] = top
     return output_dict
 
+
+def simulate_protocol_general(conf, top, mdps, nsteps, labels, workdir):
+    conf = os.path.abspath(conf)
+    workdir = os.path.abspath(workdir)
+    for i in range(len(mdps)):
+        mdps[i] = os.path.abspath(mdps[i])
+    output_dict = {}
+    runcmd.run("mkdir -p " + workdir)
+    for i in range(len(mdps)):
+        if i == 0:
+            simulate_something (conf, top, mdps[i], labels[i], workdir)
+        elif i == len(mdps) - 1:
+            if (read_nsteps_from_mdp(mdps[i]) == nsteps):
+                previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
+                simulate_something (previous_conf, top, mdps[i], labels[i], workdir)
+            else:
+                # Extend
+                extend_something(nsteps, workdir, labels[i])
+        else:
+            previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
+            simulate_something (previous_conf, top, mdps[i], labels[i], workdir)
+    # create output dictionary 
+    output_dict['xtc'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".xtc"
+    output_dict['tpr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".tpr"
+    output_dict['trr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".trr"
+    output_dict['edr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".edr"
+    output_dict['gro'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".gro"
+    output_dict['top'] = top
+    #
+    return output_dict
+
+def dummy_protocol_general(conf, top, mdps, labels, workdir):
+    conf = os.path.abspath(conf)
+    workdir = os.path.abspath(workdir)
+    for i in range(len(mdps)):
+        mdps[i] = os.path.abspath(mdps[i])
+    output_dict = {}
+    # create output dictionary 
+    output_dict['xtc'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".xtc"
+    output_dict['tpr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".tpr"
+    output_dict['trr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".trr"
+    output_dict['edr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".edr"
+    output_dict['gro'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".gro"
+    output_dict['top'] = top
+    #
+    return output_dict
