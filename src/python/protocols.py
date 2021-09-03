@@ -13,11 +13,22 @@ import atomic_properties
 
 class BaseProtocol:
     """Contains few methods where implementation is common to all protocols."""
-    def get_filtering_properties (self):
+    def get_filtering_properties(self):
         raw_properties = self.get_properties()
         # filter those that are timeseries
-        standard_properties = [p for p in raw_properties if
-                               atomic_properties.create_atomic_property(p).is_timeseries]
+        standard_properties = []
+        for p in raw_properties:
+            if p == 'polcorr':
+                mu = self.dipole
+                alpha = self.polar
+                ap = atomic_properties.create_atomic_property(p, mu, alpha)
+            elif p == 'dgsolv':
+                temp = self.get_temperature()
+                ap = atomic_properties.create_atomic_property(p, temp)
+            else:
+                ap = atomic_properties.create_atomic_property(p)
+            if ap.is_timeseries:
+                standard_properties.append(p)
         if ('potential' not in standard_properties) and (self.get_mbar_model() is not None):
             standard_properties.append('potential')
         if self.has_pv():
@@ -27,11 +38,8 @@ class BaseProtocol:
 
     def get_nonfiltering_properties(self):
         raw_properties = self.get_properties()
-        return [p for p in raw_properties if not
-                atomic_properties.create_atomic_property(p).is_timeseries]
-
-    def expand(self):
-        return [self,]
+        filter_properties = self.get_filtering_properties()
+        return [p for p in raw_properties if p not in filter_properties]
 
     def get_properties (self):
         return self.properties
@@ -167,11 +175,12 @@ class LiquidProtocol(BaseProtocol):
         return
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        labels = [str(x) for x in range(len(self.mdps))]
-        out_liquid = dummy_protocol_liquid (self.coords, self.nmols, \
-                self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, labels, workdir)
-        gridpoint.add_protocol_output (self, out_liquid)
-        return
+        if self.requires_reweight():
+            labels = [str(x) for x in range(len(self.mdps))]
+            out_liquid = dummy_protocol_liquid (self.coords, self.nmols, \
+                    self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, labels, workdir)
+            gridpoint.add_protocol_output (self, out_liquid)
+            return
 
 
 class GasProtocol(BaseProtocol):
@@ -223,11 +232,12 @@ class GasProtocol(BaseProtocol):
         return
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        labels = [str(x) for x in range(len(self.mdps))]
-        out_gas = dummy_protocol_gas (self.coords, gridpoint.getTopologyPath(self.molecule),\
-                self.mdps, labels, workdir)
-        gridpoint.add_protocol_output (self, out_gas)
-        return
+        if self.requires_reweight():
+            labels = [str(x) for x in range(len(self.mdps))]
+            out_gas = dummy_protocol_gas (self.coords, gridpoint.getTopologyPath(self.molecule),\
+                    self.mdps, labels, workdir)
+            gridpoint.add_protocol_output (self, out_gas)
+            return
 
     def set_other_corrections (self, corr):
         self.other_corrections = corr
@@ -285,18 +295,19 @@ class SlabProtocol(BaseProtocol):
         return
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        labels   =  [str(x) for x in range(len(self.mdps))]
-        conf     =  gridpoint.protocol_outputs[self.follow]['gro']
-        top      =  gridpoint.protocol_outputs[self.follow]['top']
-        out_slab = dummy_protocol_slab (conf, top, self.mdps, labels,\
-                workdir)
-        gridpoint.add_protocol_output (self, out_slab)
-        return
+        if self.requires_reweight():
+            labels   =  [str(x) for x in range(len(self.mdps))]
+            conf     =  gridpoint.protocol_outputs[self.follow]['gro']
+            top      =  gridpoint.protocol_outputs[self.follow]['top']
+            out_slab = dummy_protocol_slab (conf, top, self.mdps, labels,\
+                    workdir)
+            gridpoint.add_protocol_output (self, out_slab)
+            return
 
 
-class SolvationProtocol(BaseProtocol):
+class CoreSolvationProtocol(BaseProtocol):
 
-    type = "solv"
+    type = "_coresolv"
     _has_pv = True
 
     def __init__ (self, name, moleculeSolvent, moleculeSolute,
@@ -308,77 +319,48 @@ class SolvationProtocol(BaseProtocol):
         self.coords = {'solvent': coordsSolvent, 'solute': coordsSolute}
         self.nmols = {'solvent': nmolsSolvent, 'solute': nmolsSolute}
         self.properties = properties
-        self.follows= followsObj
+        self.follows = followsObj
         self.surrogate_models = []
+        self.parent = None
+        self.output_files = None
 
     def run_gridpoint_at_dir (self, gridpoint, workdir, simulate=True):
         labels = [str(x) for x in range(len(self.mdps))]
-        nsteps = gridpoint.getProtocolSteps(self)
+        nsteps = gridpoint.getProtocolSteps(self.parent)
         if self.follows is not None and simulate:
             runcmd.run("mkdir -p {}".format(workdir))
-            copyfile(gridpoint.protocol_outputs[self.follows.name]['gro'],
+            copyfile(self.follows.output_files['gro'],
                      workdir + '/solvation.gro')
-        out = simulate_protocol_solvation(self.coords, self.nmols,
-                                          {'solute':
-                                           gridpoint.getTopologyPath(self.molecules['solute']),
-                                           'solvent':
-                                           gridpoint.getTopologyPath(self.molecules['solvent'])},
-                                          self.mdps, nsteps, labels,
-                                          workdir, simulate,
-                                          self.follows is not None)
-        gridpoint.add_protocol_output (self, out)
+        out = simulate_protocol_solvation(
+            self.coords, self.nmols,
+            {'solute':
+             gridpoint.getTopologyPath(self.molecules['solute']),
+             'solvent':
+             gridpoint.getTopologyPath(self.molecules['solvent'])},
+            self.mdps, nsteps, labels,
+            workdir, simulate,
+            self.follows is not None)
+        self.output_files = out
+        return out
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        self.run_gridpoint_at_dir(gridpoint, workdir, simulate=False)
+        if self.requires_reweight():
+            return self.run_gridpoint_at_dir(gridpoint, workdir, simulate=False)
 
-
-class DummyProtocol(BaseProtocol):
-
-    _has_pv = False
-
-    def __init__ (self, name, protocol):
-        self.type = 'dgsolv'
-        self.name = name
-        self.properties = []
-        self.mdps = protocol.mdps
-        self.coords = protocol.coords
-        self.molecules = protocol.molecules
-        self.nmols  = {'solvent': 0, 'solute': 0}
-        self.box_size = 0.0
-        self.follows = None
-        self.inner_protocols = []
-        self.surrogate_models = []
-
-    def point_to(self, protocols):
-        self.inner_protocols = protocols
-
-    def expand(self):
-        return self.inner_protocols
-
-    def run_gridpoint_at_dir (self, gridpoint, workdir):
-        return
-
-    def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        return
-
-class SolvationProtocolFactory(ABC):
-    @abstractmethod
-    def createSolvationProtocolFromDict(self, args):
-        pass
-
-class SolvationFreeEnergyFactory(SolvationProtocolFactory):
     @classmethod
-    def createSolvationProtocolFromDict(cls, args):
+    def from_dict(cls, bd):
         # read number of lambda points from some mdp file
         imu = mdpUtils()
-        imu.parse_file(args['mdps'][-1])
+        imu.parse_file(bd['mdps'][-1])
         nlambdas = imu.get_nlambdas()
+        # force calc-lambda-neighbors to be -1
         if (int(imu.get_option('calc-lambda-neighbors')[0]) != -1):
             warnings.warn('calc-lambda-neighbors will be set to -1')
         outputProtocols = []
         for i in range(nlambdas):
+            # write mdp files for each state, setting lambda appropriately
             mdps = []
-            for m in args['mdps']:
+            for m in bd['mdps']:
                 prefix = os.path.abspath(m)[:-4]
                 fn = prefix + '_{}.mdp'.format(i)
                 mdps.append(fn)
@@ -387,22 +369,88 @@ class SolvationFreeEnergyFactory(SolvationProtocolFactory):
                 imu.set_lambda_state(i)
                 imu.set_option('calc-lambda-neighbors', ['-1'])
                 imu.write_to_file(fn)
-            # create
+            # first state follows nothing, but succeeding states follow their
+            # respective previous state
             if (i == 0):
                 follows = None
             else:
                 follows = outputProtocols[i - 1]
-            outputProtocols.append(SolvationProtocol(args['name'][0] +
-                                                     '-{}'.format(i),
-                                                     args['solvent'][0],
-                                                     args['solute'][0],
-                                                     int(args['solvent'][1]),
-                                                     int(args['solute'][1]),
-                                                     args['solvent'][2],
-                                                     args['solute'][2],
-                                                     mdps,
-                                                     [], follows))
+            # create SolvationProtocol for each state and append it to the
+            # list of states returned by this factory
+            outputProtocols.append(
+                cls(bd['name'][0] + '-{}'.format(i),
+                    bd['solvent'][0],
+                    bd['solute'][0],
+                    int(bd['solvent'][1]),
+                    int(bd['solute'][1]),
+                    bd['solvent'][2],
+                    bd['solute'][2],
+                    mdps,
+                    [],
+                    follows))
         return outputProtocols
+
+
+class SolvationProtocol(BaseProtocol):
+
+    type = "solv"
+    _has_pv = True
+
+    def __init__(self, name, core_protocols, mdps, properties):
+        self.name = name
+        self.core_protocols = core_protocols
+        self.mdps = mdps
+        self.properties = properties
+        self.surrogate_models = []
+
+    @classmethod
+    def from_dict(cls, bd):
+        # first create the core protocols
+        core_protocols = CoreSolvationProtocol.from_dict(bd)
+        # then create the object
+        return cls(bd['name'][0],
+                   core_protocols,
+                   bd['mdps'],
+                   [])
+
+    # overriden
+    def run_gridpoint_at_dir(self, gridpoint, workdir, simulate=True):
+        pre_out = []
+        for i, p in enumerate(self.core_protocols):
+            # replace workdir name
+            core_workdir = gridpoint.makeSimudir(
+                gridpoint.baseGrid.makeProtocolSimudir(p))
+            pre_out.append(p.run_gridpoint_at_dir(gridpoint,
+                                              core_workdir,
+                                              simulate=simulate))
+        # pre_out is a list of dicts, all of them with the same keys.
+        # we have to convert it into the corresponding dict of lists.
+        keys = pre_out[0].keys()
+        out  = {}
+        for k in keys:
+            out[k] = []
+            for o in pre_out:
+                out[k].append(o[k])
+        gridpoint.add_protocol_output(self, out)
+
+    # overriden
+    def prepare_gridpoint_at_dir(self, gridpoint, workdir):
+        if self.requires_reweight():
+            pre_out = []
+            for i, p in enumerate(self.core_protocols):
+                # replace workdir name
+                core_workdir = gridpoint.makeSimudir(
+                    gridpoint.baseGrid.makeProtocolSimudir(p))
+                pre_out.append(p.prepare_gridpoint_at_dir(gridpoint, core_workdir))
+            # pre_out is a list of dicts, all of them with the same keys.
+            # we have to convert it into the corresponding dict of lists.
+            keys = pre_out[0].keys()
+            out  = {}
+            for k in keys:
+                out[k] = []
+                for o in pre_out:
+                    out[k].append(o[k])
+            gridpoint.add_protocol_output(self, out)
 
 
 class GeneralProtocol(BaseProtocol):
@@ -434,18 +482,18 @@ class GeneralProtocol(BaseProtocol):
         gridpoint.add_protocol_output(self, out)
 
     def prepare_gridpoint_at_dir(self, gridpoint, workdir):
-        labels = [str(x) for x in range(len(self.mdps))]
-        nsteps = gridpoint.getProtocolSteps(self)
-        out    = dummy_protocol_general(self.coords,
-                                        gridpoint.getTopologyPath(self.system),
-                                        self.mdps,
-                                        labels,
-                                        workdir)
-        gridpoint.add_protocol_output(self, out)
+        if self.requires_reweight():
+            labels = [str(x) for x in range(len(self.mdps))]
+            nsteps = gridpoint.getProtocolSteps(self)
+            out    = dummy_protocol_general(self.coords,
+                                            gridpoint.getTopologyPath(self.system),
+                                            self.mdps,
+                                            labels,
+                                            workdir)
+            gridpoint.add_protocol_output(self, out)
 
 
 class CustomProtocol(BaseProtocol):
-    type = "custom"
     _has_pv = False
 
     def __init__(self, simulator):
@@ -461,7 +509,7 @@ class CustomProtocol(BaseProtocol):
         for key in ['name', 'system', 'type']:
             if (key not in bd.keys()):
                 raise Exception(f"CustomProtocol must specify a '{key}'.")
-        out = cls()
+        out = CustomProtocolFactory.create(bd['type'][0])
         for k in bd.keys():
             if len(bd[k]) == 1:
                 setattr(out, k, bd[k][0])
@@ -485,9 +533,15 @@ class CustomProtocolFactory:
     ptable = {}
 
     @classmethod
-    def add_custom_protocol(cls, type_name, calculator):
-                    pass
+    def add_custom_protocol(cls, type_name, simulator):
+        cls.ptable[type_name] = simulator
 
+    @classmethod
+    def create(cls, type_name):
+        return CustomProtocol(cls.ptable[type_name])
+
+def add_custom_protocol(type_name, simulator):
+    CustomProtocolFactory.add_custom_protocol(type_name, simulator)
 
 def create_protocols(bd):
     _type = bd['type'][0]
@@ -499,15 +553,16 @@ def create_protocols(bd):
         return [SlabProtocol.from_dict(bd),]
     elif _type == 'general':
         return [GeneralProtocol.from_dict(bd),]
-    elif _type == 'dgsolv':
-        # Remember: This actually initializes a sequence of protocols
-        # corresponding to each 'lambda' point, and also a dummy protocol.
-        new_protocols = SolvationFreeEnergyFactory.createSolvationProtocolFromDict(bd)
-        base_protocol = DummyProtocol(bd['name'][0], new_protocols[0])
-        base_protocol.point_to(new_protocols)
-        return new_protocols + [base_protocol,]
+    elif _type == 'solv':
+        out = SolvationProtocol.from_dict(bd)
+        # TODO think of a nicer way to set parent
+        for p in out.core_protocols:
+            p.parent = out
+        return [out,]
     else:
         # Custom
-        pass
-    raise NotImplementedError(f"Can't create protocol of type {_type}.")
+        try:
+            return [CustomProtocol.from_dict(bd),]
+        except KeyError:
+            raise NotImplementedError(f"Can't create protocol of type {_type}.")
 

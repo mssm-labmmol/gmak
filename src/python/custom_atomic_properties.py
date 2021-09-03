@@ -1,4 +1,4 @@
-from atomic_properties import CustomAtomicPropertyFactory
+from atomic_properties import add_custom_atomic_property
 
 # Example 1
 # ---------
@@ -14,9 +14,9 @@ def calculator_example_1(input_dict, out_path):
     np.savetxt(out_path, out)
 
 
-CustomAtomicPropertyFactory.add_custom_atomic_property("example_1",
-                                                       calculator_example_1,
-                                                       is_timeseries=False)
+add_custom_atomic_property("example_1",
+                           calculator_example_1,
+                           is_timeseries=False)
 
 # Example 2
 # ---------
@@ -32,6 +32,24 @@ def calculator_example_2(input_dict, out_path):
     os.system(f"rm {out_path}_pre.xvg")
     np.savetxt(out_path, data)
 
-CustomAtomicPropertyFactory.add_custom_atomic_property("example_2",
-                                                       calculator_example_2,
-                                                       is_timeseries=True)
+add_custom_atomic_property("example_2",
+                           calculator_example_2,
+                           is_timeseries=True)
+
+
+# Example 3
+# ---------
+#
+# Adding an atomic property that interacts with a custom protocol that 
+# supplies a 'dat' key in the input dictionary.
+def calculator_dat(input_dict, out_path):
+    import numpy as np
+    data = np.loadtxt(input_dict['dat'], dtype=object)
+    value = float(data[1])
+    err = 0.1 * value
+    out = np.array([value, err])
+    np.savetxt(out_path, out)
+
+add_custom_atomic_property("dat",
+                           calculator_dat,
+                           is_timeseries=False)

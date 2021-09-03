@@ -9,6 +9,8 @@
 - More general support for complex topologies
 - What about dgsolv?
 - Refactor read_input for god's sake
+- replace is_timeseries by apply_filter
+- grep all TODO and todo
 
 
 # Documentation Points

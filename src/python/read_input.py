@@ -300,16 +300,13 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                             #if 'potential' not in protocol.properties:
                             #    protocol.properties.append('potential')
                     elif (propRead == 'dgsolv'):
-                        # find protocol with name given
                         output_protocolsHash[propId] = [nameRead]
-                        base_protocol = filter(lambda x: x.name == nameRead, output_protocols)
-                        for protocol in base_protocol:
-                            protocol.add_surrogate_model(surrModel, 'dgsolv', bool_legacy)           
-                            protocol.properties.append('dgsolv')
-                        # also
-                        protocols = filter(lambda x: x.name.startswith(nameRead + '-'), output_protocols)
+                        # find solvation protocol
+                        protocols = filter(lambda x: x.name == nameRead, output_protocols)
+                        # add surrogate model and atomic property
                         for protocol in protocols:
-                            protocol.surrogate_models = []
+                            protocol.add_surrogate_model(surrModel, propRead, bool_legacy)
+                            protocol.properties.append(propRead)
                     else:
                         # Perhaps it is a custom property, try to create it
                         # just to check.

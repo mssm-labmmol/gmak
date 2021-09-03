@@ -24,6 +24,7 @@ import runcmd
 import pickle
 import simulate
 import custom_atomic_properties
+import custom_protocols
 
 if ('--legacy' in sys.argv):
     bool_legacy = True

@@ -127,7 +127,7 @@ class GridPoint:
             accesses the xtc file of the reweighting on grid point
             'gp' simulated under protocol 'pr'. This may be empty, if
             no reweighting is explicitly performed.
-    
+
         estimated_properties: dictionary of estimated_properties
             e.g. estimated_propeties['gamma'] should be a
             PropertyBase::Gamma
@@ -238,23 +238,13 @@ class GridPoint:
             mu = protocol.dipole
             alpha = protocol.polar
             ap = atomic_properties.create_atomic_property(name, mu, alpha)
+        elif name == 'dgsolv':
+            temp = protocol.get_temperature()
+            ap = atomic_properties.create_atomic_property(name, temp)
         else:
             ap = atomic_properties.create_atomic_property(name)
         ap.calc(self.protocol_outputs[protocol.name], output)
         self.add_atomic_property_output(name, protocol, output)
-
-    def get_atomic_property_from_protocol_sequence (self, name, protocol_sequence_name, protocol_sequence, output):
-        # just to make sure absolute paths are used
-        output = os.path.abspath(output)
-        if (name == 'dgsolv'):
-            dhdlFiles = [self.protocol_outputs[prot.name]['dhdl'] for prot in protocol_sequence]
-            temperature = protocol_sequence[0].get_temperature()
-            globalLogger.putMessage('MESSAGE: dhdl files for alchemical_analysis are {}.'.format(dhdlFiles))
-            globalLogger.putMessage('MESSAGE: temperature is {}'.format(temperature))
-            DGsolvAlchemicalAnalysis.obtain(dhdlFiles, temperature, output)
-        else:
-            raise NotImplementedError("Property {} is not supported for a protocol sequence.".format(name))
-        self.add_atomic_property_output_from_name(name, protocol_sequence_name, output)
 
     def retrieve_atomic_property_from_protocol(self, propname, protocol):
         return self.atomic_properties[protocol.name][propname]
@@ -300,31 +290,32 @@ class GridPoint:
                 n_kinds += 1
             if (n_kinds == 0) or (n_kinds > 1):
                 raise Exception("Property "+ prop+ " belongs to 0 or more than 1 type of surrogate model.")
-            if (prop == 'dgsolv'):
-                # NOTE: dgsolv is already filtered
-                self.get_atomic_property_from_protocol_sequence (prop, protocol.name, protocol.expand(), odir + "/filtered_" + prop + ".xvg")
-            else:
-                self.get_atomic_property_from_protocol(prop, protocol, odir + "/" + prop + ".xvg")
+            self.get_atomic_property_from_protocol(prop, protocol, odir + "/" + prop + ".xvg")
+
         # from traj_filter
-        if ('dgsolv' not in properties):
-            extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],
-                                         self.protocol_outputs[protocol.name]['tpr'],
-                                         [self.atomic_properties[protocol.name][x] for x in properties],
-                                         odir + '/filtered_trajectory.' + ext,
-                                         [odir + '/filtered_' + prop + '.xvg' for prop in properties],
-                                         methods=kinds)
-            # update gridpoint trajectory
-            self.protocol_outputs[protocol.name][ext] = \
-                    os.path.abspath(odir + '/filtered_trajectory.' + ext)
-            # update path of filtered properties
-            for x in properties:
-                self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
+        extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],
+                                     self.protocol_outputs[protocol.name]['tpr'],
+                                     [self.atomic_properties[protocol.name][x] for x in properties],
+                                     odir + '/filtered_trajectory.' + ext,
+                                     [odir + '/filtered_' + prop + '.xvg' for prop in properties],
+                                     methods=kinds)
+        # update gridpoint trajectory
+        self.protocol_outputs[protocol.name][ext] = \
+                os.path.abspath(odir + '/filtered_trajectory.' + ext)
+        # update path of filtered properties
+        for x in properties:
+            self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
 
     def filter_xtc_in_protocol (self, protocol, properties, odir):
         return self.filter_traj_in_protocol(protocol, properties, odir, 'xtc')
 
     def filter_trr_in_protocol (self, protocol, properties, odir):
         return self.filter_traj_in_protocol(protocol, properties, odir, 'trr')
+
+    def makeSimudir(self, protocolSimudir):
+        dirname = os.path.abspath(f"{protocolSimudir}/{self.id}")
+        system(f"mkdir -p {dirname}")
+        return dirname
 
 class ParameterGrid:
 
@@ -540,7 +531,7 @@ class ParameterGrid:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
                     globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolSteps(protocol)), dated=True)
                     globalLogger.indent()
-                    gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
+                    gp.simulate_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
                     gp.setProtocolAsSimulated(protocol)
                     globalLogger.unindent()
                 else:
@@ -548,24 +539,25 @@ class ParameterGrid:
             # only prepare
             else:
                 globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
-                gp.prepare_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
+                gp.prepare_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
 
     def filter_with_protocol_at_dir (self, protocol, workdir):
         for i,gp in enumerate(self.grid_points):
             if gp.is_sample:
                 # filter
                 if (protocol.type == 'slab'):
-                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), gp.makeSimudir(workdir))
                 else:
-                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), gp.makeSimudir(workdir))
 
     def nonfilter_with_protocol_at_dir (self, protocol, workdir):
         for i,gp in enumerate(self.grid_points):
             if gp.is_sample:
                 for prop in protocol.get_nonfiltering_properties():
-                    gp.get_atomic_property_from_protocol(prop,
-                                                         protocol,
-                                                         workdir + "/" + prop + ".xvg")
+                    gp.get_atomic_property_from_protocol(
+                        prop,
+                        protocol,
+                        gp.makeSimudir(workdir) + "/" + prop + ".xvg")
 
     def reweight(self, protocol, workdir):
         self.reweighter.run(protocol, workdir)
