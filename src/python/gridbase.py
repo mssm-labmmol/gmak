@@ -262,22 +262,14 @@ class GridPoint:
     def filter_traj_in_protocol (self, protocol, properties, odir, ext):
         if len(properties) < 1:
             return
-        rw_props = protocol.get_reweighting_properties()
-        interp_models_props = protocol.get_interp_models_props()
-        normal_props = [x[1] for x in interp_models_props]
-        normal_kinds = [x[0].kind for x in interp_models_props]
+        sm_props = protocol.get_all_models_props()
         kinds = []
-        for i, prop in enumerate(properties):
-            n_kinds = 0
-            if (prop in normal_props):
-                kinds.append(normal_kinds[i])
-                n_kinds += 1
-            if (prop in rw_props):
-                kinds.append('mbar')
-                n_kinds += 1
-            if (n_kinds == 0) or (n_kinds > 1):
-                raise Exception("Property "+ prop+ " belongs to 0 or more than 1 type of surrogate model.")
-            self.get_atomic_property_from_protocol(prop, protocol, odir + "/" + prop + ".xvg")
+        for sm, prop in sm_props:
+            if prop in properties:
+                kinds.append(sm.kind)
+            self.get_atomic_property_from_protocol(prop,
+                                                   protocol,
+                                                   odir + "/" + prop + ".xvg")
 
         # from traj_filter
         extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],
@@ -306,7 +298,7 @@ class GridPoint:
 
     def get_errs_tols(self, optimizer, protocol, protocolsHash):
         """Returns a dictionary <property_name:str, {'tol': float, 'err': float}>.
-        
+
         'tol' is the tolerance for the property specified in the input file.
         'err' is the actual error obtained in the estimation.
         """
@@ -322,10 +314,17 @@ class GridPoint:
 
     def initProtocolLengths(self, protocols):
         for prot in protocols:
-            self.protocol_lenspecs[prot.name] = prot.calc_initial_len()
+            # Only init if the value is not set, otherwise you may end
+            # up overwriting and extended simulation that was "kept"
+            # between grid shifts.
+            if prot.name not in self.protocol_lenspecs.keys():
+                self.protocol_lenspecs[prot.name] = prot.calc_initial_len()
 
     def getProtocolLength(self, protocol):
         return self.protocol_lenspecs[protocol.name]
+
+    def getParameterValues(self):
+        return self.baseGrid.parSpaceGen.getParameterValues(self.id)
 
 class ParameterGrid:
 
@@ -423,13 +422,16 @@ class ParameterGrid:
 
     def setGridpoints(self, gridpoints):
         self.grid_points = gridpoints
-        
+
     def getCartesianGrid(self):
         return self.indexGrid
 
     def getParameterNames(self):
         return self.parSpaceGen.getParameterNames()
-        
+
+    def getParameterValues(self):
+        return self.parSpaceGen.getAllParameterValues()
+
     def get_molecules(self):
         return list(self.topologyBundles.keys())
 
@@ -858,7 +860,7 @@ class ParameterGrid:
             globalLogger.putMessage('BEGIN PROTOCOL {}'.format(protocol.name), dated=True)
             globalLogger.indent()
             # simulate sampling points, filter trajectories and properties
-            # gridpoints have access to the correct topology paths 
+            # gridpoints have access to the correct topology paths
             self.simulate_with_protocol_at_dir (protocol, simu_dir)
             globalLogger.unindent()
             globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
@@ -871,6 +873,10 @@ class ParameterGrid:
             self.filter_with_protocol_at_dir(protocol, simu_dir)
             # this deals with the other properties (avg +/- err)
             self.nonfilter_with_protocol_at_dir(protocol, simu_dir)
+
+
+        # also get parameter values
+        X_ki = self.getParameterValues()
 
         # reweight
         for protocol in protocols:
@@ -891,7 +897,7 @@ class ParameterGrid:
                 mbar_model = protocol.get_mbar_model()
                 # estimate properties
                 estimate_dir = self.makeProtocolEstimatedir(protocol, mbar_model.kind)
-                mbar_model.computeExpectations(A_pkn, u_kn, N_k)
+                mbar_model.computeExpectations(A_pkn, u_kn, N_k, X_ki)
                 for p, rw_prop in enumerate(protocol.get_reweighting_properties()):
                     fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, mbar_model.kind, rw_prop)
                     mbar_model.writeExpectationsToFile(fn_avg, fn_err, p)
@@ -915,7 +921,7 @@ class ParameterGrid:
             I_s = self.get_samples_id()
             # estimate properties
             for p, (model, prop) in enumerate(interp_models_props):
-                model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()))
+                model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()), X_ki)
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
@@ -1003,6 +1009,7 @@ class ParameterGrid:
             if self.shift(optimizer):
                 globalLogger.unindent()
                 globalLogger.putMessage('END GRIDSTEP', dated=True)
+                self.init = True
             else:
                 globalLogger.unindent()
                 globalLogger.putMessage('END MAINLOOP', dated=True)

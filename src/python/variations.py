@@ -379,6 +379,9 @@ class DomainSpace:
         for gen in self.generators:
             gen.write_block_to_stream(stream)
 
+    def get_data(self):
+        return self.data
+
 class DomainSpaceFactory:
 
     @staticmethod

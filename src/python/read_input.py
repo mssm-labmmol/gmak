@@ -147,7 +147,7 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     output_properties = {}
     output_protocolsHash = {}
     output_workdir = ""
-    output_optimizer = gridOptimizer ()
+    output_optimizer = None
     output_gaCoverInterface = coverInterface ()
     output_surrogateModel = {}
     output_subgrid = {'method': 'cubic', 'factors': [1, 1]}
@@ -323,7 +323,8 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                                                          bool_legacy)
                             protocol.properties.append(propRead)
         if (line.rstrip() == '$optimize'):
-            output_optimizer.readFromStream (fp, validateFlag)
+            blockDict = block2dict(fp, '$end', '#')
+            output_optimizer = gridOptimizer.from_dict(blockDict, validateFlag)
         if (line.rstrip() == '$parameters'):
             output_paramLoop.readFromStream (fp)
         if (line.rstrip() == '$subgrid'):

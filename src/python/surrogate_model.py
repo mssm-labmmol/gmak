@@ -17,7 +17,13 @@ import sys
 from scipy.interpolate import griddata
 # Import scikit-learn things
 from sklearn import gaussian_process
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, Matern, DotProduct, ExpSineSquared, RationalQuadratic
+from sklearn.gaussian_process.kernels import (RBF, ConstantKernel,
+                                              WhiteKernel, Matern,
+                                              DotProduct, ExpSineSquared,
+                                              RationalQuadratic)
+
+class SurrogateModelNotInitialized(Exception):
+    pass
 
 def init_surrogate_model_from_string (string, bool_legacy):
     if(string == 'mbar'):
@@ -29,39 +35,13 @@ def init_surrogate_model_from_string (string, bool_legacy):
         return GaussianProcessRegressionInterpolation()
     elif(string == 'empty'):
         return EmptySurrogateModel()
-    else:
+    elif string in ['linear', 'cubic']:
         return Interpolation(string)
+    else:
+        # custom
+        return CustomSurrogateModelFactory.create(string)
 
-class SurrogateModel:
-
-    def requiresCorners(self):
-        """
-        Is it necessary to sample the grid corners?
-        """
-        return self.corners
-
-    def requiresReweight(self):
-        """
-        Is it necessary to reweight potential energy and mechanical properties?
-        """
-        return self.reweight
-
-    def writeExpectationsToFile(self, fn_avg, fn_err, which_property):
-        np.savetxt(fn_avg, self.EA_pk[which_property,:])
-        np.savetxt(fn_err, self.dEA_pk[which_property,:])
-
-    def writeLogToDirectory(self, dir_path):
-        return
-
-class EmptySurrogateModel(SurrogateModel):
-
-    corners = False
-    reweight = False
-    kind = 'empty'
-
-    def __init__(self):
-        return
-
+class AvgStdMixin:
     def _computeAvgStd(self, A_psn):
         numberProps = len(A_psn)
         numberStates = len(A_psn[0])
@@ -86,6 +66,37 @@ class EmptySurrogateModel(SurrogateModel):
         A_ps = np.array(A_ps)
         dA_ps = np.array(dA_ps)
         return (A_ps, dA_ps)
+
+class SurrogateModel:
+
+    def requiresCorners(self):
+        """
+        Is it necessary to sample the grid corners?
+        """
+        return self.corners
+
+    def requiresReweight(self):
+        """
+        Is it necessary to reweight potential energy and mechanical properties?
+        """
+        return self.reweight
+
+    def writeExpectationsToFile(self, fn_avg, fn_err, which_property):
+        np.savetxt(fn_avg, self.EA_pk[which_property,:])
+        np.savetxt(fn_err, self.dEA_pk[which_property,:])
+
+    def writeLogToDirectory(self, dir_path):
+        return
+
+class EmptySurrogateModel(SurrogateModel, AvgStdMixin):
+
+    corners = False
+    reweight = False
+    kind = 'empty'
+
+    def __init__(self):
+        return
+
 
     def computeExpectationsFromAvgStd(self, A_ps, dA_ps, I_s, gridShape):
         # make grid from shape
@@ -112,12 +123,12 @@ class EmptySurrogateModel(SurrogateModel):
         A_pk = np.array(A_pk)
         dA_pk = np.array(dA_pk)
         A_pk = A_pk.reshape((numberProps, A_k.size))
-        dA_pk = dA_pk.reshape((numberProps, dA_k.size))        
+        dA_pk = dA_pk.reshape((numberProps, dA_k.size))
         self.EA_pk = A_pk
         self.dEA_pk = dA_pk
         return (A_pk, dA_pk)
-        
-    def computeExpectations(self, A_psn, I_s, gridShape):
+
+    def computeExpectations(self, A_psn, I_s, gridShape, X_ki):
         """
         Parameters:
         -----------
@@ -129,9 +140,12 @@ class EmptySurrogateModel(SurrogateModel):
 
         I_s   :    np.ndarray of shape (S)
                       I_s[s] - linear index of sampled state 's'
-        
+
         gridShape : tuple (n_1, n_2, ..., n_D), int
                       n_d - number of partitions for edge 'd'
+
+        X_ki  :    np.ndarray of shape (n_1*...*n_D, D)
+                      domain values corresponding to the grid
 
         Returns:
         --------
@@ -158,7 +172,7 @@ class MBAR (SurrogateModel):
         self.dEA_pk = []
         return
 
-    def computeExpectations(self, A_pkn, u_kn, N_k): 
+    def computeExpectations(self, A_pkn, u_kn, N_k, X_ki):
         """
         Computes expectations (mean values and uncertainties) for the properties.
         These values are returned as a tuple and also stored internally.
@@ -176,6 +190,9 @@ class MBAR (SurrogateModel):
 
         N_k   :    np.ndarray of shape (K)
                       N_k[k] - number of reduced energy samples collected from state 'k'
+
+        X_ki  :    np.ndarray of shape (n_1*...*n_D, D)
+                      domain values corresponding to the grid
 
         Returns:
         --------
@@ -241,12 +258,12 @@ class MBARLegacy (MBAR):
     """
     legacy = True
 
-class Interpolation (SurrogateModel):
+class Interpolation (SurrogateModel, AvgStdMixin):
 
     reweight = False
     allowed_kinds = ['nearest', 'linear', 'cubic']
 
-    def __init__(self, kind): 
+    def __init__(self, kind):
         if kind in self.allowed_kinds:
             self.kind = kind
             if (kind == 'nearest'):
@@ -255,31 +272,6 @@ class Interpolation (SurrogateModel):
                 self.corners = True
         else:
             raise ValueError ("Unknown interpolation type: {}.".format(kind))
-
-    def _computeAvgStd(self, A_psn):
-        numberProps = len(A_psn)
-        numberStates = len(A_psn[0])
-        A_ps = []
-        dA_ps = []
-        for i in range(numberProps):
-            A_s = []
-            dA_s = []
-            for s in range(numberStates):
-                numberOfConfs = len(A_psn[i][s])
-                if (numberOfConfs < 2):
-                    raise Exception
-                elif (numberOfConfs == 2):
-                    # In this case, first line is average and second line is error.
-                    A_s.append(A_psn[i][s][0])
-                    dA_s.append(A_psn[i][s][1])
-                else:
-                    A_s.append(np.mean(A_psn[i][s]))
-                    dA_s.append(np.std(A_psn[i][s], ddof=1) / np.sqrt(len(A_psn[i][s])))
-            A_ps.append(A_s)
-            dA_ps.append(dA_s)
-        A_ps = np.array(A_ps)
-        dA_ps = np.array(dA_ps)
-        return (A_ps, dA_ps)
 
     def computeExpectationsFromAvgStd(self, A_ps, dA_ps, I_s, gridShape):
         # make grid from shape
@@ -303,12 +295,12 @@ class Interpolation (SurrogateModel):
         A_pk = np.array(A_pk)
         dA_pk = np.array(dA_pk)
         A_pk = A_pk.reshape((numberProps, A_k.size))
-        dA_pk = dA_pk.reshape((numberProps, dA_k.size))        
+        dA_pk = dA_pk.reshape((numberProps, dA_k.size))
         self.EA_pk = A_pk
         self.dEA_pk = dA_pk
         return (A_pk, dA_pk)
-        
-    def computeExpectations(self, A_psn, I_s, gridShape):
+
+    def computeExpectations(self, A_psn, I_s, gridShape, X_ki):
         """
         Parameters:
         -----------
@@ -320,9 +312,12 @@ class Interpolation (SurrogateModel):
 
         I_s   :    np.ndarray of shape (S)
                       I_s[s] - linear index of sampled state 's'
-        
+
         gridShape : tuple (n_1, n_2, ..., n_D), int
                       n_d - number of partitions for edge 'd'
+
+        X_ki  :    np.ndarray of shape (n_1*...*n_D, D)
+                      domain values corresponding to the grid
 
         Returns:
         --------
@@ -335,14 +330,14 @@ class Interpolation (SurrogateModel):
         return self.computeExpectationsFromAvgStd(A_ps, dA_ps, I_s, gridShape)
 
 
-class GaussianProcessRegressionInterpolation (Interpolation):
+class GaussianProcessRegressionInterpolation(Interpolation):
     # GPR inherits from Interpolation but overrides the actual
     # interpolation operation.
     reweight = False
     corners = True
     kind = 'gpr'
 
-    def __init__(self): 
+    def __init__(self):
         return
 
     @staticmethod
@@ -421,12 +416,12 @@ class GaussianProcessRegressionInterpolation (Interpolation):
         A_pk = np.array(A_pk)
         dA_pk = np.array(dA_pk)
         A_pk = A_pk.reshape((numberProps, A_k.size))
-        dA_pk = dA_pk.reshape((numberProps, dA_k.size))        
+        dA_pk = dA_pk.reshape((numberProps, dA_k.size))
         self.EA_pk = A_pk
         self.dEA_pk = dA_pk
         return (A_pk, dA_pk)
-        
-    def computeExpectations(self, A_psn, I_s, gridShape):
+
+    def computeExpectations(self, A_psn, I_s, gridShape, X_ki):
         """
         Parameters:
         -----------
@@ -438,9 +433,12 @@ class GaussianProcessRegressionInterpolation (Interpolation):
 
         I_s   :    np.ndarray of shape (S)
                       I_s[s] - linear index of sampled state 's'
-        
+
         gridShape : tuple (n_1, n_2, ..., n_D), int
                       n_d - number of partitions for edge 'd'
+
+        X_ki  :    np.ndarray of shape (n_1*...*n_D, D)
+                      domain values corresponding to the grid
 
         Returns:
         --------
@@ -451,3 +449,52 @@ class GaussianProcessRegressionInterpolation (Interpolation):
         # mean and std for sampled states
         (A_ps, dA_ps) = self._computeAvgStd(A_psn)
         return self.computeExpectationsFromAvgStd(A_ps, dA_ps, I_s, gridShape)
+
+class CustomSurrogateModel(SurrogateModel, AvgStdMixin):
+
+    reweight = False
+
+    def __init__(self, kind, compute, corners=None):
+        self.kind = kind
+        self.compute = compute
+        if corners is not None:
+            self.corners = corners
+        else:
+            self.corners = False
+
+    def computeExpectations(self, A_psn, I_s, gridShape, X_ki):
+        (A_ps, dA_ps) = self._computeAvgStd(A_psn)
+        # Note: since the user specifies self.compute based on only
+        # one property, I have to pass {,d}A_ps[0] to this function,
+        # instead of {,d}A_ps.
+        #
+        EA_pk, dEA_pk = self.compute(A_ps[0], dA_ps[0], I_s, gridShape, X_ki)
+        # Also, the output must be reconverted into a matrix.
+        self.EA_pk = np.array([EA_pk,])
+        self.dEA_pk = np.array([dEA_pk,])
+        return self.EA_pk, self.dEA_pk
+
+
+class CustomSurrogateModelFactory:
+
+    ptable = {}
+
+    @classmethod
+    def add_custom_surrogate_model(cls, type_name, compute, corners=None):
+        cls.ptable[type_name] = (compute, corners)
+
+    @classmethod
+    def create(cls, type_name):
+        try:
+            return CustomSurrogateModel(type_name,
+                                        cls.ptable[type_name][0],
+                                        corners=cls.ptable[type_name][1])
+        except:
+            raise SurrogateModelNotInitialized(f"Couldn't initialize surrogate"
+                                               f" model of type {type_name}.")
+
+
+def add_custom_surrogate_model(type_name, compute, corners=None):
+    CustomSurrogateModelFactory.add_custom_surrogate_model(type_name,
+                                                           compute,
+                                                           corners)

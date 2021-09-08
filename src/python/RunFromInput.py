@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 from logger import *
-from gridshifter import * 
-from parameters import * 
-from grid_ana import * 
+from gridshifter import *
+from parameters import *
+from grid_ana import *
 from coverage import *
 from read_input import *
 from mdputils import mdpUtils
@@ -25,6 +25,8 @@ import pickle
 import simulate
 import custom_atomic_properties
 import custom_protocols
+import custom_surrogate_models
+import custom_scores
 
 if ('--legacy' in sys.argv):
     bool_legacy = True

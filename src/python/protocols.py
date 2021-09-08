@@ -153,6 +153,14 @@ class BaseProtocol:
                 out.append((m,p))
         return out
 
+    def get_all_models_props(self):
+        """Returns a list of tuples (instance of Surrogate Model, property)."""
+        out = []
+        for m, p in self.surrogate_models:
+                out.append((m,p))
+        return out
+
+
     def get_avg_err_estimate_of_property (self, prop, kind):
         """Returns a tuple (EA_k, dEA_k) for atomic property 'prop' estimated via 'kind' surrogate model for all states."""
         if (kind == 'mbar'):

@@ -183,7 +183,7 @@ def simulate_protocol_liquid (conf, nmols, box, itp, mdps, nsteps, labels, workd
         else:
             previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
             simulate_something (previous_conf, workdir + "/liquid.top", mdps[i], labels[i], workdir)
-    # create output dictionary 
+    # create output dictionary
     output_dict['xtc'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".xtc"
     output_dict['tpr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".tpr"
     output_dict['trr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".trr"
