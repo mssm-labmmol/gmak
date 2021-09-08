@@ -177,27 +177,24 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                 parameterIO.read()
             else:
                 parameterIO.read()
-        if (line.rstrip() == '$molecules'):
+        if (line.rstrip() == '$molecules') or (line.rstrip() == '$systems'):
             blockDict     = block2dict(fp, '$end', '#')
             for i, name in enumerate(blockDict['names']):
                 prefix                     = "{}/{}/{}_0".format(output_workdir, name, name)
-                moleculesDict[name]        = {}
-                moleculesDict[name]['itp'] = blockDict['itp'][i]
-                # Extension of 'itp' file determines the type of topology---if it is
-                # 'itp', then it is not a full topology; if it is 'top', then it is a
-                # full topology
-                if moleculesDict[name]['itp'].endswith('.itp'):
-                    full_top = False
-                elif moleculesDict[name]['itp'].endswith('.top'):
-                    full_top = True
-                else:
-                    raise ValueError("Topologies must be either .itp or .top.")
+                try:
+                    topfile = blockDict['itp'][i]
+                    ext = os.path.splitext(topfile)[1][1:]
+                except KeyError:
+                    # also accept 'top' as key
+                    topfile = blockDict['top'][i]
+                    ext = os.path.splitext(topfile)[1][1:]
+
                 outputTopoBundles[name] = TopologyBundleFactory.createBundle('gromacs',
-                                                                             blockDict['itp'][i],
+                                                                             topfile,
                                                                              prefix,
                                                                              outputNonbondedForcefield,
                                                                              outputBondedForcefield,
-                                                                             full_top)
+                                                                             ext)
                 runcmd.run("mkdir -p {}/{}".format(output_workdir, name))
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist

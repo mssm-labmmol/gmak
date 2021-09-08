@@ -32,15 +32,12 @@ def check_simulation_state (workdir, label):
     check_log_loc = "%s/%s/%s.log" % (workdir, label, label)
     check_gro_loc = "%s/%s/%s.gro" % (workdir, label, label)
     check_cpt_loc = "%s/%s/%s.cpt" % (workdir, label, label)
-    if (os.path.isfile(check_log_loc)):
-        if (os.path.isfile(check_cpt_loc)):
-            return 'FULL'
-        else:
-            if (os.path.isfile(check_gro_loc)):
-                return 'COMPLETE_MINIM'
-            else:
-                return 'NONE'
-    return 'NONE'
+    if (os.path.isfile(check_cpt_loc)):
+        return 'FULL'
+    elif (os.path.isfile(check_gro_loc)):
+        return 'COMPLETE_MINIM'
+    else:
+        return 'NONE'
 
 def extend_something (nsteps, workdir, label, nprocs=-1):
     globalLogger.indent()
@@ -193,6 +190,7 @@ def simulate_protocol_liquid (conf, nmols, box, itp, mdps, nsteps, labels, workd
     output_dict['edr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".edr"
     output_dict['gro'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".gro"
     output_dict['top'] = workdir + "/liquid.top"
+    output_dict['nsteps'] = nsteps
     #
     return output_dict
 
@@ -224,7 +222,8 @@ def simulate_protocol_solvation (conf, nmols, itp, mdps, nsteps, labels, workdir
             else:
                 previous_conf = workdir + "/" + labels[i-1] + "/" + labels[i-1] + ".gro"
                 simulate_something (previous_conf, topopath, mdps[i], labels[i], workdir)
-    # create output dictionary 
+    # create output dictionary
+    output_dict['nsteps'] = nsteps
     output_dict['top']   =  topopath
     output_dict['dhdl']  =  workdir   +  "/"  +  labels[-1]  +  "/" + labels[-1] + ".xvg"
     for ext in ['xtc', 'tpr', 'trr', 'edr', 'gro', 'top']:
@@ -289,6 +288,7 @@ def simulate_protocol_gas (conf, itp, mdps, nsteps, labels, workdir):
     output_dict['top'] = workdir + "/gas.top"
     output_dict['edr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".edr"
     output_dict['gro'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".gro"
+    output_dict['nsteps'] = nsteps
     #
     return output_dict
 
@@ -356,6 +356,7 @@ def simulate_protocol_slab (conf, top, liq_tpr, mdps, nsteps, labels, workdir, n
     output_dict['edr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".edr"
     output_dict['gro'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".gro"
     output_dict['top'] = top
+    output_dict['nsteps'] = nsteps
     return output_dict
 
 def dummy_protocol_slab (conf, top, mdps, labels, workdir):
@@ -412,6 +413,7 @@ def simulate_protocol_general(conf, top, mdps, nsteps, labels, workdir):
     output_dict['edr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".edr"
     output_dict['gro'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".gro"
     output_dict['top'] = top
+    output_dict['nsteps'] = nsteps
     #
     return output_dict
 
@@ -421,7 +423,7 @@ def dummy_protocol_general(conf, top, mdps, labels, workdir):
     for i in range(len(mdps)):
         mdps[i] = os.path.abspath(mdps[i])
     output_dict = {}
-    # create output dictionary 
+    # create output dictionary
     output_dict['xtc'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".xtc"
     output_dict['tpr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".tpr"
     output_dict['trr'] = workdir + "/" + labels[-1] + "/" + labels[-1] + ".trr"

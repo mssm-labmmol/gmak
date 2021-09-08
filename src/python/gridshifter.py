@@ -40,7 +40,7 @@ class GridShifter:
 
     def getCGasLinear(self):
         return self.grid.tuple2linear(self.cg)
-            
+
     # Calculates CG of the best ncut percent points.
     # Returns it as a tuple.
     # Store in internal variables.
@@ -92,11 +92,11 @@ class GridShifter:
         linearCG = self.getCGasLinear()
         tupleCG  = self.cg
         cartesianGrid = self.grid.getCartesianGrid()
-        
+
         # Alter parameter space
         self.grid.setNewCenterForParameters(linearCG)
-        
-        # Write new topologies 
+
+        # Write new topologies
         self.grid.incrementPrefixOfTopologies()
         self.grid.writeTopologies()
 
@@ -104,7 +104,7 @@ class GridShifter:
         self.grid[linearCG].set_as_sample()
 
         shiftTuple = cartesianGrid.getDisplacement(cartesianGrid.getCenterAsLinear(), linearCG)
-        
+
         # New gridpoints.
         newGridpoints = [None for i in range(self.grid.get_linear_size())]
         mask = CartesianGridMask(self.grid.getCartesianGrid(), self.grid.getCartesianGrid(), shiftTuple)
@@ -120,6 +120,11 @@ class GridShifter:
 
         # Put new gridpoints in grid
         self.grid.setGridpoints(newGridpoints)
+
+        # Set init flag to True once again if necessary
+        if not self.keepSamples:
+            self.grid.init = True
+
         return True
 
     @staticmethod
@@ -141,4 +146,3 @@ class EmptyGridShifter(GridShifter):
         return
     def shift(self):
         raise NotImplementedError("Using EmptyGridShifter for shifting.")
-    

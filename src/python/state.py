@@ -16,15 +16,15 @@ class State:
                  gaCoverInterface=None,
                  surrogateModelHash=None,
                  subgridHash=None):
-        self.base_workdir = base_workdir 
-        self.grid = grid 
-        self.protocols = protocols 
-        self.properties = properties 
-        self.protocolsHash = protocolsHash 
-        self.optimizer = optimizer 
-        self.gaCoverInterface = gaCoverInterface 
-        self.surrogateModelHash = surrogateModelHash 
-        self.subgridHash = subgridHash 
+        self.base_workdir = base_workdir
+        self.grid = grid
+        self.protocols = protocols
+        self.properties = properties
+        self.protocolsHash = protocolsHash
+        self.optimizer = optimizer
+        self.gaCoverInterface = gaCoverInterface
+        self.surrogateModelHash = surrogateModelHash
+        self.subgridHash = subgridHash
 
     def makeCurrentWorkdir(self):
         shifts = 0
@@ -38,12 +38,6 @@ class State:
 
     def resetWorkdir(self, workdir):
         self.workdir = workdir
-
-    def get_dim(self):
-        return 2
-
-    def get_size(self):
-        return (51, 51)
 
     def setFromInput(self, inputTuple):
         self.__init__(*inputTuple)

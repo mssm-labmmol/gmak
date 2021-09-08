@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
         (base_workdir, # read variables as if reading from an input file,
          grid,         # but actually reading from state
-         protocols,    # 
+         protocols,    #
          properties,   # this way the rest of this program can remain the same
          protocolsHash,
          optimizer,

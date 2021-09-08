@@ -262,9 +262,9 @@ class AbstractTopologyOutputSetter(ABC):
 
 class GromacsDummyTopologyOutputSetter(AbstractTopologyOutputSetter):
 
-    def __init__(self, itpOutputPrefix, fullTop):
+    def __init__(self, itpOutputPrefix, ext):
         self.prefix = itpOutputPrefix
-        self.fullTop = fullTop
+        self.ext = ext
 
     def incrementPrefix(self):
         indexOfUnderscore = self.prefix.rfind('_')
@@ -274,10 +274,7 @@ class GromacsDummyTopologyOutputSetter(AbstractTopologyOutputSetter):
         self.prefix       = "{}_{}".format(front, number)
 
     def setState(self, abstractTopologyOutput, state):
-        if self.fullTop:
-            newFile = "{}_{}.top".format(self.prefix, state)
-        else:
-            newFile = "{}_{}.itp".format(self.prefix, state)
+        newFile = "{}_{}.{}".format(self.prefix, state, self.ext)
         newFile = os.path.abspath(newFile)
         abstractTopologyOutput._alterFile(newFile)
 
@@ -308,7 +305,7 @@ class TopologyBundleFactory:
     @staticmethod
     def _createBundleGromacs(itpPath, itpOutputPrefix,
                              nonbondedForcefield, bondedForcefield,
-                             fullTop):
+                             ext):
         """
         Input object is an itp path.
         Output object is an itp path prefix.
@@ -316,10 +313,10 @@ class TopologyBundleFactory:
         # Initialize objects.
         _inp = GromacsDummyTopologyInput(itpPath)
         _top = _inp.getTopology()
-        _set = GromacsDummyTopologyOutputSetter(itpOutputPrefix, fullTop)
+        _set = GromacsDummyTopologyOutputSetter(itpOutputPrefix, ext)
         _out = GromacsDummyTopologyOutput(itpPath, '')
         # By default, set output to state zero.
-        _set.setState(_out, 0) 
+        _set.setState(_out, 0)
         # Update forcefield elements.
         _top.updateBondedForcefield(bondedForcefield)
         _top.updateNonbondedForcefield(nonbondedForcefield)

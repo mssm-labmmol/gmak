@@ -40,12 +40,12 @@ add_custom_atomic_property("example_2",
 # Example 3
 # ---------
 #
-# Adding an atomic property that interacts with a custom protocol that 
+# Adding an atomic property that interacts with a custom protocol that
 # supplies a 'dat' key in the input dictionary.
 def calculator_dat(input_dict, out_path):
     import numpy as np
     data = np.loadtxt(input_dict['dat'], dtype=object)
-    value = float(data[1])
+    value = float(data[0])
     err = 0.1 * value
     out = np.array([value, err])
     np.savetxt(out_path, out)

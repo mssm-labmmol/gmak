@@ -5,13 +5,13 @@ import os
 import shlex
 import numpy           as     np
 from   property        import DGsolvAlchemicalAnalysis
-from   mdputils        import * 
+from   mdputils        import *
 from   reweightbase    import *
 from   traj_ana        import *
 from   traj_filter     import *
 from   reweight        import *
 import multiprocessing
-from   property        import * 
+from   property        import *
 from   grid_ana        import *
 import warnings
 from   surrogate_model import *
@@ -139,24 +139,11 @@ class GridPoint:
         self.is_sample = False
         self.is_simulated = []
         self.protocol_outputs = {}
-        self.protocol_steps = {}
         self.atomic_properties = {}
         # self.rw_outputs = {}
-        # also initialize subdictionaries - is this needed? <<todo-1>>
         # self.rw_outputs[self.id] = {}
         self.estimated_properties = {}
-
-    def initProtocolSteps(self, protocols):
-        for protocol in protocols:
-            mu = mdpUtils()
-            mu.parse_file(protocol.mdps[-1])
-            self.setProtocolSteps(protocol, mu.get_nsteps())
-
-    def setProtocolSteps(self, protocol, steps):
-        self.protocol_steps[protocol.name] = steps
-
-    def getProtocolSteps(self, protocol):
-        return self.protocol_steps[protocol.name]
+        self.protocol_lenspecs = {}
 
     def resetWithNewId(self, newId):
         self.id = newId
@@ -317,6 +304,29 @@ class GridPoint:
         system(f"mkdir -p {dirname}")
         return dirname
 
+    def get_errs_tols(self, optimizer, protocol, protocolsHash):
+        """Returns a dictionary <property_name:str, {'tol': float, 'err': float}>.
+        
+        'tol' is the tolerance for the property specified in the input file.
+        'err' is the actual error obtained in the estimation.
+        """
+        out_dict   = {}
+        properties = optimizer.getProperties()
+        tolerances = optimizer.getTolerances()
+        for prop in properties:
+            if protocol.name in protocolsHash[prop]:
+                out_dict[prop] = {}
+                out_dict[prop]['tol'] = tolerances[prop]
+                out_dict[prop]['err'] = self.get_property_err(prop)
+        return out_dict
+
+    def initProtocolLengths(self, protocols):
+        for prot in protocols:
+            self.protocol_lenspecs[prot.name] = prot.calc_initial_len()
+
+    def getProtocolLength(self, protocol):
+        return self.protocol_lenspecs[protocol.name]
+
 class ParameterGrid:
 
     _mainString = 'main'
@@ -338,7 +348,7 @@ class ParameterGrid:
         self.reweighter      = reweighter
         self.shifter         = shifter
         self.workdir         = workdir
-        
+
         """
         plotting stuff that I do not wish to alter right now.
         yMHG ter jul 14 14:40:02 -03 2020
@@ -373,7 +383,7 @@ class ParameterGrid:
         if (keep_initial_samples):
             parameterGrid.set_fixed_points(samples)
         return parameterGrid
-        
+
     @staticmethod
     def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir, validateFlag):
         samples       = []
@@ -407,9 +417,9 @@ class ParameterGrid:
         grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples, validateFlag)
         return grid
 
-    def initProtocolSteps(self, protocols):
+    def initProtocolLengths(self, protocols):
         for gp in self.grid_points:
-            gp.initProtocolSteps(protocols)
+            gp.initProtocolLengths(protocols)
 
     def setGridpoints(self, gridpoints):
         self.grid_points = gridpoints
@@ -529,7 +539,7 @@ class ParameterGrid:
             # run 
             if gp.is_sample:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
-                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolSteps(protocol)), dated=True)
+                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolLength(protocol)), dated=True)
                     globalLogger.indent()
                     gp.simulate_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
                     gp.setProtocolAsSimulated(protocol)
@@ -915,8 +925,9 @@ class ParameterGrid:
         globalLogger.indent()
 
         if (self.init):
-            # initialize number of steps of simulations
-            self.initProtocolSteps(protocols)
+            # initialize length of simulations
+            self.initProtocolLengths(protocols)
+            self.init = False
 
         # create topology files
         self.writeTopologies()
@@ -952,9 +963,6 @@ class ParameterGrid:
         if (plotFlag):
             optimizer.plotToPdf (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_score.pdf")
 
-        #self.save_to_binary(optimizer) # No longer needed because I am saving state
-                                        # at the end of each run.
-
         # convert protocolsHash (values = list of protocol names) into
         # protocolsHashByObject (values = list of references to protocols)
         protocolsHashByObject = {}
@@ -964,8 +972,24 @@ class ParameterGrid:
                 for prot in protocols:
                     if (prot.name == name):
                         protocolsHashByObject[prop].append(prot)
-                        
-        nextSample = optimizer.determineNextSample (self, surrogateModelHash, protocolsHashByObject)
+
+        # set up protocol extensions --- mark gridpoints as unsampled
+        # if necessary
+        if self.setExtendedProtocolLengths(protocols,
+                                           optimizer,
+                                           protocolsHash):
+            # no new samples, but also don't proceed to shifting
+            nextSample = []
+        else:
+            # if all protocols are converged
+            if len(self.fixed_points) == 0:
+                # if don't fix samples
+                nextSample = optimizer.determineNextSample(self,
+                                                           surrogateModelHash,
+                                                           protocolsHashByObject)
+            else:
+                # proceed to shifting
+                nextSample = -1
 
         # update results assembler
         for gs in self.get_samples_id():
@@ -975,10 +999,8 @@ class ParameterGrid:
                 pars = self.parSpaceGen.getParameterValues(gs)
                 resultsAssembler.addData(pars, prop, est, err)
 
-        init_flag = False
         if (nextSample == -1):
             if self.shift(optimizer):
-                init_flag = True
                 globalLogger.unindent()
                 globalLogger.putMessage('END GRIDSTEP', dated=True)
             else:
@@ -994,11 +1016,15 @@ class ParameterGrid:
         # Recursion
         globalLogger.unindent()
         globalLogger.putMessage('END GRIDSTEP', dated=True)
-        self.init = init_flag
         globalState.saveToFile()
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag)
-            
-    # type-hinted header is commented because it is not supported in old Python versions
+        self.run(protocols,
+                 optimizer,
+                 surrogateModelHash,
+                 properties,
+                 protocolsHash,
+                 resultsAssembler,
+                 plotFlag)
+
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            
     def create_refined_subgrid(self, factors_list, model_str, propid2type):
         # first check everything is compatible
@@ -1044,7 +1070,7 @@ class ParameterGrid:
         # re-build property matrix for estimation
         list_of_property_names = list(subgrid.grid_points[I_e[0]].estimated_properties.keys())
         A_pe = [None] * len(list_of_property_names)
-        dA_pe = [None] * len(list_of_property_names)        
+        dA_pe = [None] * len(list_of_property_names)
         for p, prop_id in enumerate(list_of_property_names):
             A_pe[p] = [None] * self.linear_size # self.linear_size corresponds to the number of previously estimated points
             dA_pe[p] = [None] * self.linear_size # self.linear_size corresponds to the number of previously estimated points            
@@ -1061,3 +1087,38 @@ class ParameterGrid:
 
         # return new instance
         return subgrid
+
+    def setExtendedProtocolLengths(self, protocols, optimizer, protocolsHash):
+        """
+        Set extended length for protocols.
+
+        Returns True if some protocol, at some gridpoint, was extended, and
+        False if everything has converged.
+        """
+        output = False
+        for gp in self.grid_points:
+            if gp.is_sample:
+                for prot in protocols:
+                    old_length = gp.protocol_lenspecs[prot.name]
+                    new_length = prot.calc_extend(gp, optimizer, protocolsHash)
+                    if new_length is not None:
+                        globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
+                                                ' Steps : {}->{}'.
+                                                format(gp.id, prot.name,
+                                                       old_length, new_length))
+                        gp.protocol_lenspecs[prot.name] = new_length
+                        gp.unsetProtocolAsSimulated(prot)
+                        output = True
+                    else:
+                        globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
+                                                ' Steps have reached machine precision '
+                                                'or there is no need to extend the '
+                                                'simulations.'
+                                                .format(gp.id, prot.name))
+        if output:
+            globalLogger.putMessage('MESSAGE: Estimates are not converged,'
+                                    ' so some simulations will be extended.')
+        else:
+            globalLogger.putMessage('MESSAGE: Estimates are converged and '
+                                    'simulations will not be extended.')
+        return output
