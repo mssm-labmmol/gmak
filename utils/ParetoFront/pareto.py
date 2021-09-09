@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
+"""
+TODO:
+
+* Allow passing a <*.csv> file instead of the project directory as the
+  first argument.
+"""
 
 class ParetoFront:
-    import warnings
 
     """
     ------------------------------------------------------------------
@@ -43,8 +48,8 @@ class ParetoFront:
 
     def _check(self):
         if self.get_dim_f() < 2:
-            warnings.warn("Pareto front only makes sense for "
-                          "multi-objective problems.")
+            raise Exception("Pareto front only makes sense for "
+                            "multi-objective problems.")
             return False
         return True
 
@@ -80,6 +85,7 @@ class ParetoFront:
         for p, diff_k in enumerate(diff_k_fn_list):
             f[:,p] = np.abs(np.loadtxt(diff_k))
         return ParetoFront(x.tolist(), func_data=f.tolist())
+
 
     @staticmethod
     def read_from_gmak(rootdir):
@@ -120,12 +126,32 @@ class ParetoFront:
 
 
     @staticmethod
-    def join(pf_list):
+    def join(pf_list, remove_duplicates=True):
+        import numpy as np
+        import warnings
         x = []
         fx = []
+        dim_f = pf_list[0].get_dim_f()
         for pf in pf_list:
             x += pf.x
             fx += pf.fx
+        if (remove_duplicates):
+            for ix, xi in enumerate(x):
+                # get all indexes corresponding to xi
+                ii = [i for i,_ in enumerate(x) if (x[i] == xi) and (i != ix)]
+                # get the corresponding function values
+                fs = [fx[ix],] + [fx[i] for i in ii]
+                # do statistics
+                avg = np.mean(fs, axis=0)
+                if len(ii) > 0:
+                    warnings.warn(f"{len(ii)+1} occurrences of {xi} were replaced "
+                                  f"by their average function value: {avg}.")
+                # replace all occurrences by a single occurence with
+                # the average values
+                for index in sorted(ii, reverse=True):
+                    del x[index]
+                    del fx[index]
+                fx[ix] = avg
         return ParetoFront(x, func_data=fx)
 
 
@@ -147,46 +173,39 @@ class ParetoFront:
         return len(self.pf)
 
 
-    def plot(self, fn=None, dump=None):
-        """
-        Plots a Pareto front together with other samples in
-        objective-function space.
-
-        The plot is saved in file <fn>. If <fn> is none, the plot is
-        shown for interaction.
-
-        The figure instance is saved to file <dump>, if not None.
-
-        pf is the Pareto front, a list of parameter-space points.
-
-        x is an iterable of evaluated parameter-space points.
-        """
+    def _plot_core(self, data_1, data_2, dim,
+                   labels, fn=None, dump=None):
         import matplotlib.pyplot as plt
         import pickle
 
-        dim = self.get_dim_f()
         if dim > 3:
             raise ValueError("Can't plot more than three dimensions.")
         else:
             if dim == 2:
                 # 2D plot
-                fx_1 = [f[0] for f in self.fx]
-                fx_2 = [f[1] for f in self.fx]
-                fp_1 = [f[0] for f in self.fp]
-                fp_2 = [f[1] for f in self.fp]
+                fx_1 = [f[0] for f in data_1]
+                fx_2 = [f[1] for f in data_1]
+                fp_1 = [f[0] for f in data_2]
+                fp_2 = [f[1] for f in data_2]
                 fig, axs = plt.subplots()
+                ax = axs
+                ax.set_xlabel(labels[0])
+                ax.set_ylabel(labels[1])
                 ax.scatter(fx_1, fx_2)
                 ax.scatter(fp_1, fp_2)
             elif dim == 3:
                 # 3D plot
-                fx_1 = [f[0] for f in self.fx]
-                fx_2 = [f[1] for f in self.fx]
-                fx_3 = [f[2] for f in self.fx]
-                fp_1 = [f[0] for f in self.fp]
-                fp_2 = [f[1] for f in self.fp]
-                fp_3 = [f[2] for f in self.fp]
+                fx_1 = [f[0] for f in data_1]
+                fx_2 = [f[1] for f in data_1]
+                fx_3 = [f[2] for f in data_1]
+                fp_1 = [f[0] for f in data_2]
+                fp_2 = [f[1] for f in data_2]
+                fp_3 = [f[2] for f in data_2]
                 fig = plt.figure()
                 ax  = plt.axes(projection='3d')
+                ax.set_xlabel(labels[0])
+                ax.set_ylabel(labels[1])
+                ax.set_zlabel(labels[2])
                 ax.scatter(fx_1, fx_2, fx_3)
                 ax.scatter(fp_1, fp_2, fp_3)
         if fn is None:
@@ -197,12 +216,49 @@ class ParetoFront:
             pickle.dump(fig, open(dump,'wb'))
 
 
+
+    def plot_objective_space(self, fn=None, dump=None):
+        """
+        Plots a Pareto front together with other samples in
+        objective-function space.
+
+        The plot is saved in file <fn>. If <fn> is none, the plot is
+        shown for interaction.
+
+        The figure instance is saved to file <dump>, if not None.
+        """
+        dim = self.get_dim_f()
+        if dim == 2:
+            labels = ("F_1", "F_2")
+        elif dim == 3:
+            labels = ("F_1", "F_2", "F_3")
+        self._plot_core(self.fx, self.fp, dim, labels, fn, dump)
+
+
+    def plot_domain_space(self, fn=None, dump=None):
+        """
+        Same as plot_objective_space but in domain space.
+        """
+        dim = self.get_dim_x()
+        if dim == 2:
+            labels = ("X_1", "X_2")
+        elif dim == 3:
+            labels = ("X_1", "X_2", "X_3")
+        self._plot_core(self.x, self.pf, dim, labels, fn, dump)
+
+
     def write(self, fn):
         """Saves the Pareto front to file <fn>."""
         import numpy as np
         xdim = self.get_dim_x()
         fdim = self.get_dim_f()
         paretolen = self.size()
+        # prepare header
+        header = ""
+        for i in range(xdim):
+            header += f"    X_{i+1}"
+        for i in range(fdim):
+            header += f"    F_{i+1}"
         all = np.zeros((paretolen, xdim + fdim))
         for i, (xx, fp) in enumerate(zip(self.pf, self.fp)):
             if xdim > 1:
@@ -211,7 +267,7 @@ class ParetoFront:
             else:
                 all[i,:1] = xx
                 all[i,1:] = fp
-        np.savetxt(fn, all)
+        np.savetxt(fn, all, header=header)
 
 
 if __name__ == '__main__':
@@ -221,7 +277,11 @@ if __name__ == '__main__':
         sys.exit()
 
     paretoFront = ParetoFront.read_from_gmak(sys.argv[1])
-    paretoFront.write(sys.argv[2] + ".dat")
-    paretoFront.plot()
-    paretoFront.plot(fn=sys.argv[2] + ".pdf",
-                     dump=sys.argv[2] + ".fig")
+    paretoFront.write(sys.argv[2] + "_pf.dat")
+    paretoFront.plot_objective_space()
+    paretoFront.plot_domain_space()
+    paretoFront.plot_objective_space(fn=sys.argv[2] + "_pf.pdf",
+                                     dump=sys.argv[2] + "_pf.fig")
+    paretoFront.plot_domain_space(fn=sys.argv[2] + ".pdf",
+                                  dump=sys.argv[2] + ".fig")
+
