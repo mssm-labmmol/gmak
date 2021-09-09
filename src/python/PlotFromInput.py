@@ -20,7 +20,7 @@ def pickle_load_from_file(fn):
 
 if __name__ == '__main__':
     if (len(sys.argv) == 1):
-        print("# USAGE: ./PlotFromInput.py input.inp grid.bin optimizer.bin [--save-data]")
+        print("# USAGE: ./PlotFromInput.py input.inp grid.bin [--save-data]")
         exit(0)
 
     (base_workdir,
@@ -34,12 +34,13 @@ if __name__ == '__main__':
      subgridHash) = initialize_from_input (sys.argv[1], False)
     
     grid_path = sys.argv[2]
-    optimizer_path = sys.argv[3]
     dirname = base_workdir
     save_data_bool = ('--save-data' in sys.argv)
 
     grid = pickle_load_from_file(grid_path)
-    optimizer = pickle_load_from_file(optimizer_path)
+    grid.xlabel = "$X$"
+    grid.ylabel = "$Y$"
+    optimizer = grid.optimizer
 
     grid.resetWorkdir(dirname)
 

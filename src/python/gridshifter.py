@@ -47,8 +47,8 @@ class GridShifter:
     def calcCG (self, optimizer):
 
         thr = int(self.ncut * self.grid.get_linear_size())
-        cg  = [0 for i in range(self.grid.get_dim())]
-        
+        cg  = [0 for i in range(len(self.grid.get_size()))]
+
         for k in range(thr):
             idx = optimizer.stateScores[k][0]
             point = self.grid.linear2tuple(idx)
@@ -68,10 +68,9 @@ class GridShifter:
             return False
         self.calcCG(optimizer)
         grid_size = self.grid.get_size()
-        dimension = self.grid.get_dim()
-        for i in range(dimension):
-            dim_min = int(self.margins[i][0] * grid_size[0])
-            dim_max = int(self.margins[i][1] * grid_size[0])
+        for i in range(len(grid_size)):
+            dim_min = int(self.margins[i][0] * grid_size[i])
+            dim_max = int(self.margins[i][1] * grid_size[i])
             cg_i    = self.cg[i]
             if (cg_i < dim_min) or (cg_i > dim_max):
                 return True
@@ -125,10 +124,16 @@ class GridShifter:
 
     @staticmethod
     def createFromGridAndDict (grid, dictargs):
-        maxshifts = int(dictargs['maxshifts'][0])
-        margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
-        ncut      = float(dictargs['ncut'][0])
-        keepsamples = True if dictargs['keepsamples'] == 'yes' else False
+        if dictargs is not None:
+            maxshifts = int(dictargs['maxshifts'][0])
+            margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
+            ncut      = float(dictargs['ncut'][0])
+            keepsamples = True if dictargs['keepsamples'] == 'yes' else False
+        else:
+            maxshifts = 0
+            margins   = None
+            ncut      = 0.0
+            keepsamples = True
         return GridShifter(grid, maxshifts, margins, ncut, keepsamples)
 
 class EmptyGridShifter(GridShifter):
