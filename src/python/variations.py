@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod, abstractproperty
 from copy import deepcopy
 from cartesiangrid import *
 
+
 class AbstractVariationFunction(ABC):
     """
     Contract attributes: domain_dim, image_dim
@@ -17,7 +18,7 @@ class AbstractVariationFunction(ABC):
 
     @abstractmethod
     def rescale(self, factors): pass
-    
+
     @abstractmethod
     def get_sizes(self): pass
 
@@ -70,6 +71,44 @@ class VariationFunctionScale(AbstractVariationFunction):
     def get_sizes(self):
         return None
 
+class VariationFunctionFromString(AbstractVariationFunction):
+    def __init__(self, domain_dim, func_strings):
+        self.domain_dim = domain_dim
+        self.image_dim = len(func_strings)
+        self.func_strings = func_strings
+        super().__init__()
+
+    @staticmethod
+    def _1d_corefunc(x, string):
+        import math
+        allowed_chars = "xeE0123456789+-*()./[]"
+        # Evaluating exp(...) and log(...) is also allowed.
+        rep_string = string.replace("exp(", "").replace("log(", "")
+        for char in rep_string:
+            if char not in allowed_chars:
+                raise Exception("Unsafe math expression")
+        return eval(string,
+                    {'__builtins__': None},
+                    {'log': math.log,
+                     'exp': math.exp,
+                     'log10': math.log10,
+                     'x': x})
+
+    def _corefunc(self, x):
+        return np.array([self._1d_corefunc(x, s) for s in self.func_strings])
+
+    def apply(self, args):
+        return self._corefunc(args)
+
+    def set_new_center(self, i):
+        raise NotImplementedError
+
+    def rescale(self, factors):
+        raise NotImplementedError
+
+    def get_sizes(self):
+        raise NotImplementedError
+
 class VariationFunctionCartesian(AbstractVariationFunction):
     def __init__(self, starts, steps, lens):
         self.starts = starts
@@ -106,12 +145,12 @@ class VariationFunctionCartesian(AbstractVariationFunction):
 
     def get_sizes(self):
         return self.lens
-        
+
 class AbstractVariation(ABC):
     """
     Interface:
     ----------
-    
+
     int dim()
     int size()
     2D (size x dim) np.ndarray gen_data()
@@ -141,7 +180,7 @@ class AbstractVariation(ABC):
     def write_block_to_stream(self, stream): raise NotImplementedError
 
 class VariationFromFunction(AbstractVariation):
-    
+
     def __init__(self, dim, size, func):
         self.dim  = dim
         self.size = size
@@ -185,6 +224,7 @@ class VariationCartesian(VariationFromFunction):
         self.size = size
         self.func = VariationFunctionCartesian(starts, steps, lens)
         self.type_string = "cartesian"
+
     def write_block_to_stream(self, stream):
         stream.write("type cartesian\n")
         stream.write("start " + " ".join(map(str, self.func.starts)) + "\n")
@@ -198,17 +238,17 @@ class VariationExplicit(AbstractVariation):
     def __init__(self, dim, values):
         """
         dim(int): number of dimensions
-        values(list of float): list of size `dim' * `size', where `size' 
+        values(list of float): list of size `dim' * `size', where `size'
                                is the number of parameters
         """
         self.size = int(len(values)/dim)
         self.dim  = dim
         self.type_string = "explicit"
         self._data = np.reshape(np.array(values), (self.size, self.dim))
-    
+
     def gen_data(self):
         return self._data
-        
+
     def set_new_center(self, i):
         raise ValueError("Can't set new center for explicit variation.")
 
@@ -228,13 +268,14 @@ class VariationFromVariation(AbstractVariation):
         self.variation = deepcopy(variation)
         self.func = func
         self.type_string = "from_variation"
-        if (self.func.domain_dim != self.variation.dim) or (self.func.image_dim != self.dim) or (self.dim != variation.dim):
+        if (self.func.domain_dim != self.variation.dim) or (self.func.image_dim != self.dim):
             raise ValueError("Incompatible sizes in VariationFromVariation.")
 
     def gen_data(self):
+        _inner_data = self.variation.gen_data()
         _data = np.zeros((self.size, self.dim))
         for i in range(self.size):
-            _data[i, :] = self.func.apply( self.variation.func.apply(i) )
+            _data[i, :] = self.func.apply(_inner_data[i,:])
         return _data
 
     def rescale(self, factors):
@@ -246,6 +287,20 @@ class VariationFromVariation(AbstractVariation):
 
     def get_sizes(self):
         return self.variation.get_sizes()
+
+class FunctionDecoratedVariation(VariationFromVariation):
+    def __init__(self, variation, func_strings):
+        size = variation.size
+        domain_dim = variation.dim
+        func_call = VariationFunctionFromString(domain_dim, func_strings)
+        super().__init__(func_call.image_dim, size, variation, func_call)
+        self.func_strings = func_strings
+
+    def write_block_to_stream(self, stream):
+        self.variation.write_block_to_stream(stream)
+        full_function_string = " ".join(self.func_string)
+        stream.write(f"function {full_function_string}\n")
+
 
 class VariationFromVariationScale(VariationFromVariation):
     def __init__(self, dim, size, variation, factors):
@@ -268,50 +323,80 @@ class AbstractVariationFactory:
             options                  = splittedLine[1:]
             options_dict[identifier] = options
         return options_dict
-    
+
     @staticmethod
     def _createCartesian(stream, used):
         options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        if 'function' not in options_dict.keys():
+            options_dict['function'] = None
         dim          = len(options_dict['size'])
         starts       = np.array(options_dict['start'], dtype=float)
         steps        = np.array(options_dict['step'], dtype=float)
         lens         = np.array(options_dict['size'], dtype=int)
         size         = np.prod(lens)
-        return VariationCartesian(dim, size, starts, steps, lens)
+        return VariationCartesian(dim, size, starts, steps, lens), options_dict['function']
 
     @staticmethod
     def _createScale(stream, used):
         options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        if 'function' not in options_dict.keys():
+            options_dict['function'] = None
         variation    = used.generators[0]
         factors      = np.array(options_dict['factors'], dtype=float)
         dim          = len(options_dict['factors'])
         size         = used.get_linear_size()
-        return VariationFromVariationScale(dim, size, variation, factors)
+        return VariationFromVariationScale(dim, size, variation, factors), options_dict['function']
 
     @staticmethod
     def _createExplicit(stream, used):
         options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        if 'function' not in options_dict.keys():
+            options_dict['function'] = None
         dim = int(options_dict['dim'][0])
         # values are read in batches of size dim
         values = [float(x) for x in options_dict['values']]
-        return VariationExplicit(dim, values)
-        
+        return VariationExplicit(dim, values), options_dict['function']
+
+    @staticmethod
+    def _createTie(stream, used):
+        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+        if 'function' not in options_dict.keys():
+            # for this case it is necessary
+            raise ValueError("A 'tie' variation must specify a function.")
+        try:
+            variation    = used.generators[0]
+        except AttributeError:
+            raise Exception(f"In a 'tie' variation, make sure the "
+                            f"line \"using <base_variation>\" appears before the "
+                            f"line \"type  tie\" in the input file.")
+        size         = used.get_linear_size()
+        dim          = len(options_dict['function'])
+        # no need to return func_strings below, because I am already creating a
+        # FunctionDecoratedVariation
+        return (FunctionDecoratedVariation(variation, options_dict['function']),
+                None)
+
     @staticmethod
     def readFromTypeAndStream(typestring, stream, used):
+        # all of them can be decorated
         func_dict = {
             'cartesian' : AbstractVariationFactory._createCartesian,
-            'scale'     : AbstractVariationFactory._createScale,
+            'tie'       : AbstractVariationFactory._createTie,
             'explicit'  : AbstractVariationFactory._createExplicit,
         }
         try:
-            return func_dict[typestring](stream, used)
+            base, func_strings = func_dict[typestring](stream, used)
+            if func_strings is not None:
+                return FunctionDecoratedVariation(base, func_strings)
+            else:
+                return base
         except KeyError:
             raise NotImplementedError("VariationFactory for {} is not implemented.".format(typestring))
 
 # ----------------------------------------------------------------------
 # DomainSpace
 # ----------------------------------------------------------------------
-        
+
 class DomainSpace:
     """
     Attributes:
@@ -329,7 +414,7 @@ class DomainSpace:
     def update_data(self):
         sparse_data     = []
         for gen in self.generators:
-            sparse_data.append( gen.gen_data() ) 
+            sparse_data.append( gen.gen_data() )
         self.data = np.concatenate(sparse_data, axis=1)
         self.data = self.data.reshape(self.data.shape[0], -1)
 
@@ -357,7 +442,7 @@ class DomainSpace:
 
     def set_new_center(self, i):
         for gen in self.generators:
-            gen.set_new_center(i) 
+            gen.set_new_center(i)
         self.update_data()
 
     def rescale(self, factors):
@@ -371,7 +456,7 @@ class DomainSpace:
             for j in range(n):
                 stream.write("%18.7e" % self.data[i,j])
             stream.write('\n')
-        
+
     def write_to_file(self, fn):
         np.savetxt(fn, self.data)
 
