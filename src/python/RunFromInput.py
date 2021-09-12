@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from logger import *
+import logger
 from gridshifter import *
 from parameters import *
 from grid_ana import *
@@ -62,7 +62,7 @@ if __name__ == "__main__":
          surrogateModelHash,
          subgridHash) = globalState.getInitializationState()
 
-        globalLogger.putMessage('Restarting from {}'.format(binFilename))
+        logger.globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
     else:
         globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy, validateFlag))
@@ -90,17 +90,23 @@ if __name__ == "__main__":
 
         # *********************** End of checks for run  **************************        
 
+    # Initialize logger.globalLogger with output file inside the workdir
+    logger.globalLogger = logger.Logger(
+        os.path.join(
+            base_workdir,
+            "gmak_{}.dat".format(os.getpid())))
+
     # Initialize results assembler - hard-coded for now, will go into input file
     resultsAssembler = ResultsAssembler(grid.getParameterNames())
 
     # Initialize selector - hard-coded for now, will go into input file
     selector = createSelector('best', gridOptimizer=optimizer, howMany=9)
 
-    globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
-    globalLogger.indent()
+    logger.globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
+    logger.globalLogger.indent()
     grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag)
-    globalLogger.unindent()
-    globalLogger.putMessage('END MAINLOOP', dated=True)
+    logger.globalLogger.unindent()
+    logger.globalLogger.putMessage('END MAINLOOP', dated=True)
 
     # DEBUG
     resultsAssembler.print(sys.stdout)

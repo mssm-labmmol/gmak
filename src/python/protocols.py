@@ -7,7 +7,7 @@ import warnings
 import re
 import copy
 import os
-from logger import *
+import logger
 from mdputils import *
 import atomic_properties
 

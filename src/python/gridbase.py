@@ -19,7 +19,7 @@ from   cartesiangrid   import *
 from   gridshifter     import *
 import copy
 import pickle
-from   logger          import *
+import logger
 from   state           import *
 import atomic_properties
 
@@ -541,16 +541,16 @@ class ParameterGrid:
             # run 
             if gp.is_sample:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
-                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolLength(protocol)), dated=True)
-                    globalLogger.indent()
+                    logger.globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolLength(protocol)), dated=True)
+                    logger.globalLogger.indent()
                     gp.simulate_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
                     gp.setProtocolAsSimulated(protocol)
-                    globalLogger.unindent()
+                    logger.globalLogger.unindent()
                 else:
-                    globalLogger.putMessage("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
+                    logger.globalLogger.putMessage("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
             # only prepare
             else:
-                globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
+                logger.globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
                 gp.prepare_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
 
     def filter_with_protocol_at_dir (self, protocol, workdir):
@@ -857,13 +857,13 @@ class ParameterGrid:
         for protocol in protocols:
             workdir  = self.makeProtocolWorkdir(protocol)
             simu_dir = self.makeProtocolSimudir(protocol)
-            globalLogger.putMessage('BEGIN PROTOCOL {}'.format(protocol.name), dated=True)
-            globalLogger.indent()
+            logger.globalLogger.putMessage('BEGIN PROTOCOL {}'.format(protocol.name), dated=True)
+            logger.globalLogger.indent()
             # simulate sampling points, filter trajectories and properties
             # gridpoints have access to the correct topology paths
             self.simulate_with_protocol_at_dir (protocol, simu_dir)
-            globalLogger.unindent()
-            globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
+            logger.globalLogger.unindent()
+            logger.globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
 
         # calculate properties/filter trajectory
         # this also calculates the properties
@@ -881,8 +881,8 @@ class ParameterGrid:
         # reweight
         for protocol in protocols:
             if (protocol.requires_reweight()):
-                globalLogger.putMessage('BEGIN REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
-                globalLogger.indent()
+                logger.globalLogger.putMessage('BEGIN REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
+                logger.globalLogger.indent()
                 rw_dir, mbar_dir = self.makeProtocolReweightdirs(protocol)
                 self.reweight(protocol, rw_dir)
                 A_pkn = self.retrieveReweightProperties()
@@ -902,8 +902,8 @@ class ParameterGrid:
                     fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, mbar_model.kind, rw_prop)
                     mbar_model.writeExpectationsToFile(fn_avg, fn_err, p)
                 mbar_model.writeLogToDirectory("%s/details" % mbar_dir)
-                globalLogger.unindent()
-                globalLogger.putMessage('END REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
 
         # non-reweighted properties
         for protocol in protocols:
@@ -927,8 +927,8 @@ class ParameterGrid:
 
     def run(self, protocols, optimizer, surrogateModelHash, properties,
             protocolsHash, resultsAssembler, plotFlag=False):
-        globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
-        globalLogger.indent()
+        logger.globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
+        logger.globalLogger.indent()
 
         if (self.init):
             # initialize length of simulations
@@ -1007,12 +1007,12 @@ class ParameterGrid:
 
         if (nextSample == -1):
             if self.shift(optimizer):
-                globalLogger.unindent()
-                globalLogger.putMessage('END GRIDSTEP', dated=True)
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
                 self.init = True
             else:
-                globalLogger.unindent()
-                globalLogger.putMessage('END MAINLOOP', dated=True)
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END MAINLOOP', dated=True)
                 globalState.saveToFile() # Save state to file if
                                          # needed for further
                                          # analysis.
@@ -1021,8 +1021,8 @@ class ParameterGrid:
             for sample in nextSample:
                 self.add_sample(sample)
         # Recursion
-        globalLogger.unindent()
-        globalLogger.putMessage('END GRIDSTEP', dated=True)
+        logger.globalLogger.unindent()
+        logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
         globalState.saveToFile()
         self.run(protocols,
                  optimizer,
@@ -1109,7 +1109,7 @@ class ParameterGrid:
                     old_length = gp.protocol_lenspecs[prot.name]
                     new_length = prot.calc_extend(gp, optimizer, protocolsHash)
                     if new_length is not None:
-                        globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
+                        logger.globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
                                                 ' Steps : {}->{}'.
                                                 format(gp.id, prot.name,
                                                        old_length, new_length))
@@ -1117,15 +1117,15 @@ class ParameterGrid:
                         gp.unsetProtocolAsSimulated(prot)
                         output = True
                     else:
-                        globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
+                        logger.globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
                                                 ' Steps have reached machine precision '
                                                 'or there is no need to extend the '
                                                 'simulations.'
                                                 .format(gp.id, prot.name))
         if output:
-            globalLogger.putMessage('MESSAGE: Estimates are not converged,'
+            logger.globalLogger.putMessage('MESSAGE: Estimates are not converged,'
                                     ' so some simulations will be extended.')
         else:
-            globalLogger.putMessage('MESSAGE: Estimates are converged and '
+            logger.globalLogger.putMessage('MESSAGE: Estimates are converged and '
                                     'simulations will not be extended.')
         return output

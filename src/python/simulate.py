@@ -6,7 +6,7 @@ import re
 from shutil import copyfile
 from traj_ana import get_box
 from mdputils import *
-from logger import *
+import logger
 from config import ConfigVariables
 
 # gmx_nprocs is set via a cmd-line option '-np'
@@ -40,9 +40,9 @@ def check_simulation_state (workdir, label):
         return 'NONE'
 
 def extend_something (nsteps, workdir, label, nprocs=-1):
-    globalLogger.indent()
-    globalLogger.putMessage('Extending')
-    globalLogger.unindent()
+    logger.globalLogger.indent()
+    logger.globalLogger.putMessage('Extending')
+    logger.globalLogger.unindent()
     workdir = os.path.abspath(workdir)
     runcmd.run("%s convert-tpr -s %s/%s/%s.tpr -nsteps %d -o %s/%s/tmp.tpr" % (ConfigVariables.gmx, workdir, label, label, nsteps, workdir, label))
     runcmd.run("mv %s/%s/tmp.tpr %s/%s/%s.tpr" % (workdir, label, workdir, label, label))
@@ -60,12 +60,12 @@ def simulate_something (conf, top, mdp, label, workdir, nprocs=-1):
     simu_state = check_simulation_state(workdir, label)
     if (simu_state == 'COMPLETE_MINIM'):
         # This will only happen for minimization, I guess. We can just assume it finished alright with a warning.
-        globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
+        logger.globalLogger.putMessage('STEP {}: There is a log but no cpt; assumming a successful minimization.'.format(label))
     elif (simu_state == 'FULL'):
-        globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
+        logger.globalLogger.putMessage('STEP {}: Restarting from .cpt (possibly a complete simulation)'.format(label))
         runcmd.run("%s -s %s/%s/%s.tpr -cpi %s/%s/%s.cpt -deffnm %s/%s/%s" % (create_mdrun_call(nprocs), workdir, label, label, workdir, label, label, workdir, label, label))
     elif (simu_state == 'NONE'):
-        globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
+        logger.globalLogger.putMessage('STEP {}: Simulating from start'.format(label))
         command = "%s grompp -maxwarn 5 -f %s -c %s -p %s -o %s/%s/%s.tpr" % (ConfigVariables.gmx, mdp, conf, top, workdir, label, label)
         runcmd.run(command)
         command = "%s -s %s/%s/%s.tpr -deffnm %s/%s/%s" % (create_mdrun_call(nprocs), workdir, label, label, workdir, label, label)

@@ -1,6 +1,6 @@
 import os
 import runcmd
-from logger import *
+import logger
 from parameters import *
 from cartesiangrid import *
 from gridbase import *
@@ -58,7 +58,7 @@ class GridShifter:
         for i, x in enumerate(cg):
             cg[i] = int(cg[i]/thr)
 
-        globalLogger.putMessage('MESSAGE: CG position is {}'.format(cg))
+        logger.globalLogger.putMessage('MESSAGE: CG position is {}'.format(cg))
         self.cg = tuple(cg)
         return self.cg
 
@@ -78,9 +78,9 @@ class GridShifter:
 
     def checkShift (self, optimizer):
         if not (self.doWeShift(optimizer)):
-            globalLogger.putMessage('MESSAGE: The grid *WAS NOT* shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
+            logger.globalLogger.putMessage('MESSAGE: The grid *WAS NOT* shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
             return False
-        globalLogger.putMessage('MESSAGE: The grid was shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
+        logger.globalLogger.putMessage('MESSAGE: The grid was shifted to CG = {} (linear = {})'.format(self.cg, self.getCGasLinear()), dated=True)
         # self.shift(grid, paramLoop, old_workdir, new_workdir)
         self.nshifts += 1
         return True

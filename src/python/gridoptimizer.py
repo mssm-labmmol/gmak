@@ -3,7 +3,7 @@ import runcmd
 import numpy as np
 import copy
 import scipy.stats as st
-from   logger import *
+import logger
 
 def wrmsd_calc_score_err(propertyEstimates,
                          propertyErrors,
@@ -265,14 +265,14 @@ class gridOptimizer:
             return
 
     def determineNextSample(self, grid, smHash, protHash):
-        globalLogger.putMessage('BEGIN OPTIMIZER')
-        globalLogger.indent()
+        logger.globalLogger.putMessage('BEGIN OPTIMIZER')
+        logger.globalLogger.indent()
         properties = self.referenceTolerances.keys()
         nTested = 0
         outSamples = []
         properties = self.referenceTolerances.keys()
         if (self.nsteps >= self.maxSteps):
-            globalLogger.putMessage('MESSAGE: Estimates are all converged.')
+            logger.globalLogger.putMessage('MESSAGE: Estimates are all converged.')
             return -1
         for x in self.stateScores:
             # ignore sampled
@@ -280,10 +280,10 @@ class gridOptimizer:
                 nTested += 1
                 continue
             if (nTested > self.percentCutoff * grid.get_linear_size()):
-                globalLogger.putMessage('MESSAGE: All {} best GridPoints are OK!'
+                logger.globalLogger.putMessage('MESSAGE: All {} best GridPoints are OK!'
                                         .format(int(self.percentCutoff * grid.get_linear_size())))
-                globalLogger.unindent()
-                globalLogger.putMessage('END OPTIMIZER')
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END OPTIMIZER')
                 return -1
             for prop in properties:
                 # skip properties without weight
@@ -294,18 +294,18 @@ class gridOptimizer:
                     if (propErr > self.referenceTolerances[prop]):
                         self.nsteps += 1
                         outSamples.append(x[0])
-                        globalLogger.putMessage('MESSAGE: GridPoint {} will be simulated next.'.format(x[0]))
-                        globalLogger.unindent()
-                        globalLogger.putMessage('END OPTIMIZER')
+                        logger.globalLogger.putMessage('MESSAGE: GridPoint {} will be simulated next.'.format(x[0]))
+                        logger.globalLogger.unindent()
+                        logger.globalLogger.putMessage('END OPTIMIZER')
                         return [x[0]]
                 else: # i.e., interpolated properties
                     propErr = grid[x[0]].get_property_err(prop)
                     if (propErr > self.referenceTolerances[prop]):
                         self.nsteps += 1
                         outSamples.append(x[0])
-                        globalLogger.putMessage('MESSAGE: GridPoint {} will be simulated next.'.format(x[0]))
-                        globalLogger.unindent()
-                        globalLogger.putMessage('END OPTIMIZER')
+                        logger.globalLogger.putMessage('MESSAGE: GridPoint {} will be simulated next.'.format(x[0]))
+                        logger.globalLogger.unindent()
+                        logger.globalLogger.putMessage('END OPTIMIZER')
                         return [x[0]]
             self.nsteps += 1
             nTested += 1
