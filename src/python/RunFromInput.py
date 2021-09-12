@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from logger import *
-from gridshifter import * 
-from parameters import * 
-from grid_ana import * 
+import logger
+from gridshifter import *
+from parameters import *
+from grid_ana import *
 from coverage import *
 from read_input import *
 from mdputils import mdpUtils
@@ -23,13 +23,18 @@ import copy
 import runcmd
 import pickle
 import simulate
+import custom_atomic_properties
+import custom_protocols
+import custom_surrogate_models
+import custom_scores
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
 else:
     bool_legacy = False
 
-plotFlag = not ('--no-plot' in sys.argv)
+#plotFlag = not ('--no-plot' in sys.argv)
+plotFlag = False # never plot
 validateFlag = ('--validate' in sys.argv)
 writeNewInput = ('--write-input' in sys.argv)
 
@@ -49,7 +54,7 @@ if __name__ == "__main__":
 
         (base_workdir, # read variables as if reading from an input file,
          grid,         # but actually reading from state
-         protocols,    # 
+         protocols,    #
          properties,   # this way the rest of this program can remain the same
          protocolsHash,
          optimizer,
@@ -57,7 +62,7 @@ if __name__ == "__main__":
          surrogateModelHash,
          subgridHash) = globalState.getInitializationState()
 
-        globalLogger.putMessage('Restarting from {}'.format(binFilename))
+        logger.globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
     else:
         globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy, validateFlag))
@@ -85,17 +90,23 @@ if __name__ == "__main__":
 
         # *********************** End of checks for run  **************************        
 
+    # Initialize logger.globalLogger with output file inside the workdir
+    logger.globalLogger = logger.Logger(
+        os.path.join(
+            base_workdir,
+            "gmak_{}.dat".format(os.getpid())))
+
     # Initialize results assembler - hard-coded for now, will go into input file
     resultsAssembler = ResultsAssembler(grid.getParameterNames())
 
     # Initialize selector - hard-coded for now, will go into input file
     selector = createSelector('best', gridOptimizer=optimizer, howMany=9)
 
-    globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
-    globalLogger.indent()
+    logger.globalLogger.putMessage('BEGIN MAINLOOP', dated=True)
+    logger.globalLogger.indent()
     grid.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag)
-    globalLogger.unindent()
-    globalLogger.putMessage('END MAINLOOP', dated=True)
+    logger.globalLogger.unindent()
+    logger.globalLogger.putMessage('END MAINLOOP', dated=True)
 
     # DEBUG
     resultsAssembler.print(sys.stdout)

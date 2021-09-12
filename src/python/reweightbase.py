@@ -23,7 +23,7 @@ class GromacsReweighterAdapter:
         else:
             outputDict['xtc'] = originGridpoint.protocol_outputs[protocol.name]['xtc']
         return outputDict
-                
+
 class ReweighterInterface(ABC):
 
     @abstractmethod

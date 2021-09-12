@@ -33,13 +33,16 @@ def extract_uncorrelated_frames (xtc, tpr, propfiles, oxtc, opropfiles, methods)
         skip = wrapperStatisticalInefficiency(x)
         skips.append(int(np.ceil(skip)))
 
+    if len(skips) == 0:
+        return
+
     actual_skip = int(np.max(skips))
 
     runcmd.run("echo 0 | %s trjconv -f %s -s %s -skip %d -o %s" % (ConfigVariables.gmx, xtc,tpr,actual_skip,oxtc))
-    
+
     # also filter the selected properties
     for i, propfile in enumerate(propfiles):
-        x = np.loadtxt(propfile, comments=['@','#'], usecols=(0,1,))
+        x = np.loadtxt(propfile, comments=['@','#'])
         if (methods[i] == 'mbar'):
             x_skipped = x[::actual_skip]
         elif (methods[i] in ['nearest', 'linear', 'cubic', 'gpr', 'empty']):

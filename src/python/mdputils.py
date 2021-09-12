@@ -70,7 +70,8 @@ class mdpUtils:
     def get_nlambdas(self):
         """Returns the number of lambda values for a free energy mdp file."""
         # make a list of all *-lambdas options
-        lambdaOptions = [k for k in self.optionsDict.keys() if k.endswith('-lambdas')]
+        lambdaOptions = [k for k in self.optionsDict.keys() if
+                         k.endswith('-lambdas') or k.endswith('_lambdas')]
         if len(lambdaOptions) > 0:
             # get number of lambda for each
             nlambdas = [len(self.get_option(k)) for k in lambdaOptions]
@@ -95,7 +96,7 @@ class mdpUtils:
             except KeyError:
                 # ignore missing keys
                 pass
-        
+
     def set_lambda_state(self, value):
         option = 'init-lambda-state'
         self.optionsDict[option] = [value]

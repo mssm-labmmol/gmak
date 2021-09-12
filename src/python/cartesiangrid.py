@@ -64,6 +64,9 @@ class CartesianGrid:
         expanded_points = [self.tuple2linear(p) for p in points]
         return expanded_points
 
+def flat2tuple(gridshape, idx):
+    return CartesianGrid(gridshape).linear2tuple(idx)
+
 class CartesianGridIterator:
 
     def __init__(self, cartesianGrid):

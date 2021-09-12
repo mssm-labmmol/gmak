@@ -1,16 +1,17 @@
 import runcmd
+import sys
 import re
 import os
 import shlex
 import numpy           as     np
 from   property        import DGsolvAlchemicalAnalysis
-from   mdputils        import * 
+from   mdputils        import *
 from   reweightbase    import *
 from   traj_ana        import *
 from   traj_filter     import *
 from   reweight        import *
 import multiprocessing
-from   property        import * 
+from   property        import *
 from   grid_ana        import *
 import warnings
 from   surrogate_model import *
@@ -18,8 +19,9 @@ from   cartesiangrid   import *
 from   gridshifter     import *
 import copy
 import pickle
-from   logger          import *
+import logger
 from   state           import *
+import atomic_properties
 
 def replaceMacros(fn, macros):
     print("Replacing macros in %s:" % fn)
@@ -125,7 +127,7 @@ class GridPoint:
             accesses the xtc file of the reweighting on grid point
             'gp' simulated under protocol 'pr'. This may be empty, if
             no reweighting is explicitly performed.
-    
+
         estimated_properties: dictionary of estimated_properties
             e.g. estimated_propeties['gamma'] should be a
             PropertyBase::Gamma
@@ -137,24 +139,11 @@ class GridPoint:
         self.is_sample = False
         self.is_simulated = []
         self.protocol_outputs = {}
-        self.protocol_steps = {}
         self.atomic_properties = {}
         # self.rw_outputs = {}
-        # also initialize subdictionaries - is this needed? <<todo-1>>
         # self.rw_outputs[self.id] = {}
         self.estimated_properties = {}
-
-    def initProtocolSteps(self, protocols):
-        for protocol in protocols:
-            mu = mdpUtils()
-            mu.parse_file(protocol.mdps[-1])
-            self.setProtocolSteps(protocol, mu.get_nsteps())
-
-    def setProtocolSteps(self, protocol, steps):
-        self.protocol_steps[protocol.name] = steps
-
-    def getProtocolSteps(self, protocol):
-        return self.protocol_steps[protocol.name]
+        self.protocol_lenspecs = {}
 
     def resetWithNewId(self, newId):
         self.id = newId
@@ -170,7 +159,7 @@ class GridPoint:
     def unsetProtocolAsSimulated(self, protocol):
         if (protocol.name in self.is_simulated):
             self.is_simulated.remove(protocol.name)
-    
+
     def getTopologyPath(self, molecule):
         return self.baseGrid.topologyBundles[molecule].getPathsForStatepath(self.id)
 
@@ -208,7 +197,7 @@ class GridPoint:
         return self.is_sample
 
     # obj is a PropertyBase::X object (X=Density,Gamma,dHvap)
-    def add_property_estimate (self, prop_id, prop_name, obj):
+    def add_property_estimate(self, prop_id, prop_name, obj):
         if (prop_name != obj.name):
             raise ValueError ("ERROR: expected {} but got {}.\n".format(prop_name, obj.name))
         self.estimated_properties[prop_id] = obj
@@ -230,43 +219,26 @@ class GridPoint:
             self.rw_outputs[gp_other.id] = {}
             self.rw_outputs[gp_other.id][protocol.name] = output
 
-    def get_atomic_property_from_protocol (self, name, protocol, output):
-        # just to make sure absolute paths are used
+    def get_atomic_property_from_protocol(self, name, protocol, output):
         output = os.path.abspath(output)
-        # from traj_ana.py
-        if (name == 'polcorr'):
-            obtain_polcorr (self.protocol_outputs[protocol.name]['xtc'],\
-                    self.protocol_outputs[protocol.name]['edr'],\
-                    self.protocol_outputs[protocol.name]['gro'],\
-                    self.protocol_outputs[protocol.name]['tpr'],\
-                    protocol.dipole, protocol.polar, output)
+        if name == 'polcorr':
+            mu = protocol.dipole
+            alpha = protocol.polar
+            ap = atomic_properties.create_atomic_property(name, mu, alpha)
+        elif name == 'dgsolv':
+            temp = protocol.get_temperature()
+            ap = atomic_properties.create_atomic_property(name, temp)
         else:
-            obtain_property (self.protocol_outputs[protocol.name]['xtc'],\
-                    self.protocol_outputs[protocol.name]['edr'],\
-                    self.protocol_outputs[protocol.name]['gro'],\
-                    self.protocol_outputs[protocol.name]['tpr'],\
-                    name, output)
-        self.add_atomic_property_output (name, protocol, output)
-
-    def get_atomic_property_from_protocol_sequence (self, name, protocol_sequence_name, protocol_sequence, output):
-        # just to make sure absolute paths are used
-        output = os.path.abspath(output)
-        if (name == 'dgsolv'):
-            dhdlFiles = [self.protocol_outputs[prot.name]['dhdl'] for prot in protocol_sequence]
-            temperature = protocol_sequence[0].get_temperature()
-            globalLogger.putMessage('MESSAGE: dhdl files for alchemical_analysis are {}.'.format(dhdlFiles))
-            globalLogger.putMessage('MESSAGE: temperature is {}'.format(temperature))
-            DGsolvAlchemicalAnalysis.obtain(dhdlFiles, temperature, output)
-        else:
-            raise NotImplementedError("Property {} is not supported for a protocol sequence.".format(name))
-        self.add_atomic_property_output_from_name(name, protocol_sequence_name, output)
+            ap = atomic_properties.create_atomic_property(name)
+        ap.calc(self.protocol_outputs[protocol.name], output)
+        self.add_atomic_property_output(name, protocol, output)
 
     def retrieve_atomic_property_from_protocol(self, propname, protocol):
         return self.atomic_properties[protocol.name][propname]
 
     def get_number_of_configurations_for_protocol(self, protocol):
         if (self.is_sample):
-            confs = [0] * len(self.atomic_properties[protocol.name])      
+            confs = [0] * len(self.atomic_properties[protocol.name])
             for i, prop_keys in enumerate(self.atomic_properties[protocol.name]):
                 confs[i] = np.loadtxt(self.atomic_properties[protocol.name][prop_keys], comments=['@','#'], usecols=(0,)).shape[0]
                 if (i > 0):
@@ -290,46 +262,69 @@ class GridPoint:
     def filter_traj_in_protocol (self, protocol, properties, odir, ext):
         if len(properties) < 1:
             return
-        rw_props = protocol.get_reweighting_properties()
-        interp_models_props = protocol.get_interp_models_props()
-        normal_props = [x[1] for x in interp_models_props]
-        normal_kinds = [x[0].kind for x in interp_models_props]
+        sm_props = protocol.get_all_models_props()
         kinds = []
-        for i, prop in enumerate(properties):
-            n_kinds = 0
-            if (prop in normal_props):
-                kinds.append(normal_kinds[i])
-                n_kinds += 1
-            if (prop in rw_props):
-                kinds.append('mbar')
-                n_kinds += 1
-            if (n_kinds == 0) or (n_kinds > 1):
-                raise Exception("Property "+ prop+ " belongs to 0 or more than 1 type of surrogate model.")
-            if (prop == 'dgsolv'):
-                # NOTE: dgsolv is already filtered
-                self.get_atomic_property_from_protocol_sequence (prop, protocol.name, protocol.expand(), odir + "/filtered_" + prop + ".xvg")
-            else:
-                self.get_atomic_property_from_protocol (prop, protocol, odir + "/" + prop + ".xvg")
+        for sm, prop in sm_props:
+            if prop in properties:
+                kinds.append(sm.kind)
+            self.get_atomic_property_from_protocol(prop,
+                                                   protocol,
+                                                   odir + "/" + prop + ".xvg")
+
         # from traj_filter
-        if ('dgsolv' not in properties):
-            extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],\
-                    self.protocol_outputs[protocol.name]['tpr'], \
-                    [self.atomic_properties[protocol.name][x] for x in properties],\
-                    odir + '/filtered_trajectory.' + ext,\
-                    [odir + '/filtered_' + prop + '.xvg' for prop in properties],
-                    methods=kinds)
-            # update gridpoint trajectory
-            self.protocol_outputs[protocol.name][ext] = \
-                    os.path.abspath(odir + '/filtered_trajectory.' + ext)
-            # update path of filtered properties
-            for x in properties:
-                self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
+        extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],
+                                     self.protocol_outputs[protocol.name]['tpr'],
+                                     [self.atomic_properties[protocol.name][x] for x in properties],
+                                     odir + '/filtered_trajectory.' + ext,
+                                     [odir + '/filtered_' + prop + '.xvg' for prop in properties],
+                                     methods=kinds)
+        # update gridpoint trajectory
+        self.protocol_outputs[protocol.name][ext] = \
+                os.path.abspath(odir + '/filtered_trajectory.' + ext)
+        # update path of filtered properties
+        for x in properties:
+            self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
 
     def filter_xtc_in_protocol (self, protocol, properties, odir):
         return self.filter_traj_in_protocol(protocol, properties, odir, 'xtc')
 
     def filter_trr_in_protocol (self, protocol, properties, odir):
         return self.filter_traj_in_protocol(protocol, properties, odir, 'trr')
+
+    def makeSimudir(self, protocolSimudir):
+        dirname = os.path.abspath(f"{protocolSimudir}/{self.id}")
+        system(f"mkdir -p {dirname}")
+        return dirname
+
+    def get_errs_tols(self, optimizer, protocol, protocolsHash):
+        """Returns a dictionary <property_name:str, {'tol': float, 'err': float}>.
+
+        'tol' is the tolerance for the property specified in the input file.
+        'err' is the actual error obtained in the estimation.
+        """
+        out_dict   = {}
+        properties = optimizer.getProperties()
+        tolerances = optimizer.getTolerances()
+        for prop in properties:
+            if protocol.name in protocolsHash[prop]:
+                out_dict[prop] = {}
+                out_dict[prop]['tol'] = tolerances[prop]
+                out_dict[prop]['err'] = self.get_property_err(prop)
+        return out_dict
+
+    def initProtocolLengths(self, protocols):
+        for prot in protocols:
+            # Only init if the value is not set, otherwise you may end
+            # up overwriting and extended simulation that was "kept"
+            # between grid shifts.
+            if prot.name not in self.protocol_lenspecs.keys():
+                self.protocol_lenspecs[prot.name] = prot.calc_initial_len()
+
+    def getProtocolLength(self, protocol):
+        return self.protocol_lenspecs[protocol.name]
+
+    def getParameterValues(self):
+        return self.baseGrid.parSpaceGen.getParameterValues(self.id)
 
 class ParameterGrid:
 
@@ -352,7 +347,7 @@ class ParameterGrid:
         self.reweighter      = reweighter
         self.shifter         = shifter
         self.workdir         = workdir
-        
+
         """
         plotting stuff that I do not wish to alter right now.
         yMHG ter jul 14 14:40:02 -03 2020
@@ -387,7 +382,7 @@ class ParameterGrid:
         if (keep_initial_samples):
             parameterGrid.set_fixed_points(samples)
         return parameterGrid
-        
+
     @staticmethod
     def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir, validateFlag):
         samples       = []
@@ -421,19 +416,22 @@ class ParameterGrid:
         grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples, validateFlag)
         return grid
 
-    def initProtocolSteps(self, protocols):
+    def initProtocolLengths(self, protocols):
         for gp in self.grid_points:
-            gp.initProtocolSteps(protocols)
+            gp.initProtocolLengths(protocols)
 
     def setGridpoints(self, gridpoints):
         self.grid_points = gridpoints
-        
+
     def getCartesianGrid(self):
         return self.indexGrid
 
     def getParameterNames(self):
         return self.parSpaceGen.getParameterNames()
-        
+
+    def getParameterValues(self):
+        return self.parSpaceGen.getAllParameterValues()
+
     def get_molecules(self):
         return list(self.topologyBundles.keys())
 
@@ -543,36 +541,45 @@ class ParameterGrid:
             # run 
             if gp.is_sample:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
-                    globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolSteps(protocol)), dated=True)
-                    globalLogger.indent()
-                    gp.simulate_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
+                    logger.globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolLength(protocol)), dated=True)
+                    logger.globalLogger.indent()
+                    gp.simulate_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
                     gp.setProtocolAsSimulated(protocol)
-                    globalLogger.unindent()
+                    logger.globalLogger.unindent()
                 else:
-                    globalLogger.putMessage("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
+                    logger.globalLogger.putMessage("MESSAGE: GridPoint {} has already been simulated with protocol {}!".format(gp.id, protocol.name))
             # only prepare
             else:
-                globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
-                gp.prepare_with_protocol_at_dir (protocol, workdir + "/" + str(i) + "/")
+                logger.globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
+                gp.prepare_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
 
     def filter_with_protocol_at_dir (self, protocol, workdir):
         for i,gp in enumerate(self.grid_points):
             if gp.is_sample:
                 # filter
                 if (protocol.type == 'slab'):
-                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), gp.makeSimudir(workdir))
                 else:
-                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), workdir + "/" + str(i) + "/")
+                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), gp.makeSimudir(workdir))
+
+    def nonfilter_with_protocol_at_dir (self, protocol, workdir):
+        for i,gp in enumerate(self.grid_points):
+            if gp.is_sample:
+                for prop in protocol.get_nonfiltering_properties():
+                    gp.get_atomic_property_from_protocol(
+                        prop,
+                        protocol,
+                        gp.makeSimudir(workdir) + "/" + prop + ".xvg")
 
     def reweight(self, protocol, workdir):
         self.reweighter.run(protocol, workdir)
 
     def retrieveReweightProperty(self, prop):
         return self.reweighter.getPropertyMatrix(prop)
-        
+
     def retrieveReweightProperties(self):
         return self.reweighter.getFullPropertyMatrix()
-        
+
     def retrieveReweightNumberOfConfigurations(self):
         return self.reweighter.getConfigurationMatrix()
 
@@ -588,12 +595,12 @@ class ParameterGrid:
             for gp in self.grid_points:
                 estimateObj   = Density (estimateValue[gp.id], estimateErr[gp.id])
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'gamma'):
+        elif (prop == 'gamma'):
             estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(prop, kind)
             for gp in self.grid_points:
-                estimateObj   = Gamma (estimateValue[gp.id], estimateErr[gp.id])                
+                estimateObj   = Gamma (estimateValue[gp.id], estimateErr[gp.id])
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'dhvap'):
+        elif (prop == 'dhvap'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols = protocolObjs[0].nmols
             # for 'none' gas
@@ -613,7 +620,7 @@ class ParameterGrid:
                 estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],
                                        estimateErrLiq[gp.id], estimateErrGas[gp.id], estimateErrPol[gp.id], corr, nmols, temp)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'ced'):
+        elif (prop == 'ced'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols            = protocolObjs[0].nmols
             #
@@ -631,7 +638,7 @@ class ParameterGrid:
                                                        estimateErrLiq[gp.id], estimateErrGas[gp.id],
                                                        estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'gced'):
+        elif (prop == 'gced'):
             estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
             nmols            = protocolObjs[0].nmols
             #
@@ -649,11 +656,20 @@ class ParameterGrid:
                                                        estimateErrLiq[gp.id], estimateErrGas[gp.id],
                                                        estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
                 gp.add_property_estimate (prop_id, prop, estimateObj)
-        if (prop == 'dgsolv'):
+        elif (prop == 'dgsolv'):
             estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property('dgsolv', kind)
             for gp in self.grid_points:
                 estimateObj = DGsolvAlchemicalAnalysis(estimateValue[gp.id], estimateErr[gp.id])
                 gp.add_property_estimate (prop_id, prop, estimateObj)
+        else:
+            # Custom property
+            estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(
+                prop, kind)
+            for gp in self.grid_points:
+                estimateObj = init_property_from_string(prop,
+                                                        estimateValue[gp.id],
+                                                        estimateErr[gp.id])
+                gp.add_property_estimate(prop_id, prop, estimateObj)
 
     def setNewCenterForParameters(self, i):
         self.parSpaceGen.setNewCenter(i)
@@ -841,25 +857,32 @@ class ParameterGrid:
         for protocol in protocols:
             workdir  = self.makeProtocolWorkdir(protocol)
             simu_dir = self.makeProtocolSimudir(protocol)
-            globalLogger.putMessage('BEGIN PROTOCOL {}'.format(protocol.name), dated=True)
-            globalLogger.indent()
+            logger.globalLogger.putMessage('BEGIN PROTOCOL {}'.format(protocol.name), dated=True)
+            logger.globalLogger.indent()
             # simulate sampling points, filter trajectories and properties
-            # gridpoints have access to the correct topology paths 
+            # gridpoints have access to the correct topology paths
             self.simulate_with_protocol_at_dir (protocol, simu_dir)
-            globalLogger.unindent()
-            globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
+            logger.globalLogger.unindent()
+            logger.globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
 
         # calculate properties/filter trajectory
         # this also calculates the properties
         for protocol in protocols:
             simu_dir = self.makeProtocolSimudir(protocol)
-            self.filter_with_protocol_at_dir (protocol, simu_dir)
+            # this deals with timeseries properties that can be filtered
+            self.filter_with_protocol_at_dir(protocol, simu_dir)
+            # this deals with the other properties (avg +/- err)
+            self.nonfilter_with_protocol_at_dir(protocol, simu_dir)
+
+
+        # also get parameter values
+        X_ki = self.getParameterValues()
 
         # reweight
         for protocol in protocols:
             if (protocol.requires_reweight()):
-                globalLogger.putMessage('BEGIN REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
-                globalLogger.indent()
+                logger.globalLogger.putMessage('BEGIN REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
+                logger.globalLogger.indent()
                 rw_dir, mbar_dir = self.makeProtocolReweightdirs(protocol)
                 self.reweight(protocol, rw_dir)
                 A_pkn = self.retrieveReweightProperties()
@@ -868,19 +891,19 @@ class ParameterGrid:
                     pv_kn = self.retrieveReweightProperty('pV')
                     u_kn  = (u_kn + pv_kn) / (0.83144626 * protocol.get_temperature())
                 else:
-                    u_kn  = u_kn / (0.83144626 * protocol.get_temperature())                
+                    u_kn  = u_kn / (0.83144626 * protocol.get_temperature())
                 N_k   = self.retrieveReweightNumberOfConfigurations()
                 # retrieve MBAR model (one model for all properties!)
                 mbar_model = protocol.get_mbar_model()
                 # estimate properties
                 estimate_dir = self.makeProtocolEstimatedir(protocol, mbar_model.kind)
-                mbar_model.computeExpectations(A_pkn, u_kn, N_k)
+                mbar_model.computeExpectations(A_pkn, u_kn, N_k, X_ki)
                 for p, rw_prop in enumerate(protocol.get_reweighting_properties()):
                     fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, mbar_model.kind, rw_prop)
                     mbar_model.writeExpectationsToFile(fn_avg, fn_err, p)
                 mbar_model.writeLogToDirectory("%s/details" % mbar_dir)
-                globalLogger.unindent()
-                globalLogger.putMessage('END REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
 
         # non-reweighted properties
         for protocol in protocols:
@@ -889,30 +912,35 @@ class ParameterGrid:
             for p, (model, prop) in enumerate(interp_models_props):
                 A_psn.append([])
                 for s, gs in enumerate(self.get_samples()):
-                    prop_file = gs.retrieve_atomic_property_from_protocol (prop, protocol)                
+                    prop_file = gs.retrieve_atomic_property_from_protocol (prop, protocol)
                     A_psn[p].append([])
-                    A_psn[p][s] = np.loadtxt(prop_file, usecols=(1,))
+                    if prop in protocol.get_filtering_properties():
+                        A_psn[p][s] = np.loadtxt(prop_file, usecols=(1,))
+                    else:
+                        A_psn[p][s] = np.loadtxt(prop_file, usecols=(0,))
             I_s = self.get_samples_id()
             # estimate properties
             for p, (model, prop) in enumerate(interp_models_props):
-                model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()))
+                model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()), X_ki)
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
                 model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
 
-    def run(self, protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag=False):
-        globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
-        globalLogger.indent()
+    def run(self, protocols, optimizer, surrogateModelHash, properties,
+            protocolsHash, resultsAssembler, plotFlag=False):
+        logger.globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
+        logger.globalLogger.indent()
 
         if (self.init):
-            # initialize number of steps of simulations
-            self.initProtocolSteps(protocols)
+            # initialize length of simulations
+            self.initProtocolLengths(protocols)
+            self.init = False
 
         # create topology files
         self.writeTopologies()
 
         # create parameters file
         self.writeParameters()
-        
+
         for protocol in protocols:
             if (protocol.requires_corners()):
                 self.add_corners()
@@ -921,7 +949,7 @@ class ParameterGrid:
         self.add_fixed_points()
 
         self.make_grid_for_protocols(protocols, optimizer)
-        
+
         for prop in properties:
             referenceValue = optimizer.referenceValues[prop]
             kind = surrogateModelHash[prop]
@@ -941,9 +969,6 @@ class ParameterGrid:
         if (plotFlag):
             optimizer.plotToPdf (self, self.makeStepPropertiesdir(optimizer) + "/optimizer_score.pdf")
 
-        #self.save_to_binary(optimizer) # No longer needed because I am saving state
-                                        # at the end of each run.
-
         # convert protocolsHash (values = list of protocol names) into
         # protocolsHashByObject (values = list of references to protocols)
         protocolsHashByObject = {}
@@ -953,8 +978,24 @@ class ParameterGrid:
                 for prot in protocols:
                     if (prot.name == name):
                         protocolsHashByObject[prop].append(prot)
-                        
-        nextSample = optimizer.determineNextSample (self, surrogateModelHash, protocolsHashByObject)
+
+        # set up protocol extensions --- mark gridpoints as unsampled
+        # if necessary
+        if self.setExtendedProtocolLengths(protocols,
+                                           optimizer,
+                                           protocolsHash):
+            # no new samples, but also don't proceed to shifting
+            nextSample = []
+        else:
+            # if all protocols are converged
+            if len(self.fixed_points) == 0:
+                # if don't fix samples
+                nextSample = optimizer.determineNextSample(self,
+                                                           surrogateModelHash,
+                                                           protocolsHashByObject)
+            else:
+                # proceed to shifting
+                nextSample = -1
 
         # update results assembler
         for gs in self.get_samples_id():
@@ -964,15 +1005,14 @@ class ParameterGrid:
                 pars = self.parSpaceGen.getParameterValues(gs)
                 resultsAssembler.addData(pars, prop, est, err)
 
-        init_flag = False
         if (nextSample == -1):
             if self.shift(optimizer):
-                init_flag = True
-                globalLogger.unindent()
-                globalLogger.putMessage('END GRIDSTEP', dated=True)
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
+                self.init = True
             else:
-                globalLogger.unindent()
-                globalLogger.putMessage('END MAINLOOP', dated=True)
+                logger.globalLogger.unindent()
+                logger.globalLogger.putMessage('END MAINLOOP', dated=True)
                 globalState.saveToFile() # Save state to file if
                                          # needed for further
                                          # analysis.
@@ -981,13 +1021,17 @@ class ParameterGrid:
             for sample in nextSample:
                 self.add_sample(sample)
         # Recursion
-        globalLogger.unindent()
-        globalLogger.putMessage('END GRIDSTEP', dated=True)
-        self.init = init_flag
+        logger.globalLogger.unindent()
+        logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
         globalState.saveToFile()
-        self.run(protocols, optimizer, surrogateModelHash, properties, protocolsHash, resultsAssembler, plotFlag)
-            
-    # type-hinted header is commented because it is not supported in old Python versions
+        self.run(protocols,
+                 optimizer,
+                 surrogateModelHash,
+                 properties,
+                 protocolsHash,
+                 resultsAssembler,
+                 plotFlag)
+
     #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            
     def create_refined_subgrid(self, factors_list, model_str, propid2type):
         # first check everything is compatible
@@ -1033,7 +1077,7 @@ class ParameterGrid:
         # re-build property matrix for estimation
         list_of_property_names = list(subgrid.grid_points[I_e[0]].estimated_properties.keys())
         A_pe = [None] * len(list_of_property_names)
-        dA_pe = [None] * len(list_of_property_names)        
+        dA_pe = [None] * len(list_of_property_names)
         for p, prop_id in enumerate(list_of_property_names):
             A_pe[p] = [None] * self.linear_size # self.linear_size corresponds to the number of previously estimated points
             dA_pe[p] = [None] * self.linear_size # self.linear_size corresponds to the number of previously estimated points            
@@ -1050,3 +1094,38 @@ class ParameterGrid:
 
         # return new instance
         return subgrid
+
+    def setExtendedProtocolLengths(self, protocols, optimizer, protocolsHash):
+        """
+        Set extended length for protocols.
+
+        Returns True if some protocol, at some gridpoint, was extended, and
+        False if everything has converged.
+        """
+        output = False
+        for gp in self.grid_points:
+            if gp.is_sample:
+                for prot in protocols:
+                    old_length = gp.protocol_lenspecs[prot.name]
+                    new_length = prot.calc_extend(gp, optimizer, protocolsHash)
+                    if new_length is not None:
+                        logger.globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
+                                                ' Steps : {}->{}'.
+                                                format(gp.id, prot.name,
+                                                       old_length, new_length))
+                        gp.protocol_lenspecs[prot.name] = new_length
+                        gp.unsetProtocolAsSimulated(prot)
+                        output = True
+                    else:
+                        logger.globalLogger.putMessage('MESSAGE: GridPoint {} @ Protocol {} :'
+                                                ' Steps have reached machine precision '
+                                                'or there is no need to extend the '
+                                                'simulations.'
+                                                .format(gp.id, prot.name))
+        if output:
+            logger.globalLogger.putMessage('MESSAGE: Estimates are not converged,'
+                                    ' so some simulations will be extended.')
+        else:
+            logger.globalLogger.putMessage('MESSAGE: Estimates are converged and '
+                                    'simulations will not be extended.')
+        return output

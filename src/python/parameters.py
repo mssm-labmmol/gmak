@@ -275,6 +275,9 @@ class ParameterSpaceGenerator:
     def getParameterValues(self, state):
         return self.members['main'][0].get(state)
 
+    def getAllParameterValues(self):
+        return self.members['main'][0].get_data()
+
     def getMacros(self):
         macros = []
         for name in self.members.keys():

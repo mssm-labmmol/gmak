@@ -39,4 +39,4 @@ class EmptyLogger (Logger):
     def putMessage(self, msg, dated=False):
         pass
 
-globalLogger = Logger('gmak_{}.log'.format(os.getpid()))
+globalLogger = EmptyLogger() # this will be altered during program execution
