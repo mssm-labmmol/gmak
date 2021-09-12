@@ -4,15 +4,12 @@
 
 # TODO
 
-- More atoms in topology
-- $molecules -> $systems; itp -> top;
-- More general support for complex topologies
-- What about dgsolv?
+- ```setuptools``` installer with executable ```gmak```
+- update example input file in share
+- More general support for complex topologies (for instance, ALTER some atomtypes instead of defining all of them)
 - Refactor read_input for god's sake
-- replace is_timeseries by apply_filter
 - grep all TODO and todo
 - consistent naming of methods (e.g., CamelCase vs camel_case)
-
 
 # Documentation Points
 
