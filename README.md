@@ -4,12 +4,12 @@
 
 # TODO
 
-- ```setuptools``` installer with executable ```gmak```
 - update example input file in share
 - More general support for complex topologies (for instance, ALTER some atomtypes instead of defining all of them)
 - Refactor read_input for god's sake
 - grep all TODO and todo
 - consistent naming of methods (e.g., CamelCase vs camel_case)
+- make it so that, with suitable custom functions, it is possible to use other programs besides GROMACS
 
 # Documentation Points
 
