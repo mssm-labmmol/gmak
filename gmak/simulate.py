@@ -86,6 +86,18 @@ def get_molecule_name_from_itp (itp):
     fp.close()
     return "NOT-FOUND"
 
+def fix_periodicity(in_conf, out_conf):
+    runcmd.run("echo 0 | %s trjconv -f %s -s %s -o %s -pbc whole" %
+               (ConfigVariables.gmx, in_conf, in_conf, out_conf))
+
+def resize_box(in_conf, out_conf, box):
+    runcmd.run("%s editconf -f %s -box %f %f %f -o %s" % (ConfigVariables.gmx,
+                                                          in_conf,
+                                                          float(box[0]),
+                                                          float(box[1]),
+                                                          float(box[2]),
+                                                          out_conf))
+
 def make_topology (nmols, outtop, itp):
     outtop = os.path.abspath(outtop)
     itp = os.path.abspath(itp)
@@ -112,25 +124,19 @@ def make_topology (nmols, outtop, itp):
     #fi.close()
     #runcmd.run("mv %s.tmp %s" % (itp,itp))
 
-def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
+def make_a_box(conf, nmols, box, outconf):
     conf = os.path.abspath(conf)
     outconf = os.path.abspath(outconf)
-    outtop = os.path.abspath(outtop)
-    itp = os.path.abspath(itp)
     # create box if it does not exist
     if not (os.path.isfile(outconf)):
-        command = "%s insert-molecules -ci %s -nmol %d -box %f %f %f -o %s" % (ConfigVariables.gmx, conf,nmols,box[0],box[1],box[2],outconf)
+        command = "%s insert-molecules -ci %s -nmol %d -box %f %f %f -o %s" % (
+            ConfigVariables.gmx, conf,nmols,box[0],box[1],box[2],outconf)
         runcmd.run(command)
-    # always make topology if not there
-    if True:
-    #if not (os.path.isfile(outtop)):
-        molecule_name = get_molecule_name_from_itp(itp)
-        fp = open(outtop, 'w')
-        fp.write("#include \"%s\"\n" % itp)
-        fp.write("[ system ]\nLiquid\n")
-        fp.write("[ molecules ]\n")
-        fp.write("%s %d\n" % (molecule_name, nmols))
-        fp.close()
+
+def make_a_box_and_topology (conf, nmols, box, outconf, outtop, itp):
+    make_a_box(conf, nmols, box, outconf)
+    make_topology(nmols, outtop, itp)
+
 
 def make_solvation_box_and_topology (confs, nmols, outconf, outtop, itps, makeBox=True):
     # create box if it does not exist
@@ -317,25 +323,13 @@ def dummy_protocol_gas (conf, itp, mdps, labels, workdir):
     #
     return output_dict
 
-def simulate_protocol_slab (conf, top, liq_tpr, mdps, nsteps, labels, workdir, nprocs):
-    conf = os.path.abspath(conf)
+def simulate_protocol_slab (conf, top, mdps, nsteps, labels, workdir, nprocs):
+    extended_conf = os.path.abspath(conf)
     top = os.path.abspath(top)
-    liq_tpr = os.path.abspath(liq_tpr)
     workdir = os.path.abspath(workdir)
     for i in range(len(mdps)):
         mdps[i] = os.path.abspath(mdps[i])
-    # extend initial configuration
     output_dict = {}
-    pre_extended_conf = workdir + "/pre.slab.gro"
-    extended_conf = workdir + "/slab.gro"
-    box = get_box(conf)
-    runcmd.run("mkdir -p " + workdir)
-    # First, remove periodicity.
-    runcmd.run("echo 0 | %s trjconv -f %s -s %s -o %s -pbc whole" % (ConfigVariables.gmx, conf, liq_tpr, pre_extended_conf))
-    # Now, extend box.
-    runcmd.run("%s editconf -f %s -box %f %f %f -o %s" % (ConfigVariables.gmx, pre_extended_conf, float(box[0]), float(box[1]), 5*float(box[2]), extended_conf))
-    # Remove temporary conf.
-    os.remove(pre_extended_conf)
     for i in range(len(mdps)):
         if i == 0:
             simulate_something (extended_conf, top, mdps[i], labels[i], workdir, nprocs)
