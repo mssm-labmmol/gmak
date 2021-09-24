@@ -349,7 +349,7 @@ class SlabProtocol(BaseProtocol, DefaultExtendMixin):
         self.mdps = mdps
         self.properties = properties
         self.nprocs = nprocs
-        self.follow = None
+        self.follow = follow
         self.surrogate_models = []
         if maxSteps is None:
             self.maxSteps = 5000000
@@ -361,13 +361,13 @@ class SlabProtocol(BaseProtocol, DefaultExtendMixin):
         maxSteps, minFactor = cls._ext_from_dict(bd)
         if 'nprocs' in bd.keys():
             return cls(bd['name'][0], bd['molecule'][0], bd['mdps'],
-                       bd['follow'], [],
+                       bd['follow'][0], [],
                        nprocs=int(bd['nprocs']),
                        maxSteps=maxSteps,
                        minFactor=minFactor)
         else:
             return cls(bd['name'][0], bd['molecule'][0], bd['mdps'],
-                       bd['follow'], [],
+                       bd['follow'][0], [],
                        maxSteps=maxSteps,
                        minFactor=minFactor)
 
