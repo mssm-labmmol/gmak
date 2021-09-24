@@ -36,7 +36,7 @@ class BaseAtomicProperty(ABC):
 
 
 class GmxEnergyProperty(BaseAtomicProperty, GmxCalculatorMixin):
-    def __init__(self, name, gmx_ana):
+    def __init__(self, name, gmx_name):
         """
         Parameters:
 
