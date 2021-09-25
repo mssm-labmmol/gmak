@@ -1,6 +1,6 @@
 import gmak.runcmd as runcmd
-import os 
-import sys 
+import os
+import sys
 import numpy as np
 from gmak.config import ConfigVariables
 
@@ -36,20 +36,7 @@ def obtain_property (xtc, edr, gro, tpr, name, output_file):
     path_of_preffix = '/'.join(output_file.split('/')[0:-1])
     # create path if it does not exist
     runcmd.run("mkdir -p " + path_of_preffix)
-    
-    # gamma is special
-    if name == "gamma":
-        prop = "#Surf*SurfTen"
-
-    if name == "density":
-        prop = "Density"
-    if name == "potential":
-        prop = "Potential"
-    if name == "pV":
-        prop = "pV"
-    if name == "volume":
-        prop = "Volume"
-    runcmd.run("echo " + prop + " | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
+    runcmd.run("echo " + name + " | " + ConfigVariables.gmx + " energy -f " + edr + " -s " + tpr + " -o " + output_file)
 
 def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0, bin=0.002):
     xtc = os.path.abspath(xtc)
@@ -63,7 +50,7 @@ def obtain_gr (xtc, edr, tpr, ndx, g1, g2, output_file_preffix, cut=0, rmax=4.0,
     runcmd.run("mkdir -p " + path_of_preffix)
 
     output_list = []
-    
+
     # dummy property, calculated only to extract the times
     runcmd.run("echo Pot | %s energy -f %s -s %s -o %s_dummy-times.xvg" % (ConfigVariables.gmx, edr,tpr,output_file_preffix))
     times = np.loadtxt("%s_dummy-times.xvg" % (output_file_preffix), usecols=(0,), comments=['@','#'])
