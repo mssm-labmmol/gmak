@@ -12,7 +12,7 @@ def get_box (gro):
     for line in fp:
         continue
     box = line.split()
-    return box
+    return [float(b) for b in box]
 
 def analyzeWrapper(inputData, prop, out):
     xtc = inputData['xtc']

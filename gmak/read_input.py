@@ -201,7 +201,7 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
             output_grid = ParameterGrid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter, output_workdir, validateFlag)
         if (line.rstrip() == "$protocol"):
             blockDict = block2dict(fp, '$end', '#')
-            new_protocols = create_protocols(blockDict)
+            new_protocols = create_protocols(blockDict, output_protocols)
             output_protocols += new_protocols
         if (line.rstrip() == '$compute'):
             for line in fp:

@@ -10,6 +10,7 @@ import os
 import gmak.logger as logger
 from gmak.mdputils import *
 import gmak.atomic_properties as atomic_properties
+from gmak.traj_ana import get_box
 
 class DefaultExtendMixin:
     """
@@ -342,14 +343,21 @@ class SlabProtocol(BaseProtocol, DefaultExtendMixin):
     type = "slab"
     _has_pv = False
 
-    def __init__ (self, name, molecule, mdps, follow, properties, nprocs=-1,
-                  maxSteps=None, minFactor=None):
+    def __init__ (self, name, molecule, nmols, coords, box, mdps, followObj,
+                  properties, nprocs=-1, maxSteps=None, minFactor=None):
         self.name = name
         self.molecule = molecule
+        self.coords = coords
+        self.nmols = nmols
+        self.box_size = box
         self.mdps = mdps
         self.properties = properties
         self.nprocs = nprocs
-        self.follow = follow
+        self.followObj = followObj
+        if self.followObj is not None:
+            self.follow = self.followObj.name
+        else:
+            self.follow = None
         self.surrogate_models = []
         if maxSteps is None:
             self.maxSteps = 5000000
@@ -357,33 +365,85 @@ class SlabProtocol(BaseProtocol, DefaultExtendMixin):
             self.minFactor = 1.1
 
     @classmethod
-    def from_dict(cls, bd):
+    def from_dict(cls, bd, protocols):
         maxSteps, minFactor = cls._ext_from_dict(bd)
-        if 'nprocs' in bd.keys():
-            return cls(bd['name'][0], bd['molecule'][0], bd['mdps'],
-                       bd['follow'][0], [],
-                       nprocs=int(bd['nprocs']),
-                       maxSteps=maxSteps,
-                       minFactor=minFactor)
+
+        # set followed object
+        followObj = None
+        if 'follow' in bd.keys():
+            for prot in protocols:
+                if prot.name == bd['follow'][0]:
+                    followObj = prot
+                    break
+            if followObj is None:
+                raise Exception(f"Followed protocol {bd['follow'][0]} could not be"
+                                " found.")
+
+        # set molecule and box_size
+        if followObj is not None:
+            molecule = followObj.molecule
+            # from simulate
+            box_size = followObj.box_size
+            coords   = followObj.coords
+            nmols    = followObj.nmols
         else:
-            return cls(bd['name'][0], bd['molecule'][0], bd['mdps'],
-                       bd['follow'][0], [],
-                       maxSteps=maxSteps,
+            molecule = bd['molecule'][0]
+            box_size = [float(x) for x in bd['box']]
+            coords   = bd['coords'][0]
+            nmols    = int(bd['nmols'][0])
+
+        if 'nprocs' in bd.keys():
+            return cls(bd['name'][0], molecule, nmols, coords, box_size,
+                       bd['mdps'], followObj, [], nprocs=int(bd['nprocs']),
+                       maxSteps=maxSteps, minFactor=minFactor)
+        else:
+            return cls(bd['name'][0], molecule, nmols, coords, box_size,
+                       bd['mdps'], followObj, [], maxSteps=maxSteps,
                        minFactor=minFactor)
 
+    def _prepare_conf(self, outconf, gridpoint, workdir):
+        if self.followObj is None:
+            first_liquid_conf = os.path.join(workdir, "pre-liquid.gro")
+            # from simulate
+            make_a_box(self.coords, self.nmols, self.box_size,
+                       first_liquid_conf)
+        else:
+            first_liquid_conf = gridpoint.protocol_outputs[self.follow]['gro']
+        # Fix up periodicity.
+        # from simulate
+        liquid_conf = os.path.join(workdir, "liquid.gro")
+        fix_periodicity(first_liquid_conf, liquid_conf)
+        # Extend box.
+        # from simulate
+        box = get_box(liquid_conf)
+        resize_box(liquid_conf, outconf,
+                   [box[0],
+                    box[1],
+                    5.0*box[2]])
+        # Remove tmps.
+        os.remove(liquid_conf)
+        if self.followObj is None:
+            os.remove(first_liquid_conf)
 
-    def set_follow (self, pro_name):
-        self.follow = pro_name
+    def _prepare_topo(self, outtop, gridpoint, workdir):
+        from shutil import copyfile
+        if self.followObj is not None:
+            copyfile(gridpoint.protocol_outputs[self.follow]['top'],
+                     outtop)
+        else:
+            # from simulate
+            itp = gridpoint.getTopologyPath(self.molecule)
+            make_topology(self.nmols, outtop, itp)
 
     def run_gridpoint_at_dir (self, gridpoint, workdir):
-        labels   =  [str(x) for x in range(len(self.mdps))]
-        conf     =  gridpoint.protocol_outputs[self.follow]['gro']
-        top      =  gridpoint.protocol_outputs[self.follow]['top']
-        liq_tpr  =  gridpoint.protocol_outputs[self.follow]['tpr']
-        nsteps = gridpoint.getProtocolLength(self)
+        labels   = [str(x) for x in range(len(self.mdps))]
+        conf     = os.path.join(workdir, "slab.gro")
+        top      = os.path.join(workdir, "slab.top")
+        self._prepare_conf(conf, gridpoint, workdir)
+        self._prepare_topo(top, gridpoint, workdir)
+        nsteps   = gridpoint.getProtocolLength(self)
         out_slab = simulate_protocol_slab(conf,
                                           top,
-                                          liq_tpr,
                                           self.mdps,
                                           nsteps,
                                           labels,
@@ -699,14 +759,14 @@ class CustomProtocolFactory:
 def add_custom_protocol(type_name, simulator, calc_initial_len=None, calc_extend=None):
     CustomProtocolFactory.add_custom_protocol(type_name, simulator, calc_initial_len, calc_extend)
 
-def create_protocols(bd):
+def create_protocols(bd, protocols):
     _type = bd['type'][0]
     if _type == 'liquid':
         return [LiquidProtocol.from_dict(bd),]
     elif _type == 'gas':
         return [GasProtocol.from_dict(bd),]
     elif _type == 'slab':
-        return [SlabProtocol.from_dict(bd),]
+        return [SlabProtocol.from_dict(bd, protocols),]
     elif _type == 'general':
         return [GeneralProtocol.from_dict(bd),]
     elif _type == 'solv':
