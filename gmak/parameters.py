@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import  numpy       as      np
 import gmak.runcmd as runcmd
 from gmak.variations  import  DomainSpace
@@ -12,8 +13,25 @@ def geometric_mean(x, y):
 # base classes for parameters
 # -----------------------------------------------------------------------------
 
-# Macro parameter
-class MacroParameter:
+class BaseParameterReference(ABC):
+    @abstractmethod
+    def dereference(self):
+        pass
+
+    @abstractmethod
+    def get_full_string(self):
+        pass
+
+class BaseParameter(ABC):
+    @abstractmethod
+    def alter(self, value):
+        pass
+
+    @abstractmethod
+    def get_value(self):
+        pass
+
+class MacroParameter(BaseParameter, BaseParameterReference):
     def __init__(self, token, value=None):
         self.token = str(token)
         if (value is not None):
@@ -31,14 +49,41 @@ class MacroParameter:
     def get_full_string(self):
         return self.token
 
+    def get_value(self):
+        return self.value
+
+# For all applications, CustomParameter works exactly as MacroParameter.
+# However, it is still nice to have it as a separate class.
+class CustomParameter(BaseParameter, BaseParameterReference):
+    def __init__(self, token, value=None):
+        self.token = str(token)
+        if (value is not None):
+            self.value = str(value)
+        else:
+            self.value = "0"
+
+    def dereference(self):
+        return self
+
+    def alter(self, value):
+        self.value = str(value)
+
+    def get_full_string(self):
+        return self.token
+
+    def get_value(self):
+        return self.value
+
 # Interface for NonbondedParameter
-class NonbondedParameter:
-    def value(self): 
+class NonbondedParameter(BaseParameter):
+    def value(self):
         return self._value
     def label(self):
         return self._label
     def alter(self, value):
         self._value = value
+    def get_value(self):
+        return self._value
 
 # Special for mixing parameters.
 #
@@ -57,7 +102,7 @@ class NonbondedParameterMix:
     def value(self):
         self.nbpar.alter(self.comb_func( self.par_i.value(), self.par_j.value() ))
         return self.nbpar.value()
-    
+
 # Subtypes
 class C6(NonbondedParameter):
     def __init__(self, value, label):
@@ -170,7 +215,7 @@ class Atomtype:
 # ParameterReference
 # -----------------------------------------------------------------------------
 
-class NonbondedParameterReference(NonbondedParameter):
+class NonbondedParameterReference(BaseParameterReference, NonbondedParameter):
     """A reference to a particular parameter of an atomtype.
     Useful to directly alter this parameter."""
     def __init__(self, atomtypes, typeString, parString):
@@ -205,23 +250,19 @@ class ParameterReferenceFactory:
         self.bff              = bondedForcefield
         self.topos            = topologies
         self.bondedStrings    = ['q', 'm']
-        
+
     def create(self, typestring, parameter):
         """
         str typestring : string identifying atomtype (e.g. 'OW') or bondedtype (e.g. 'CH2-OW' for bond)
         str parameter  : string identifying parameter (e.g. 'c6', 'q')
         """
-        if ('-' in typestring):
-            raise NotImplementedError("Creation of bonded types is not"
-                                      " implemented.")
-        elif (typestring[0] == '@'):
+        if (typestring[0] == '@'):
             return MacroParameter(typestring)
+        elif (typestring[0] == '&'):
+            return CustomParameter(typestring)
         else:
-            if parameter in self.bondedStrings:
-                raise NotImplementedError("Creation of bonded types is not implemented.")
-            else:
-                return NonbondedParameterReference(self.nbff.getAtomtypeObjects(),
-                                                   typestring, parameter)
+            return NonbondedParameterReference(self.nbff.getAtomtypeObjects(),
+                                               typestring, parameter)
     
 # -----------------------------------------------------------------------------
 # ParameterSpaceGenerator
@@ -272,11 +313,26 @@ class ParameterSpaceGenerator:
     def getParameterNames(self):
         return [x.get_full_string() for x in self.members['main'][1]]
 
+    def getParameterReferences(self):
+        out = []
+        for x in self.members.keys():
+            out += [y for y in self.members[x][1]]
+        return out
+
     def getParameterValues(self, state):
         return self.members['main'][0].get(state)
 
     def getAllParameterValues(self):
         return self.members['main'][0].get_data()
+
+    #def getParameterDict(self):
+    #    outdict = dict()
+    #    for member in self.members.values():
+    #        ds = member[0]
+    #        parlist = member[1]
+    #        for parref in parlist:
+    #            outdict[parref.get_full_string()] = ds.get()
+
 
     def getMacros(self):
         macros = []

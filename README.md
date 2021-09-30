@@ -17,3 +17,6 @@
     - uses MBAR so calc-lambda-neighbors -1
     - assumes NPT production runs in MBAR
     - assumes desolvation, so calculates -DeltaG_{A \to B}
+- input files
+  - sort of like GROMOS, list an order of directives that must be
+    followed (with some possibly omitted)

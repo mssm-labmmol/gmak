@@ -37,7 +37,6 @@ class ParameterIO:
 
     def getParameterSpaceGenerator(self):
         # This is called after all '$variation' blocks are read.
-        # This knowledge is not the responsibility of this class.
         return self.parSpaceGen
 
     def _addName(self, options):
@@ -72,7 +71,7 @@ class ParameterIO:
         ds = self.domainSpaceFactory.readFromTypeAndStream(self.types[-1], self.stream, self.using)
         self.parSpaceGen.addMember(self.names[-1], ds, self.parRefs[-1])
         return False
-    
+
     def read(self):
         # Dictionary of behaviors based on identifiers.
         funct_dict   = {
@@ -158,7 +157,7 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     moleculesDict             = {}
     outputTopoBundles         = {}
     # END_NEW
-    
+
     for line in fp:
         if line[0] == '#':
             continue
@@ -175,25 +174,33 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                 parameterIO.read()
             else:
                 parameterIO.read()
+        # This is specific to GROMACS stuff.
         if (line.rstrip() == '$molecules') or (line.rstrip() == '$systems'):
-            blockDict     = block2dict(fp, '$end', '#')
+            blockDict = block2dict(fp, '$end', '#')
+            keys = blockDict.keys()
             for i, name in enumerate(blockDict['names']):
-                prefix                     = "{}/{}/{}_0".format(output_workdir, name, name)
-                try:
-                    topfile = blockDict['itp'][i]
-                    ext = os.path.splitext(topfile)[1][1:]
-                except KeyError:
-                    # also accept 'top' as key
-                    topfile = blockDict['top'][i]
-                    ext = os.path.splitext(topfile)[1][1:]
-
-                outputTopoBundles[name] = TopologyBundleFactory.createBundle('gromacs',
-                                                                             topfile,
-                                                                             prefix,
-                                                                             outputNonbondedForcefield,
-                                                                             outputBondedForcefield,
-                                                                             ext)
+                prefix = "{}/{}/{}_0".format(output_workdir, name, name)
+                molecularBlockDict = {}
+                for k in keys:
+                    molecularBlockDict[k] = blockDict[k][i]
+                outputTopoBundles[name] = TopologyBundleFactory.createBundle(
+                    'gromacs',
+                    molecularBlockDict,
+                    prefix,
+                    (outputNonbondedForcefield, outputBondedForcefield))
                 runcmd.run("mkdir -p {}/{}".format(output_workdir, name))
+        # This is for custom topology.
+        if (line.rstrip() == '$system'):
+            blockDict = block2dict(fp, '$end', '#')
+            name = blockDict['name'][0]
+            stype = blockDict['type'][0]
+            prefix = "{}/{}/{}_0".format(output_workdir, name, name)
+            parRefList = parameterIO.getParameterSpaceGenerator().getParameterReferences()
+            outputTopoBundles[name] = TopologyBundleFactory.createBundle(
+                stype,
+                blockDict,
+                prefix,
+                parRefList)
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist
             # beyond this point.

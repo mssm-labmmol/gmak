@@ -27,6 +27,7 @@ import gmak.custom_atomic_properties as custom_atomic_properties
 import gmak.custom_protocols as custom_protocols
 import gmak.custom_surrogate_models as custom_surrogate_models
 import gmak.custom_scores as custom_scores
+import gmak.custom_topologies as custom_topologies
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
