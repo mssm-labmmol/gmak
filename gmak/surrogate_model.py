@@ -334,7 +334,7 @@ class GaussianProcessRegressionInterpolation(Interpolation):
     # GPR inherits from Interpolation but overrides the actual
     # interpolation operation.
     reweight = False
-    corners = True
+    corners = False
     kind = 'gpr'
 
     def __init__(self):

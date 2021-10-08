@@ -105,9 +105,7 @@ class GmxDGsolv(BaseAtomicProperty):
         # run MBAR on the u_nk data
         mbar.fit(u_nk)
         # get free-energy-difference estimate and estimate error
-        df  = - kbT * mbar.delta_f_.iloc[0,-1]  # note the minus sign; this is because we typically
-                                                # follow the alchemical path of de-solvation instead
-                                                # of solvation
+        df  = kbT * mbar.delta_f_.iloc[0,-1]
         ddf = kbT * mbar.d_delta_f_.iloc[0,-1]
         # write these values to disk
         _fp = open(out_path, 'w')

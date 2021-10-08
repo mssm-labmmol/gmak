@@ -63,18 +63,17 @@ class DefaultExtendMixin:
         if lenspec is not None:
             if lenspec < self.minFactor:
                 logger.globalLogger.putMessage(f"Adjusted extension factor to minimum "
-                                               "value {self.minFactor}.")
+                                               f"value {self.minFactor}.")
                 lenspec = self.minFactor
             lenspec = int(last_lenspec * lenspec)
-            if lenspec != last_lenspec:
-                if lenspec > maxSteps:
-                    logger.globalLogger.putMessage(f"Tried to set length to {lenspec},"
-                                                   " but capped it to {maxSteps}.")
-                    return maxSteps
-                else:
-                    return lenspec
-            else:
+            if lenspec > maxSteps:
+                logger.globalLogger.putMessage(f"Tried to set length to {lenspec},"
+                                               f" but capped it to {maxSteps}.")
+                lenspec = maxSteps
+            if lenspec == last_lenspec:
                 return # None
+            else:
+                return lenspec
         else:
             return # None
 
@@ -293,6 +292,10 @@ class GasProtocol(BaseProtocol, DefaultExtendMixin):
     @classmethod
     def from_dict(cls, bd):
         maxSteps, minFactor = cls._ext_from_dict(bd)
+        if ['polarizability'] not in bd.keys():
+            bd['polarizability'] = ['-1',]
+        if ['gasdipole'] not in bd.keys():
+            bd['gasdipole'][0] = ['1',]
         return cls(bd['name'][0], bd['molecule'][0], bd['mdps'], bd['coords'][0],
                    float(bd['gasdipole'][0]), float(bd['polarizability'][0]), [],
                    maxSteps, minFactor)

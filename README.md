@@ -20,3 +20,4 @@
 - input files
   - sort of like GROMOS, list an order of directives that must be
     followed (with some possibly omitted)
+- describe what is saved to state and what is recalculated

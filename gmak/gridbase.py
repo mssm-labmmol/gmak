@@ -613,8 +613,11 @@ class ParameterGrid:
                 estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)
                 #
                 estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)
-                corr = protocolObjs[1].other_corrections
-            temp = protocolObjs[0].get_temperature()
+                try:
+                    corr = protocolObjs[1].other_corrections
+                except AttributeError:
+                    corr = 0.0
+            temp = protocolObjs[1].get_temperature() # temperature is of the gas
             #
             for gp in self.grid_points:
                 estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],
@@ -626,8 +629,11 @@ class ParameterGrid:
             #
             estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
             #
-            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
-            corr             = protocolObjs[1].other_corrections
+            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)
+            try:
+                corr = protocolObjs[1].other_corrections
+            except AttributeError:
+                corr = 0.0
             temp             = protocolObjs[1].get_temperature()
             #
             estimateValueVol, estimateErrVol = protocolObjs[0].get_avg_err_estimate_of_property('volume', kind)
@@ -997,15 +1003,15 @@ class ParameterGrid:
                 # proceed to shifting
                 nextSample = -1
 
-        # update results assembler
-        for gs in self.get_samples_id():
-            for prop in properties:
-                est = self[gs].get_property_estimate(prop)
-                err = self[gs].get_property_err(prop)
-                pars = self.parSpaceGen.getParameterValues(gs)
-                resultsAssembler.addData(pars, prop, est, err)
-
         if (nextSample == -1):
+            # update results assembler
+            for gs in self.get_samples_id():
+                for prop in properties:
+                    est = self[gs].get_property_estimate(prop)
+                    err = self[gs].get_property_err(prop)
+                    pars = self.parSpaceGen.getParameterValues(gs)
+                    resultsAssembler.addData(pars, prop, est, err)
+
             if self.shift(optimizer):
                 logger.globalLogger.unindent()
                 logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
