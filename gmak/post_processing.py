@@ -60,7 +60,7 @@ class GmakOutput:
             Number of decimals to which the values of the parameters are
             rounded. This is *very* important to set appropriately, because
             precision issues may affect the grouping of the data by parameter
-            values. It is highly suggested to check the grouping results by
+            values.
 
         Returns
         -------
@@ -276,7 +276,7 @@ class GmakOutput:
 
         Returns
         -------
-        List of index entries that are Pareto optimal.
+        List of force-field parameters that are Pareto optimal.
         """
         from pandas_pareto.pareto import compute_pareto as pd_pareto
         # get diff columns
