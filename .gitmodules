@@ -1,0 +1,3 @@
+[submodule "pandas_pareto"]
+	path = pandas_pareto
+	url = https://github.com/yanMHG/pandas_pareto
