@@ -146,10 +146,16 @@ class GmakOutput:
 
         # Process parameters into a dictionary where keys are the components
         # of each X, ('X', '1'), ('X', '2'), etc...
-        ncomps = len(parameters[0])
+        # Unless it is 1D, in which case key is just 'X'
         parameter_dict = dict()
-        for c in range(ncomps):
-            parameter_dict[('X', str(c+1))] = [x[c] for x in parameters]
+        try:
+            ncomps = len(parameters[0])
+            for c in range(ncomps):
+                parameter_dict[('X', str(c+1))] = [x[c] for x in parameters]
+
+        except:
+            ncomps = 1
+            parameter_dict['X'] = parameters
 
         df_X = pd.DataFrame.from_dict({
             'grid': grid_numbers,
@@ -159,7 +165,10 @@ class GmakOutput:
         df_props_score.set_index(['grid', 'gridpoint'], inplace=True)
         df_props_score.columns = pd.MultiIndex.from_tuples(df_props_score.columns)
         df_X.set_index(['grid', 'gridpoint'], inplace=True)
-        df_X.columns = pd.MultiIndex.from_tuples(df_X.columns)
+        try:
+            df_X.columns = pd.MultiIndex.from_tuples(df_X.columns)
+        except:
+            pass
         return cls(df_X, df_props_score)
 
     def groupby_X(self, agg=True, agg_arg=None, mu_agg=None, sigma_agg=None):
