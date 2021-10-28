@@ -680,6 +680,9 @@ class ParameterGrid:
     def setNewCenterForParameters(self, i):
         self.parSpaceGen.setNewCenter(i)
 
+    def setNewOriginForParameters(self, i):
+        self.parSpaceGen.setNewOrigin(i)
+
     # Performs shifting operations.
     def shift (self, optimizer):
         optimizer.reset()
@@ -811,7 +814,7 @@ class ParameterGrid:
         self.workdir = workdir
 
     def makeCurrentWorkdir(self):
-        shifts = self.shifter.getCurrentNumberOfShifts()
+        shifts = self.shifter.get_current_number_of_shifts()
         outdir = "{}/grid_{}".format(self.workdir, shifts)
         return self.makeDir(outdir)
 
@@ -936,10 +939,9 @@ class ParameterGrid:
         logger.globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         logger.globalLogger.indent()
 
-        if (self.init):
-            # initialize length of simulations
-            self.initProtocolLengths(protocols)
-            self.init = False
+        # initialize length of simulations
+        # this applies only to the samples that have no saved lengths
+        self.initProtocolLengths(protocols)
 
         # create topology files
         self.writeTopologies()
@@ -1015,7 +1017,7 @@ class ParameterGrid:
             if self.shift(optimizer):
                 logger.globalLogger.unindent()
                 logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
-                self.init = True
+                self.incrementPrefixOfTopologies()
             else:
                 logger.globalLogger.unindent()
                 logger.globalLogger.putMessage('END MAINLOOP', dated=True)

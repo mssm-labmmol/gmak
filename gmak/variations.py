@@ -17,6 +17,9 @@ class AbstractVariationFunction(ABC):
     def set_new_center(self, i): pass
 
     @abstractmethod
+    def set_new_origin(self, i): pass
+
+    @abstractmethod
     def rescale(self, factors): pass
 
     @abstractmethod
@@ -38,6 +41,8 @@ class VariationFunctionReadFromFile(AbstractVariationFunction):
         return self._data[args]
     def set_new_center(self, i):
         raise NotImplementedError("Can't shift VariationFunctionReadFromFile.")
+    def set_new_origin(self, i):
+        raise NotImplementedError("Can't shift VariationFunctionReadFromFile.")
     def rescale(self, factors):
         raise NotImplementedError("Can't rescale VariationFunctionReadFromFile.")
     def get_sizes(self):
@@ -52,6 +57,8 @@ class VariationFunctionConstant(AbstractVariationFunction):
         return self.constants
     def set_new_center(self, i):
         return
+    def set_new_origin(self, i):
+        return
     def rescale(self, factors):
         return
     def get_sizes(self):
@@ -65,6 +72,8 @@ class VariationFunctionScale(AbstractVariationFunction):
     def apply(self, args):
         return np.array(args) * self.factors
     def set_new_center(self, i):
+        raise NotImplementedError("Can't shift VariationFunctionScale.")
+    def set_new_origin(self, i):
         raise NotImplementedError("Can't shift VariationFunctionScale.")
     def rescale(self, factors):
         return
@@ -103,6 +112,9 @@ class VariationFunctionFromString(AbstractVariationFunction):
     def set_new_center(self, i):
         raise NotImplementedError
 
+    def set_new_origin(self, i):
+        raise NotImplementedError
+
     def rescale(self, factors):
         raise NotImplementedError
 
@@ -132,6 +144,12 @@ class VariationFunctionCartesian(AbstractVariationFunction):
         # update data
         self.starts        = newStarts
         self._core_calcs()
+    def set_new_origin(self, i):
+        displacement = self._cartesianGrid.getDisplacement(0, i)
+        newStarts          = np.array(self.starts) + self.steps * np.array(displacement)
+        # update data
+        self.starts        = newStarts
+        self._core_calcs()
     def rescale(self, factors):
         if (len(factors) != self.domain_dim):
             raise ValueError("({} != {}) len(factors) != self.domain_dim".format(len(factors), self.domain_dim))
@@ -155,6 +173,7 @@ class AbstractVariation(ABC):
     int size()
     2D (size x dim) np.ndarray gen_data()
     void set_new_center(int)
+    void set_new_origin(int)
     void rescale(list<int>)
     list<int> get_sizes()
 
@@ -168,6 +187,9 @@ class AbstractVariation(ABC):
 
     @abstractmethod
     def set_new_center(self, i): pass
+
+    @abstractmethod
+    def set_new_origin(self, i): pass
 
     @abstractmethod
     def rescale(self, factors): pass
@@ -195,6 +217,9 @@ class VariationFromFunction(AbstractVariation):
 
     def set_new_center(self, i):
         self.func.set_new_center(i)
+
+    def set_new_origin(self, i):
+        self.func.set_new_origin(i)
 
     def rescale(self, factors):
         self.func.rescale(factors)
@@ -252,6 +277,9 @@ class VariationExplicit(AbstractVariation):
     def set_new_center(self, i):
         raise ValueError("Can't set new center for explicit variation.")
 
+    def set_new_origin(self, i):
+        raise ValueError("Can't set new origin for explicit variation.")
+
     def rescale(self, factors):
         raise ValueError("Can't rescale explicit variation.")
 
@@ -284,6 +312,9 @@ class VariationFromVariation(AbstractVariation):
 
     def set_new_center(self, i):
         self.variation.set_new_center(i)
+
+    def set_new_origin(self, i):
+        self.variation.set_new_origin(i)
 
     def get_sizes(self):
         return self.variation.get_sizes()
@@ -443,6 +474,11 @@ class DomainSpace:
     def set_new_center(self, i):
         for gen in self.generators:
             gen.set_new_center(i)
+        self.update_data()
+
+    def set_new_origin(self, i):
+        for gen in self.generators:
+            gen.set_new_origin(i)
         self.update_data()
 
     def rescale(self, factors):

@@ -64,6 +64,12 @@ class CartesianGrid:
         expanded_points = [self.tuple2linear(p) for p in points]
         return expanded_points
 
+    def getTupleIndexes(self):
+        """
+        Returns a list of the tuple indexes associated with the grid.
+        """
+        return list(np.ndindex(self.lens))
+
 def flat2tuple(gridshape, idx):
     return CartesianGrid(gridshape).linear2tuple(idx)
 

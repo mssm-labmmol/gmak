@@ -205,7 +205,15 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
             # This also signifies that no more $variation blocks exist
             # beyond this point.
             outputParameterSpaceGen = parameterIO.getParameterSpaceGenerator()
-            output_grid = ParameterGrid.createParameterGridFromStream (fp, outputParameterSpaceGen, outputTopoBundles, ReweighterFactory, GridShifter.createFromGridAndDict, output_gridshifter, output_workdir, validateFlag)
+            output_grid = ParameterGrid.createParameterGridFromStream(
+                fp,
+                outputParameterSpaceGen,
+                outputTopoBundles,
+                ReweighterFactory,
+                create_gridshifter,
+                output_gridshifter,
+                output_workdir,
+                validateFlag)
         if (line.rstrip() == "$protocol"):
             blockDict = block2dict(fp, '$end', '#')
             new_protocols = create_protocols(blockDict, output_protocols)

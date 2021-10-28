@@ -62,7 +62,22 @@ def example_compute(EA_s, dEA_s, I_s, gridshape, X_ki):
     flattened_size = np.prod(gridshape)
     return np.zeros((flattened_size,)), np.zeros((flattened_size,))
 
+def example_tests(EA_s, dEA_s, I_s, gridshape, X_ki):
+    # This is used for tests, it always returns a value that is the
+    # average of the main parameters for the gridpoint.
+    import numpy as np
+    EA_k = []
+    dEA_k = []
+    for X in X_ki:
+        EA_k.append(np.mean(X))
+        dEA_k.append(np.std(X))
+    return np.array(EA_k), np.array(dEA_k)
+
 
 add_custom_surrogate_model("smexample",
                            compute=example_compute,
+                           corners=True)
+
+add_custom_surrogate_model("smtest",
+                           compute=example_tests,
                            corners=True)

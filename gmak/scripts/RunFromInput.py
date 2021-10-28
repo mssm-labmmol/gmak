@@ -28,6 +28,7 @@ import gmak.custom_protocols as custom_protocols
 import gmak.custom_surrogate_models as custom_surrogate_models
 import gmak.custom_scores as custom_scores
 import gmak.custom_topologies as custom_topologies
+import gmak.custom_gridshifter as custom_gridshifter
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
@@ -46,7 +47,6 @@ except ValueError:
     pass
 
 def main():
-
     if ('--restart' in sys.argv): # restart from a given binary file
         binFilename = sys.argv[sys.argv.index('--restart') + 1]
         binFile = open(binFilename, 'rb')
@@ -79,13 +79,17 @@ def main():
         # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
         mdp_ut = mdpUtils()
         for protocol in protocols:
-            # Check only production run.
-            mdp_ut.parse_file(protocol.mdps[-1])
-            efreq = mdp_ut.get_writefreq_energy()
-            xfreq = mdp_ut.get_writefreq_compressedpos()
-            if (efreq != xfreq):
-                raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
-                    protocol.name, efreq, xfreq))
+            try:
+                # Check only production run.
+                mdp_ut.parse_file(protocol.mdps[-1])
+                efreq = mdp_ut.get_writefreq_energy()
+                xfreq = mdp_ut.get_writefreq_compressedpos()
+                if (efreq != xfreq):
+                    raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
+                        protocol.name, efreq, xfreq))
+            except AttributeError:
+                # CustomProtocols don't have a *.mdps attribute.
+                pass
 
         # *********************** End of checks for run  **************************        
 
