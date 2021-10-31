@@ -90,45 +90,46 @@ def read_coordinates(blockdict, protocols, grid):
     ]
     verify_required(require, blockdict, "coordinates")
     _type = blockdict['type'][0]
+    _name = blockdict['name'][0]
     
     if _type == "any":
         # Required options: coords.
-        verify_required(["coords"], blockdict, "coordinates")
+        verify_required(["coords"], blockdict, "coordinates/any")
         fn = blockdict['coords'][0]
         conf = gmak.configurations.ConfigurationFactory.from_file(fn)
-        return gmak.configurations.FullCoordsConfigurationFactory(conf)
+        out = _name, gmak.configurations.FullCoordsConfigurationFactory(conf)
     elif _type == "gmx_liquid":
         # Required options: coords, nmols, box.
-        verify_required(["coords", "nmols", "box"], blockdict, "coordinates")
+        verify_required(["coords", "nmols", "box"], blockdict, "coordinates/gmx_liquid")
         fn = blockdict['coords'][0]
         nmols = blockdict['nmols'][0]
         box_list = blockdict['box']
         box = gmak.configurations.BoxFactory.from_string_list(box_list)
         conf = gmak.configurations.ConfigurationFactory.from_file(fn)
-        return gmak.configurations.GmxLiquidConfigurationFactory(
+        out = _name, gmak.configurations.GmxLiquidConfigurationFactory(
             conf, nmols, box)
     elif _type == "gmx_gas":
         # Required options: coords.
-        verify_required(["coords"], blockdict, "coordinates")
+        verify_required(["coords"], blockdict, "coordinates/gmx_gas")
         fn = blockdict['coords'][0]
         box = gmak.configurations.RectangularBox(0.0, 0.0, 0.0)
         conf = gmak.configurations.ConfigurationFactory.from_file(fn)
-        return gmak.configurations.GmxGasConfigurationFactory(conf)
+        out = _name, gmak.configurations.GmxGasConfigurationFactory(conf)
     elif _type == "gmx_slab":
         # Required options: coords, nmols, box.
         # Optional: axis(default=z), factor(default=5.0)
-        verify_required(["coords", "nmols", "box"], blockdict, "coordinates")
+        verify_required(["coords", "nmols", "box"], blockdict, "coordinates/gmx_slab")
         axis, factor = get_optional(blockdict, ['axis', 'factor']) 
         fn = blockdict['coords'][0]
         conf = gmak.configurations.ConfigurationFactory.from_file(fn)
         nmols = blockdict['nmols'][0]
         box_list = blockdict['box']
         box = gmak.configurations.BoxFactory.from_string_list(box_list)
-        return gmak.configurations.GmxSlabConfigurationFactory(
+        out =  _name, gmak.configurations.GmxSlabConfigurationFactory(
             conf, nmols, box, axis=axis, factor=factor)
     elif _type == "gmx_solvation":
         # Required options: coords (2), nmols (2), box.
-        verify_required(["coords", "nmols", "box"], blockdict, "coordinates")
+        verify_required(["coords", "nmols", "box"], blockdict, "coordinates/gmx_solvation")
         fn_solute  = blockdict['coords'][0]
         fn_solvent = blockdict['coords'][1]
         conf_solute = gmak.configurations.ConfigurationFactory.from_file(fn_solute)
@@ -137,36 +138,41 @@ def read_coordinates(blockdict, protocols, grid):
         nmols_solvent = blockdict['nmols'][1]
         box_list = blockdict['box']
         box = gmak.configurations.BoxFactory.from_string_list(box_list)
-        return gmak.configurations.GmxSolvationConfigurationFactory(
+        out =  _name, gmak.configurations.GmxSolvationConfigurationFactory(
             conf_solute, nmols_solute,
             conf_solvent, nmols_solvent,
             box)
     elif _type == "gmx_slab_follow":
         # Required options: follow.
-        verify_required(['follow'], blockdict, "coordinates")
+        verify_required(['follow'], blockdict, "coordinates/gmx_slab_follow")
         axis, factor = get_optional(blockdict, ['axis', 'factor']) 
         protocol_name = blockdict['follow'][0]
         # Find protocol with given name.
         for prot in protocols:
             if prot.name == protocol_name:
                 # Early exit.
-                return gmak.configurations.GmxSlabFollowExtendConfigurationFactory(prot, grid, axis, factor)
+                out = _name, gmak.configurations.GmxSlabFollowExtendConfigurationFactory(prot, grid, axis, factor)
+                break
         # Protocol not found.
         raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
     elif _type == "follow":
         # Required options: follow.
-        verify_required(['follow'], blockdict, "coordinates")
+        verify_required(['follow'], blockdict, "coordinates/follow")
         protocol_name = blockdict['follow'][0]
         # Find protocol with given name.
         for prot in protocols:
             if prot.name == protocol_name:
                 # Early exit.
-                return gmak.configurations.FollowProtocolConfigurationFactory(prot, grid)
+                out = _name, gmak.configurations.FollowProtocolConfigurationFactory(prot, grid)
+                break
         # Protocol not found.
         raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
     else:
         raise InputError(f"Unknown configuration type: \"{_type}\".")
 
+    # custom attributes
+    out[1].set_custom_attributes_from_blockdict(blockdict)
+    return out
 
 
 class ParameterIO:
@@ -282,7 +288,7 @@ class ParameterIO:
 #         psgen = self.pario.getParameterSpaceGenerator()
 #         # debug
 #         psgen.debugPrint()
-        
+
 def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     output_grid = None
     output_gridshifter = None
@@ -292,6 +298,11 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     output_workdir = ""
     output_optimizer = None
     output_surrogateModel = {}
+
+    # Dictionary of ConfigurationFactory objects where each key is the
+    # 'name' option, i.e. a system/molecule name chosen by the user.
+    output_coordinates = {}
+
     output_subgrid = {'method': 'cubic', 'factors': [1, 1]}
     fp = open(input_file, "r")
 
@@ -304,11 +315,23 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     # END_NEW
 
     for line in fp:
+        # skip blank and comment lines
         if line[0] == '#':
             continue
-        # grid
         if len(line.split()) < 1:
             continue
+
+        # Read block-by-block.
+
+        # $coordinates
+        if (line.split()[0] == "$coordinates"):
+            blockdict = block2dict(fp, "$end", "#")
+            name, conf_factory = read_coordinates(blockdict,
+                                                  output_protocols,
+                                                  output_grid)
+            output_coordinates[name] = conf_factory
+
+        # grid
         if (line.split()[0] == "workdir"):
             output_workdir = os.path.abspath(line.split()[1])
         if (line.rstrip() == "$atomtypes"):

@@ -4,6 +4,7 @@ from copy import deepcopy
 import os
 import gmak.runcmd as runcmd
 from gmak.config import ConfigVariables
+import gmak.custom_attributes
 import warnings
 
 class ConfigurationError(RuntimeError):
@@ -142,7 +143,8 @@ class BaseConfiguration(ABC):
                 os.remove(self.path)
 
 
-class Configuration(BaseConfiguration):
+class Configuration(BaseConfiguration,
+                    gmak.custom_attributes.CustomizableAttributesMixin):
 
     def __init__(self, path, box=None, tmp=False):
         self.path = os.path.abspath(path)
@@ -171,7 +173,8 @@ class Configuration(BaseConfiguration):
                                                        out_path))
         return Configuration(out_path, extended_box, tmp)
 
-class ConfigurationFactory(ABC):
+class ConfigurationFactory(ABC,
+                           gmak.custom_attributes.CustomizableAttributesMixin):
 
     @classmethod
     def from_file(cls, input_file, tmp=False):
@@ -181,8 +184,13 @@ class ConfigurationFactory(ABC):
         return Configuration(input_file, box, tmp)
     
     @abstractmethod
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         pass
+
+    def construct_configuration(self, path, tmp=False):
+        conf = self._construct_configuration(path, tmp)
+        self.clone_custom_attributes(conf)
+        return conf
 
 
 class FullCoordsConfigurationFactory(ConfigurationFactory):
@@ -192,7 +200,7 @@ class FullCoordsConfigurationFactory(ConfigurationFactory):
     def __init__(self, configuration):
         self.configuration = configuration
 
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         return self.configuration.copy(path, tmp)
 
 
@@ -208,7 +216,7 @@ class FollowProtocolConfigurationFactory(ConfigurationFactory):
         self._current_gridpoint = -1
         self._samples = None
 
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         if (self._current_gridpoint == -1):
             # then update samples
             self._samples = self.grid.get_samples_id()
@@ -228,7 +236,7 @@ class GmxLiquidConfigurationFactory(ConfigurationFactory):
         self.n = n_molec
         self.box = box
 
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         apath = os.path.abspath(path)
         edges = self.box.get_edge_lengths()
         runcmd.gmx_insert_molecules([
@@ -258,7 +266,7 @@ class GmxSlabConfigurationFactory(ConfigurationFactory):
         else:
             self.factor = 5.0
 
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         # First create a Liquid, then expand.
         apath = os.path.abspath(path)
         liquid_path = os.path.join(os.path.dirname(apath), 'pre-liquid.gro')
@@ -290,7 +298,7 @@ class GmxSlabFollowExtendConfigurationFactory(ConfigurationFactory):
             self.factor = 5.0
         self.grid = grid
 
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         apath = os.path.abspath(path)
         follow_fac  = FollowProtocolConfigurationFactory(self.protocol, self.grid)
         follow_path = os.path.join(os.path.dirname(apath), 'pre-liquid.gro')
@@ -308,7 +316,7 @@ class GmxSolvationConfigurationFactory(ConfigurationFactory):
         self.n_solv = n_solv
         self.box = box
 
-    def construct_configuration(self, path, tmp=False):
+    def _construct_configuration(self, path, tmp=False):
         apath = os.path.abspath(path)
         path_solv = os.path.join(os.path.dirname(apath), 'pre-solv.gro')
         # put solvent in box with temp conf
