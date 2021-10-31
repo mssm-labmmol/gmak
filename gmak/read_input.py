@@ -7,10 +7,39 @@ from gmak.parameters import *
 from gmak.variations import *
 from gmak.gridbase import *
 from gmak.topology import *
+import gmak.configurations
 import gmak.atomic_properties as atomic_properties
 from gmak.protocols import create_protocols
 import os
 
+# --------------------------------------------------------------------
+# Custom errors for input.
+# --------------------------------------------------------------------
+
+class InputError(ValueError):
+    pass
+
+
+class InputMissingRequiredOptionError(InputError):
+    pass
+
+# --------------------------------------------------------------------
+# Blockdict functions
+# --------------------------------------------------------------------
+
+def convert(value):
+    types = [int, float, str]
+    for t in types:
+        try:
+            return t(value)
+        except ValueError:
+            pass
+
+
+def dict2types(bd):
+    """Converts a block dict to the appropriate types."""
+    return {k: [convert(x) for x in v] for k,v in bd.items()}
+    
 
 def block2dict(stream, endString, comment):
     out_dict = {}
@@ -21,7 +50,123 @@ def block2dict(stream, endString, comment):
             break
         splittedLine = line.split()
         out_dict[splittedLine[0]] = splittedLine[1:]
-    return out_dict
+    return dict2types(out_dict)
+
+# --------------------------------------------------------------------
+# Block-reading functions
+# --------------------------------------------------------------------
+
+def verify_required(require, blockdict, blockname):
+    for required in require:
+        if required not in blockdict:
+            raise InputMissingRequiredOptionError(
+                f"Option \"{required}\" not found in block ${blockname}.")
+
+def get_optional(blockdict, optional_args):
+    n = len(optional_args)
+    out = []
+    for arg in optional_args:
+        if arg in blockdict.keys():
+            if len(blockdict[arg]) > 1:
+                raise InputError("get_optional only works for 1 value.")
+            out.append(blockdict[arg][0])
+        else:
+            out.append(None)
+    return tuple(out)
+
+def read_coordinates(blockdict, protocols, grid):
+    """
+    Creates the Configuration object for a system based on the
+    contents of the input file given in the `blockdict` dictionary.
+
+    The list of protocols and the `grid` object are needed for
+    follow-type protocols.
+    """
+    # Required options for any configuration. The other options may be
+    # required by specific configuration types or be optional.
+    require = [
+        "name",
+        "type",
+    ]
+    verify_required(require, blockdict, "coordinates")
+    _type = blockdict['type'][0]
+    
+    if _type == "any":
+        # Required options: coords.
+        verify_required(["coords"], blockdict, "coordinates")
+        fn = blockdict['coords'][0]
+        conf = gmak.configurations.ConfigurationFactory.from_file(fn)
+        return gmak.configurations.FullCoordsConfigurationFactory(conf)
+    elif _type == "gmx_liquid":
+        # Required options: coords, nmols, box.
+        verify_required(["coords", "nmols", "box"], blockdict, "coordinates")
+        fn = blockdict['coords'][0]
+        nmols = blockdict['nmols'][0]
+        box_list = blockdict['box']
+        box = gmak.configurations.BoxFactory.from_string_list(box_list)
+        conf = gmak.configurations.ConfigurationFactory.from_file(fn)
+        return gmak.configurations.GmxLiquidConfigurationFactory(
+            conf, nmols, box)
+    elif _type == "gmx_gas":
+        # Required options: coords.
+        verify_required(["coords"], blockdict, "coordinates")
+        fn = blockdict['coords'][0]
+        box = gmak.configurations.RectangularBox(0.0, 0.0, 0.0)
+        conf = gmak.configurations.ConfigurationFactory.from_file(fn)
+        return gmak.configurations.GmxGasConfigurationFactory(conf)
+    elif _type == "gmx_slab":
+        # Required options: coords, nmols, box.
+        # Optional: axis(default=z), factor(default=5.0)
+        verify_required(["coords", "nmols", "box"], blockdict, "coordinates")
+        axis, factor = get_optional(blockdict, ['axis', 'factor']) 
+        fn = blockdict['coords'][0]
+        conf = gmak.configurations.ConfigurationFactory.from_file(fn)
+        nmols = blockdict['nmols'][0]
+        box_list = blockdict['box']
+        box = gmak.configurations.BoxFactory.from_string_list(box_list)
+        return gmak.configurations.GmxSlabConfigurationFactory(
+            conf, nmols, box, axis=axis, factor=factor)
+    elif _type == "gmx_solvation":
+        # Required options: coords (2), nmols (2), box.
+        verify_required(["coords", "nmols", "box"], blockdict, "coordinates")
+        fn_solute  = blockdict['coords'][0]
+        fn_solvent = blockdict['coords'][1]
+        conf_solute = gmak.configurations.ConfigurationFactory.from_file(fn_solute)
+        conf_solvent = gmak.configurations.ConfigurationFactory.from_file(fn_solvent)
+        nmols_solute = blockdict['nmols'][0]
+        nmols_solvent = blockdict['nmols'][1]
+        box_list = blockdict['box']
+        box = gmak.configurations.BoxFactory.from_string_list(box_list)
+        return gmak.configurations.GmxSolvationConfigurationFactory(
+            conf_solute, nmols_solute,
+            conf_solvent, nmols_solvent,
+            box)
+    elif _type == "gmx_slab_follow":
+        # Required options: follow.
+        verify_required(['follow'], blockdict, "coordinates")
+        axis, factor = get_optional(blockdict, ['axis', 'factor']) 
+        protocol_name = blockdict['follow'][0]
+        # Find protocol with given name.
+        for prot in protocols:
+            if prot.name == protocol_name:
+                # Early exit.
+                return gmak.configurations.GmxSlabFollowExtendConfigurationFactory(prot, grid, axis, factor)
+        # Protocol not found.
+        raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
+    elif _type == "follow":
+        # Required options: follow.
+        verify_required(['follow'], blockdict, "coordinates")
+        protocol_name = blockdict['follow'][0]
+        # Find protocol with given name.
+        for prot in protocols:
+            if prot.name == protocol_name:
+                # Early exit.
+                return gmak.configurations.FollowProtocolConfigurationFactory(prot, grid)
+        # Protocol not found.
+        raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
+    else:
+        raise InputError(f"Unknown configuration type: \"{_type}\".")
+
 
 
 class ParameterIO:

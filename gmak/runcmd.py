@@ -36,7 +36,7 @@ def gmx_insert_molecules(args_list):
         env=no_backup_environ,
         stderr=subprocess.STDOUT).decode('utf-8')
     # check number of added molecules
-    m = re.search('Added ([0-9])+ molecules', log)
+    m = re.search('Added ([0-9]+) molecules', log)
     nmol_added = int(m.group(1))
     if nmol != nmol_added:
         raise ConfigurationError(f"Requested {nmol} molecules but "

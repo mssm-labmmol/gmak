@@ -17,7 +17,9 @@ class BoxFactory:
         elif path.endswith('.pdb'):
             return cls.from_pdb(path)
         else:
-            raise ValueError(f"Unknown file extension for {path}.")
+             warnings.warn(f"Unknown file extension for {path};"
+                             " will use a dummy box.")
+             return Box()
 
     @classmethod
     def from_gro(cls, path):
@@ -63,12 +65,12 @@ class BoxFactory:
         
     @classmethod
     def from_string_list(cls, init_list):
-        type = list[0]
+        type = init_list[0]
         if type == 'rectangular':
-            edges = (float(list[1]), float(list[2]), float(list[3]))
+            edges = (float(init_list[1]), float(init_list[2]), float(init_list[3]))
             return RectangularBox(*edges)
         elif type == 'cubic':
-            edges = (float(list[1]), float(list[1]), float(list[1]))
+            edges = (float(init_list[1]), float(init_list[1]), float(init_list[1]))
             return RectangularBox(*edges)
         else: 
             raise ValueError(f"Can't construct a non-rectangular box: {init_list}.")
@@ -173,6 +175,8 @@ class ConfigurationFactory(ABC):
 
     @classmethod
     def from_file(cls, input_file, tmp=False):
+        if not os.path.isfile(input_file):
+            raise FileNotFoundError(f"File {input_file} does not exist or is not a file.")
         box = BoxFactory.from_file(input_file)
         return Configuration(input_file, box, tmp)
     
@@ -241,12 +245,18 @@ GmxGasConfigurationFactory = FullCoordsConfigurationFactory
 
 class GmxSlabConfigurationFactory(ConfigurationFactory):
 
-    def __init__(self, conf_molec, n_molec, inner_box, axis='z', factor=5):
+    def __init__(self, conf_molec, n_molec, inner_box, axis=None, factor=None):
         self.conf = conf_molec
         self.n = n_molec
-        self.axis = axis
+        if axis is not None:
+            self.axis = axis
+        else:
+            self.axis = 'z'
         self.inner_box = inner_box
-        self.factor = factor
+        if factor is not None:
+            self.factor = factor
+        else:
+            self.factor = 5.0
 
     def construct_configuration(self, path, tmp=False):
         # First create a Liquid, then expand.
@@ -268,10 +278,16 @@ class GmxSlabFollowExtendConfigurationFactory(ConfigurationFactory):
     using 'extend BASE_PROTOCOL AXIS FACTOR' instead of 'follow
     BASE_PROTOCOL'.
     """
-    def __init__(self, protocol, grid, axis='z', factor=5):
+    def __init__(self, protocol, grid, axis=None, factor=None):
         self.protocol = protocol
-        self.axis = axis
-        self.factor = factor
+        if axis is not None:
+            self.axis = axis
+        else:
+            self.axis = 'z'
+        if factor is not None:
+            self.factor = factor
+        else:
+            self.factor = 5.0
         self.grid = grid
 
     def construct_configuration(self, path, tmp=False):
