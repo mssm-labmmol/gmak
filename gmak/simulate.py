@@ -200,20 +200,13 @@ def simulate_protocol_liquid (conf, nmols, box, itp, mdps, nsteps, labels, workd
     #
     return output_dict
 
-def simulate_protocol_solvation (conf, nmols, itp, mdps, nsteps, labels, workdir, simulate=True, follows=False):
-    conf = {k: os.path.abspath(v) for k,v in conf.items()}
-    itp = {k: os.path.abspath(v) for k,v in itp.items()}
-    workdir = os.path.abspath(workdir)
-    topopath = workdir + "/solvation.top"
-    confpath = workdir + "/solvation.gro"
+def simulate_protocol_solvation (conf, topo, mdps, nsteps, labels, workdir, simulate=True):
+    topopath = topo
+    confpath = conf
     for i in range(len(mdps)):
         mdps[i] = os.path.abspath(mdps[i])
     output_dict = {}
     runcmd.run("mkdir -p " + workdir)
-    if follows:
-        make_solvation_box_and_topology (conf, nmols, confpath, topopath, itp, makeBox=False)
-    else:
-        make_solvation_box_and_topology (conf, nmols, confpath, topopath, itp, makeBox=simulate)
     if (simulate):
         for i in range(len(mdps)):
             if i == 0:
@@ -426,3 +419,5 @@ def dummy_protocol_general(conf, top, mdps, labels, workdir):
     output_dict['top'] = top
     #
     return output_dict
+
+

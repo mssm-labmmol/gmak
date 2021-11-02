@@ -4,6 +4,7 @@ import os
 from shutil import copyfile
 import gmak.atomic_properties as atomic_properties
 
+
 def init_property_from_string(property_string, value, err):
     if (property_string == 'density'):
         return Density(value, err)

@@ -7,6 +7,7 @@ from gmak.parameters import *
 from gmak.variations import *
 from gmak.gridbase import *
 from gmak.topology import *
+from gmak.property import property2atomic
 import gmak.configurations
 import gmak.atomic_properties as atomic_properties
 from gmak.protocols import create_protocols
@@ -73,6 +74,7 @@ def get_optional(blockdict, optional_args):
         else:
             out.append(None)
     return tuple(out)
+
 
 def read_coordinates(blockdict, protocols, grid):
     """
@@ -384,125 +386,49 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                 validateFlag)
         if (line.rstrip() == "$protocol"):
             blockDict = block2dict(fp, '$end', '#')
-            new_protocols = create_protocols(blockDict, output_protocols)
-            output_protocols += new_protocols
+            new_protocol = create_protocols(
+                blockDict, output_protocols,
+                output_coordinates, output_grid)
+            output_protocols.append(new_protocols)
         if (line.rstrip() == '$compute'):
-            for line in fp:
-                if line[0] == '#':
-                    continue
-                if line.rstrip() == '$end':
-                    break
-                propId   = line.split()[0]
-                if (validateFlag):
+            blockDict = blockDict(fp, '$end', '#')
+            for propId, propContents in blockDict.items():
+                surrModel, propType = propContents[0:2]
+                if validateFlag:
                     surrModel = 'empty'
+                try:
+                    usingIndex = propContents.index('using')
+                except ValueError:
+                    usingIndex = len(propContents)
+                propProtocols = propContents[2:usingIndex]
+                if usingIndex < len(propContents):
+                    extraDataList = propContents[usingIndex+1:]
+                    extraData = {
+                        extraDataList[dt_i]: extraDataList[dt_i+1]
+                        for dt_i in range(0, len(extraDataList), 2)}
                 else:
-                    surrModel = line.split()[1]
-                propRead = line.split()[2]
-                nameRead = line.split()[3]
-
-                propIds = [propId]
-                surrModels = [surrModel]
-
-                for propId, surrModel in zip(propIds, surrModels):
-                    output_surrogateModel[propId] = surrModel
-                    output_properties[propId] = propRead
-                    if (propRead == 'density'):
-                        output_protocolsHash[propId] = [nameRead]
-                        # find protocol with name given
-                        protocols = filter (lambda x: x.name == nameRead, output_protocols)
-                        # actually no list -- this is only one protocol
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, 'density', bool_legacy)
-                            protocol.properties.append('density')
-                            # always add potential for safety
-                            #if 'potential' not in protocol.properties:
-                            #    protocol.properties.append('potential')
-                    elif (propRead == 'dhvap'):
-                        nameLiq = line.split()[3]
-                        nameGas = line.split()[4]
-                        corr    = float(line.split()[5])
-
-                        if (nameGas == 'none'):
-                            output_protocolsHash[propId] = [nameLiq, nameGas, corr]
-                        else:
-                            output_protocolsHash[propId] = [nameLiq, nameGas]
-                        # find protocol with name given - Liq
-                        protocols = filter (lambda x: x.name == nameLiq, output_protocols)
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy) 
-                            if 'potential' not in protocol.properties:
-                                protocol.properties.append('potential')
-
-                        # find protocol with name given - Gas
-                        protocols = filter (lambda x: x.name == nameGas, output_protocols)
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                            if 'potential' not in protocol.properties:
-                                protocol.properties.append('potential')
-                            if protocol.polar >= 0:
-                                protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                         
-                                protocol.properties.append('polcorr')
-                            protocol.set_other_corrections(corr)
-                    elif (propRead == 'ced') or (propRead == 'gced'):
-                        nameLiq = line.split()[3]
-                        nameGas = line.split()[4]
-                        corr    = float(line.split()[5])
-                        output_protocolsHash[propId] = [nameLiq, nameGas]
-                        # find protocol with name given - Liq
-                        protocols = filter (lambda x: x.name == nameLiq, output_protocols)
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                            protocol.add_surrogate_model(surrModel, 'volume', bool_legacy)                         
-                            if 'potential' not in protocol.properties:
-                                protocol.properties.append('potential')
-                            if 'volume' not in protocol.properties:
-                                protocol.properties.append('volume')
-                        # find protocol with name given - Gas
-                        protocols = filter (lambda x: x.name == nameGas, output_protocols)
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, 'potential', bool_legacy)
-                            if 'potential' not in protocol.properties:
-                                protocol.properties.append('potential')
-                            if (protocol.polar >= 0):
-                                protocol.add_surrogate_model(surrModel, 'polcorr', bool_legacy)                                                         
-                                protocol.properties.append('polcorr')
-                            protocol.set_other_corrections(corr)
-                    elif (propRead == 'gamma'):
-                        # find protocol with name given
-                        output_protocolsHash[propId] = [nameRead]
-                        protocols = filter (lambda x: x.name == nameRead, output_protocols)
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, 'gamma', bool_legacy)           
-                            protocol.properties.append('gamma')
-                            # potential for safety
-                            #if 'potential' not in protocol.properties:
-                            #    protocol.properties.append('potential')
-                    elif (propRead == 'dgsolv'):
-                        output_protocolsHash[propId] = [nameRead]
-                        # find solvation protocol
-                        protocols = filter(lambda x: x.name == nameRead, output_protocols)
-                        # add surrogate model and atomic property
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel, propRead, bool_legacy)
-                            protocol.properties.append(propRead)
+                    extraData = {}
+                # fill outputs
+                output_surrogateModel[propId] = surrModel
+                output_properties[propId] = propType
+                output_protocolsHash[propId] = propProtocols
+                # fill protocols with data
+                atomic_properties = property2atomic(propType)
+                if len(atomic_properties) != len(propProtocols):
+                    raise InputError
+                for protname, ap in zip(propProtocols, atomic_properties):
+                    for prot in output_protocols:
+                        if prot.name == protname:
+                            break
+                    if prot.name == protname:
+                        if ap not in prot.properties:
+                            prot.properties.append(ap)
+                        prot.add_surrogate_model(surrModel, ap, bool_legacy)
+                        ap_obj = atomic_properties.create_atomic_property(
+                            ap, **extraData)
+                        prot.add_atomic_property(ap_obj)
                     else:
-                        # Perhaps it is a custom property, try to create it
-                        # just to check.
-                        try:
-                            atomic_property = atomic_properties.create_atomic_property(propRead)
-                        except atomic_properties.PropertyNotInitialized:
-                            # If it's not, then it's nothing.
-                            print("ERROR: Property \"%s\" is not supported.\n"
-                                  % typeRead)
-                            exit()
-                        output_protocolsHash[propId] = [nameRead]
-                        protocols = filter(lambda x: x.name == nameRead,
-                                           output_protocols)
-                        for protocol in protocols:
-                            protocol.add_surrogate_model(surrModel,
-                                                         propRead,
-                                                         bool_legacy)
-                            protocol.properties.append(propRead)
+                        raise InputError(f"Protocol {protname} not found.")
         if (line.rstrip() == '$optimize'):
             blockDict = block2dict(fp, '$end', '#')
             output_optimizer = gridOptimizer.from_dict(blockDict, validateFlag)

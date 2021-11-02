@@ -1,8 +1,10 @@
+from enum import Enum, auto
 from abc import ABC, abstractmethod
 import gmak.runcmd as runcmd
 from gmak.simulate import *
 from shutil import copyfile
 from gmak.surrogate_model import *
+from gmak.custom_attributes import CustomizableAttributesMixin
 import warnings
 import re
 import copy
@@ -11,6 +13,16 @@ import gmak.logger as logger
 from gmak.mdputils import *
 import gmak.atomic_properties as atomic_properties
 from gmak.traj_ana import get_box
+from gmak.configurations import FollowProtocolConfigurationFactory
+
+class Ensemble(Enum):
+    NVT = 0
+    NPT = 1
+
+    @classmethod
+    def from_string(cls, string):
+        return cls(['nvt', 'npt'].index(string))
+
 
 class DefaultExtendMixin:
     """
@@ -77,53 +89,61 @@ class DefaultExtendMixin:
         else:
             return # None
 
-# ========================= Protocol Classes =========================
+
 
 class BaseProtocol:
-    """Contains few methods where implementation is common to all protocols."""
+    
     def get_filtering_properties(self):
-        raw_properties = self.get_properties()
+        at_properties = self.get_atomic_properties()
         # filter those that are timeseries
         standard_properties = []
-        for p in raw_properties:
-            if p == 'polcorr':
-                mu = self.dipole
-                alpha = self.polar
-                ap = atomic_properties.create_atomic_property(p, mu, alpha)
-            elif p == 'dgsolv':
-                temp = self.get_temperature()
-                ap = atomic_properties.create_atomic_property(p, temp)
-            else:
-                ap = atomic_properties.create_atomic_property(p)
-            if ap.is_timeseries:
-                standard_properties.append(p)
-        if ('potential' not in standard_properties) and (self.get_mbar_model() is not None):
+        for name, obj in at_properties.items():
+            if obj.is_timeseries:
+                standard_properties.append(name)
+                
+        if (('potential' not in standard_properties) and
+            (self.get_mbar_model() is not None)):
             standard_properties.append('potential')
+            
         if self.has_pv():
-            if ('pV' not in standard_properties) and (self.get_mbar_model() is not None):
+            if (('pV' not in standard_properties) and
+                (self.get_mbar_model() is not None)):
                 standard_properties.append('pV')
         return standard_properties
+
 
     def get_nonfiltering_properties(self):
         raw_properties = self.get_properties()
         filter_properties = self.get_filtering_properties()
-        return [p for p in raw_properties if p not in filter_properties]
+        return [p for p in raw_properties if p not in
+                filter_properties]
+
 
     def get_properties (self):
         return self.properties
 
-    def get_temperature (self):
-        temp = 0.0
-        fp = open(self.mdps[-1], "r")
-        for line in fp:
-            if ((re.match(r"^ref_t.*", line)) or (re.match(r"^ref-t.*", line))):
-                temp = float(line.split()[2])
-        fp.close()
-        return temp
 
-    def add_surrogate_model (self, surrogate_model_string, atomic_property, bool_legacy):
-        """Add a (surrogate_model, property) tuple to the protocol."""
-        model = init_surrogate_model_from_string(surrogate_model_string, bool_legacy)
+    def get_atomic_properties(self):
+        return self.atomic_properties
+
+
+    def add_atomic_property(self, ap_obj):
+        try:
+            self.atomic_properties[ap_obj.name] = ap_obj
+        except KeyError:
+            self.atomic_properties = {}
+            self.atomic_properties[ap_obj.name] = ap_obj
+
+
+    def get_temperature(self):
+        return self.get_custom_attributes().temperature
+            
+    
+    def add_surrogate_model (self, surrogate_model_string,
+                             atomic_property, bool_legacy):
+        """Add a (surrogate_model, property) tuple to the protocol. """
+        model = init_surrogate_model_from_string(
+            surrogate_model_string, bool_legacy)
         try:
             self.surrogate_models.append((model, atomic_property))
         except AttributeError:
@@ -131,11 +151,13 @@ class BaseProtocol:
             self.surrogate_models = []
             self.surrogate_models.append((model, atomic_property))
 
+
     def get_mbar_model (self):
         """Returns the first instance of an MBAR model for this protocol."""
         for m, p in self.surrogate_models:
             if (m.kind == 'mbar'):
                 return m
+
 
     def get_interp_models (self):
         """Returns a list of instances of Interpolation."""
@@ -145,6 +167,7 @@ class BaseProtocol:
                 out_models.append(m)
         return out_models
 
+
     def get_interp_models_props (self):
         """Returns a list of tuples (instance of Interpolation, property)."""
         out = []
@@ -152,6 +175,7 @@ class BaseProtocol:
             if not m.requiresReweight():
                 out.append((m,p))
         return out
+
 
     def get_all_models_props(self):
         """Returns a list of tuples (instance of Surrogate Model, property)."""
@@ -162,7 +186,11 @@ class BaseProtocol:
 
 
     def get_avg_err_estimate_of_property (self, prop, kind):
-        """Returns a tuple (EA_k, dEA_k) for atomic property 'prop' estimated via 'kind' surrogate model for all states."""
+        """
+        Returns a tuple (EA_k, dEA_k) for atomic property 'prop' estimated
+        via 'kind' surrogate model for all states.
+
+        """
         if (kind == 'mbar'):
             model = self.get_mbar_model()
             index = self.get_reweighting_properties().index(prop)
@@ -174,6 +202,7 @@ class BaseProtocol:
                     break
         return model.EA_pk[index,:], model.dEA_pk[index,:]
 
+    
     def requires_corners (self):
         """Checks if this protocol requires corners."""
         for m, p in self.surrogate_models:
@@ -181,12 +210,14 @@ class BaseProtocol:
                 return True
         return False
 
+    
     def requires_reweight (self):
         """Checks if this protocol requires reweight."""
         for m, p in self.surrogate_models:
             if m.requiresReweight():
                 return True
         return False
+
 
     def get_reweighting_properties (self):
         """Based on the surrogate models for each property, return a list
@@ -203,6 +234,7 @@ class BaseProtocol:
                         output_list.append(p)
             return output_list
 
+
     def get_nonreweighting_properties (self):
         """Based on the surrogate models for each property, return a list
         with the atomic properties that DO NOT need reweighting."""
@@ -213,274 +245,42 @@ class BaseProtocol:
                     output_list.append(p)
         return output_list
 
+
     def has_pv(self):
         return self._has_pv
 
 
-class LiquidProtocol(BaseProtocol, DefaultExtendMixin):
+class GmxBaseProtocol(BaseProtocol):
+    """
+    Gromacs-specific functions.
+    """
+    
+    # Override
+    def get_temperature(self):
+        temp = 0.0
+        fp = open(self.mdps[-1], "r")
+        for line in fp:
+            if re.match(r"^ref[_-]t", line):
+                temp = float(line.split()[2])
+        fp.close()
+        return temp
 
-    type = 'liquid'
-    _has_pv = True
+    
+class GmxCoreAlchemicalProtocol(GmxBaseProtocol):
 
-    def __init__ (self, name, molecule, nmols, coords, mdps, box, properties,
-                  maxSteps=None, minFactor=None):
+    def __init__ (self,
+                  name,
+                  system,
+                  conf_fac,
+                  mdps,
+                  properties):
         self.name = name
-        self.molecule = molecule
+        self.system = system
         self.mdps = mdps
-        self.coords = coords
-        self.box_size = box
-        self.nmols = nmols
+        # ConfigurationFactory is FullCooords... on the previous
+        # lambda for lambda != 0 and GmxSolvation... for lambda == 0.
+        self.conf_fac = conf_fac
         self.properties = properties
-        self.surrogate_models = []
-        if maxSteps is None:
-            self.maxSteps = 5000000
-        if minFactor is None:
-            self.minFactor = 1.1
-
-    @classmethod
-    def from_dict(cls, bd):
-        box_len = float(bd['length'][0])
-        box     = [box_len, box_len, box_len]
-        maxSteps, minFactor = cls._ext_from_dict(bd)
-        return cls(bd['name'][0], bd['molecule'][0], int(bd['nmols'][0]),
-                   bd['coords'][0], bd['mdps'], box, [], maxSteps, minFactor)
-
-    def run_gridpoint_at_dir (self, gridpoint, workdir):
-        labels = [str(x) for x in range(len(self.mdps))]
-        nsteps = gridpoint.getProtocolLength(self)
-        out_liquid = simulate_protocol_liquid(self.coords,
-                                              self.nmols,
-                                              self.box_size,
-                                              gridpoint.getTopologyPath(self.molecule),
-                                              self.mdps,
-                                              nsteps,
-                                              labels,
-                                              workdir)
-        gridpoint.add_protocol_output(self, out_liquid)
-        return
-
-    def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        if self.requires_reweight():
-            labels = [str(x) for x in range(len(self.mdps))]
-            out_liquid = dummy_protocol_liquid(self.coords, self.nmols, \
-                    self.box_size, gridpoint.getTopologyPath(self.molecule), self.mdps, labels, workdir)
-            gridpoint.add_protocol_output(self, out_liquid)
-            return
-
-
-class GasProtocol(BaseProtocol, DefaultExtendMixin):
-
-    type = 'gas'
-    _has_pv = False
-
-    def __init__ (self, name, molecule, mdps, coords, dipole, polar, properties,
-                  maxSteps=None, minFactor=None):
-        self.name = name
-        self.molecule = molecule
-        self.mdps = mdps
-        self.coords = coords
-        self.dipole = dipole
-        self.polar = polar
-        self.properties = properties
-        self.nmols = 1
-        self.surrogate_models = []
-        if maxSteps is None:
-            self.maxSteps = 50000000
-        if minFactor is None:
-            self.minFactor = 1.1
-
-    @classmethod
-    def from_dict(cls, bd):
-        maxSteps, minFactor = cls._ext_from_dict(bd)
-        if ['polarizability'] not in bd.keys():
-            bd['polarizability'] = ['-1',]
-        if ['gasdipole'] not in bd.keys():
-            bd['gasdipole'][0] = ['1',]
-        return cls(bd['name'][0], bd['molecule'][0], bd['mdps'], bd['coords'][0],
-                   float(bd['gasdipole'][0]), float(bd['polarizability'][0]), [],
-                   maxSteps, minFactor)
-
-    def run_gridpoint_at_dir (self, gridpoint, workdir):
-        labels = [str(x) for x in range(len(self.mdps))]
-        nsteps = gridpoint.getProtocolLength(self)
-        out_gas = simulate_protocol_gas(self.coords,
-                                        gridpoint.getTopologyPath(self.molecule),\
-                                        self.mdps,
-                                        nsteps,
-                                        labels,
-                                        workdir)
-        gridpoint.add_protocol_output(self, out_gas)
-        return
-
-    def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        if self.requires_reweight():
-            labels = [str(x) for x in range(len(self.mdps))]
-            out_gas = dummy_protocol_gas(self.coords,
-                                         gridpoint.getTopologyPath(self.molecule),
-                                         self.mdps,
-                                         labels,
-                                         workdir)
-            gridpoint.add_protocol_output(self, out_gas)
-            return
-
-    def set_other_corrections (self, corr):
-        self.other_corrections = corr
-
-    def get_avg_err_estimate_of_property (self, prop, kind):
-        """Override when polcorr is not necessary."""
-        if (prop == 'polcorr') and (self.polar < 0):
-            EA, dEA = super().get_avg_err_estimate_of_property('potential', kind)
-            EA = copy.deepcopy(EA)
-            dEA = copy.deepcopy(dEA)
-            for i in range(len(EA)):
-                EA[i] = 0.0
-                dEA[i] = 0.0
-            return EA, dEA
-        else:
-            EA, dEA = super().get_avg_err_estimate_of_property(prop, kind)
-            return EA, dEA
-
-
-class SlabProtocol(BaseProtocol, DefaultExtendMixin):
-
-    type = "slab"
-    _has_pv = False
-
-    def __init__ (self, name, molecule, nmols, coords, box, mdps, followObj,
-                  properties, nprocs=-1, maxSteps=None, minFactor=None):
-        self.name = name
-        self.molecule = molecule
-        self.coords = coords
-        self.nmols = nmols
-        self.box_size = box
-        self.mdps = mdps
-        self.properties = properties
-        self.nprocs = nprocs
-        self.followObj = followObj
-        if self.followObj is not None:
-            self.follow = self.followObj.name
-        else:
-            self.follow = None
-        self.surrogate_models = []
-        if maxSteps is None:
-            self.maxSteps = 5000000
-        if minFactor is None:
-            self.minFactor = 1.1
-
-    @classmethod
-    def from_dict(cls, bd, protocols):
-        maxSteps, minFactor = cls._ext_from_dict(bd)
-
-        # set followed object
-        followObj = None
-        if 'follow' in bd.keys():
-            for prot in protocols:
-                if prot.name == bd['follow'][0]:
-                    followObj = prot
-                    break
-            if followObj is None:
-                raise Exception(f"Followed protocol {bd['follow'][0]} could not be"
-                                " found.")
-
-        # set molecule and box_size
-        if followObj is not None:
-            molecule = followObj.molecule
-            # from simulate
-            box_size = followObj.box_size
-            coords   = followObj.coords
-            nmols    = followObj.nmols
-        else:
-            molecule = bd['molecule'][0]
-            box_size = [float(x) for x in bd['box']]
-            coords   = bd['coords'][0]
-            nmols    = int(bd['nmols'][0])
-
-        if 'nprocs' in bd.keys():
-            return cls(bd['name'][0], molecule, nmols, coords, box_size,
-                       bd['mdps'], followObj, [], nprocs=int(bd['nprocs']),
-                       maxSteps=maxSteps, minFactor=minFactor)
-        else:
-            return cls(bd['name'][0], molecule, nmols, coords, box_size,
-                       bd['mdps'], followObj, [], maxSteps=maxSteps,
-                       minFactor=minFactor)
-
-    def _prepare_conf(self, outconf, gridpoint, workdir):
-        if self.followObj is None:
-            first_liquid_conf = os.path.join(workdir, "pre-liquid.gro")
-            # from simulate
-            make_a_box(self.coords, self.nmols, self.box_size,
-                       first_liquid_conf)
-        else:
-            first_liquid_conf = gridpoint.protocol_outputs[self.follow]['gro']
-        # Fix up periodicity.
-        # from simulate
-        liquid_conf = os.path.join(workdir, "liquid.gro")
-        fix_periodicity(first_liquid_conf, liquid_conf)
-        # Extend box.
-        # from simulate
-        box = get_box(liquid_conf)
-        resize_box(liquid_conf, outconf,
-                   [box[0],
-                    box[1],
-                    5.0*box[2]])
-        # Remove tmps.
-        os.remove(liquid_conf)
-        if self.followObj is None:
-            os.remove(first_liquid_conf)
-
-    def _prepare_topo(self, outtop, gridpoint, workdir):
-        from shutil import copyfile
-        if self.followObj is not None:
-            copyfile(gridpoint.protocol_outputs[self.follow]['top'],
-                     outtop)
-        else:
-            # from simulate
-            itp = gridpoint.getTopologyPath(self.molecule)
-            make_topology(self.nmols, outtop, itp)
-
-    def run_gridpoint_at_dir (self, gridpoint, workdir):
-        labels   = [str(x) for x in range(len(self.mdps))]
-        conf     = os.path.join(workdir, "slab.gro")
-        top      = os.path.join(workdir, "slab.top")
-        self._prepare_conf(conf, gridpoint, workdir)
-        self._prepare_topo(top, gridpoint, workdir)
-        nsteps   = gridpoint.getProtocolLength(self)
-        out_slab = simulate_protocol_slab(conf,
-                                          top,
-                                          self.mdps,
-                                          nsteps,
-                                          labels,
-                                          workdir,
-                                          self.nprocs)
-        gridpoint.add_protocol_output(self, out_slab)
-        return
-
-    def prepare_gridpoint_at_dir (self, gridpoint, workdir):
-        if self.requires_reweight():
-            labels   =  [str(x) for x in range(len(self.mdps))]
-            conf     =  gridpoint.protocol_outputs[self.follow]['gro']
-            top      =  gridpoint.protocol_outputs[self.follow]['top']
-            out_slab = dummy_protocol_slab (conf, top, self.mdps, labels,\
-                    workdir)
-            gridpoint.add_protocol_output (self, out_slab)
-            return
-
-
-class CoreSolvationProtocol(BaseProtocol):
-
-    type = "_coresolv"
-    _has_pv = True
-
-    def __init__ (self, name, moleculeSolvent, moleculeSolute,
-                  nmolsSolvent, nmolsSolute, coordsSolvent, coordsSolute, mdps,
-                  properties, followsObj):
-        self.name = name
-        self.mdps = mdps
-        self.molecules = {'solvent': moleculeSolvent, 'solute': moleculeSolute}
-        self.coords = {'solvent': coordsSolvent, 'solute': coordsSolute}
-        self.nmols = {'solvent': nmolsSolvent, 'solute': nmolsSolute}
-        self.properties = properties
-        self.follows = followsObj
         self.surrogate_models = []
         self.parent = None
         self.output_files = None
@@ -488,19 +288,16 @@ class CoreSolvationProtocol(BaseProtocol):
     def run_gridpoint_at_dir (self, gridpoint, workdir, simulate=True):
         labels = [str(x) for x in range(len(self.mdps))]
         nsteps = gridpoint.getProtocolLength(self.parent)
-        if self.follows is not None and simulate:
-            runcmd.run("mkdir -p {}".format(workdir))
-            copyfile(self.follows.output_files['gro'],
-                     workdir + '/solvation.gro')
+        conf   = self.conf_fac.construct_configuration(
+            os.path.join(workdir, "solvation.gro"))
         out = simulate_protocol_solvation(
-            self.coords, self.nmols,
-            {'solute':
-             gridpoint.getTopologyPath(self.molecules['solute']),
-             'solvent':
-             gridpoint.getTopologyPath(self.molecules['solvent'])},
-            self.mdps, nsteps, labels,
-            workdir, simulate,
-            self.follows is not None)
+            conf.get_path(),
+            gridpoint.getTopologyPath(self.system),
+            self.mdps,
+            nsteps,
+            labels,
+            workdir,
+            simulate)
         self.output_files = out
         return out
 
@@ -509,7 +306,7 @@ class CoreSolvationProtocol(BaseProtocol):
             return self.run_gridpoint_at_dir(gridpoint, workdir, simulate=False)
 
     @classmethod
-    def from_dict(cls, bd):
+    def from_dict(cls, bd, coordinates, grid):
         # read number of lambda points from some mdp file
         imu = mdpUtils()
         imu.parse_file(bd['mdps'][-1])
@@ -533,54 +330,73 @@ class CoreSolvationProtocol(BaseProtocol):
             # first state follows nothing, but succeeding states follow their
             # respective previous state
             if (i == 0):
-                follows = None
+                conf_fac = coordinates[bd['coords'][0]]
             else:
-                follows = outputProtocols[i - 1]
-            # create SolvationProtocol for each state and append it to the
-            # list of states returned by this factory
+                conf_fac = FollowProtocolConfigurationFactory(
+                    outputProtocols[i-1], grid)
+            # create protocol for each state and append it to the list
+            # of states returned by this factory
             outputProtocols.append(
                 cls(bd['name'][0] + '-{}'.format(i),
-                    bd['solvent'][0],
-                    bd['solute'][0],
-                    int(bd['solvent'][1]),
-                    int(bd['solute'][1]),
-                    bd['solvent'][2],
-                    bd['solute'][2],
+                    bd['system'][0],
+                    conf_fac,
                     mdps,
-                    [],
-                    follows))
+                    []))
         return outputProtocols
 
 
-class SolvationProtocol(BaseProtocol, DefaultExtendMixin):
+class GmxAlchemicalProtocol(GmxBaseProtocol,
+                            DefaultExtendMixin,
+                            CustomizableAttributesMixin):
 
-    type = "solv"
-    _has_pv = True
-
-    def __init__(self, name, core_protocols, mdps, properties,
-                 maxSteps=None, minFactor=None):
+    def __init__(self,
+                 name,
+                 core_protocols,
+                 mdps,
+                 properties,
+                 ensemble,
+                 maxSteps=None,
+                 minFactor=None):
+        
         self.name = name
         self.core_protocols = core_protocols
+        # Set _has_pv just to avoid breaking existing code.
+        if self.ensemble == Ensemble.NPT:
+            self._has_pv = True
+        else:
+            self._has_pv = False
         self.mdps = mdps
         self.properties = properties
         self.surrogate_models = []
         if maxSteps is None:
-            self.maxSteps = 5000000 # 10 ns
+           raise ValueError("GmxAlchemicalProtocol must define maxsteps.")
         if minFactor is None:
             self.minFactor = 1.1
+        # This is initialized later on.
+        self.atomic_properties = None
+        
 
     @classmethod
-    def from_dict(cls, bd):
-        maxSteps, minFactor = cls._ext_from_dict(bd)
+    def from_dict(cls, bd, coordinates, grid):
+        maxSteps, minFactor = cls._ext_from_dict(bd, coordinates, grid)
         # first create the core protocols
         core_protocols = CoreSolvationProtocol.from_dict(bd)
+        if 'ensemble' in bd.keys():
+            ensemble = Ensemble.from_string(bd['ensemble'][0])
+        else:
+            # adopt NVT in case nothing is said.
+            # this should only affect including or not pV.
+            ensemble = Ensemble.NVT
         # then create the object
-        return cls(bd['name'][0],
-                   core_protocols,
-                   bd['mdps'],
-                   [],
-                   maxSteps=maxSteps,
-                   minFactor=minFactor)
+        out = cls(bd['name'][0],
+                  core_protocols,
+                  bd['mdps'],
+                  [],
+                  ensemble,
+                  maxSteps=maxSteps,
+                  minFactor=minFactor)
+        out.set_custom_attributes_from_blockdict(bd)
+        return out
 
     # overriden
     def run_gridpoint_at_dir(self, gridpoint, workdir, simulate=True):
@@ -622,57 +438,153 @@ class SolvationProtocol(BaseProtocol, DefaultExtendMixin):
             gridpoint.add_protocol_output(self, out)
 
 
-class GeneralProtocol(BaseProtocol, DefaultExtendMixin):
+class GmxProtocol(GmxBaseProtocol,
+                  DefaultExtendMixin,
+                  CustomizableAttributesMixin):
+    """
+    A Gromacs-based simulation protocol for general usage.
 
-    type = "general"
-    _has_pv = False
+    
+    Attributes
+    ----------
 
-    def __init__(self, name, system, coords, mdps, properties, maxSteps,
+    name : string
+
+    system : string
+
+    conf_fac : ConfigurationFactory
+    
+    ensemble : Ensemble
+
+    mdps : list of str/os.PathLike
+
+    properties : list of str
+        Property types (e.g., density, potential, ...).
+        Usually initialized with the empty list.
+
+    atomic_properties : dict of BaseAtomicProperty
+        Keys are the types of the properties.
+        This is not initialized together with the Protocol.
+
+    surrogate_models: list of (SurrogateModel, str)
+        The string is the property type associated with the
+        surrogate model (e.g., density, potential, ...).
+
+    ..from DefaultExtendMixin:
+
+    maxSteps : int
+        Maximum number of steps of the production run.
+
+    minFactor : float (optional)
+        Minimum factor to multiply by the number of steps when
+        the production run is extended. If not given, it is set
+        to 1.1.
+    """
+    
+    def __init__(self, name, conf_fac, topo, mdps, ensemble, maxSteps,
                  minFactor=None):
+        """
+        Parameters
+        ----------
+        
+        name : string
+
+        system : string
+
+        conf_fac : ConfigurationFactory
+
+        ensemble : Ensemble
+
+        mdps : list of str/os.PathLike
+
+        properties : list of str
+            Property types (e.g., density, potential, ...).
+            Usually initialized with the empty list.
+
+        maxSteps : int
+            Maximum number of steps of the production run.
+
+        minFactor : float (optional)
+            Minimum factor to multiply by the number of steps when
+            the production run is extended. If not given, it is set
+            to 1.1.
+
+        """
+        from gmak.read_input import InputError
+        
         self.name = name
-        self.coords = coords
         self.system = system
-        self.mdps = mdps
-        self.properties = properties
-        self.surrogate_models = []
+        self.conf_fac = conf_fac
+        self.ensemble = ensemble
+        # Set _has_pv just to avoid breaking existing code.
+        if self.ensemble == Ensemble.NPT:
+            self._has_pv = True
+        else:
+            self._has_pv = False
         if maxSteps is None:
-            raise ValueError("GeneralProtocol must define maxsteps.")
+            raise InputError("GmxProtocol must specify maxsteps.")
         else:
             self.maxSteps = maxSteps
         if minFactor is None:
             self.minFactor = 1.1
-
+        else:
+            self.minFactor = minFactor
+        # This is initialized later on.
+        self.atomic_properties = None
+        
     @classmethod
-    def from_dict(cls, bd):
+    def from_dict(cls, bd, coordinates):
         maxSteps, minFactor = cls._ext_from_dict(bd)
-        return cls(bd["name"][0], bd["system"][0], bd["coords"][0], bd["mdps"],
-                   [],
+        if 'ensemble' in bd.keys():
+            ensemble = Ensemble.from_string(bd['ensemble'][0])
+        else:
+            # adopt NVT in case nothing is said.
+            # this should only affect including or not pV.
+            ensemble = Ensemble.NVT
+        out  = cls(bd["name"][0],
+                   bd["system"][0],
+                   coordinates[bd["coords"][0]],
+                   bd["mdps"],
+                   ensemble,
                    maxSteps,
                    minFactor)
+        # set custom attributes
+        out.set_custom_attributes_from_blockdict(bd)
+        return out
 
+    
     def run_gridpoint_at_dir(self, gridpoint, workdir):
+        # labels are 0, 1, 2, ..., NUMBER_OF_MDPS
         labels = [str(x) for x in range(len(self.mdps))]
+        # number of steps---either from the last .mdp or from extension
         nsteps = gridpoint.getProtocolLength(self)
-        out    = simulate_protocol_general(self.coords,
-                                           gridpoint.getTopologyPath(self.system),
-                                           self.mdps,
-                                           nsteps,
-                                           labels,
-                                           workdir)
+        # create initial configuration
+        conf = self.conf_fac.construct_configuration(
+            os.path.join(workdir, f"{self.name}.gro"))
+        # get topology
+        topo = gridpoint.getTopologyPath(self.system)
+        # perform simulations
+        out = simulate_protocol_general(conf.get_path(),
+                                        topo,
+                                        self.mdps,
+                                        nsteps,
+                                        labels,
+                                        workdir)
         gridpoint.add_protocol_output(self, out)
 
+        
     def prepare_gridpoint_at_dir(self, gridpoint, workdir):
+        # When there is reweighting, store path of the topology
+        # TODO: I believe this is no longer needed.
         if self.requires_reweight():
-            labels = [str(x) for x in range(len(self.mdps))]
-            out    = dummy_protocol_general(self.coords,
-                                            gridpoint.getTopologyPath(self.system),
-                                            self.mdps,
-                                            labels,
-                                            workdir)
-            gridpoint.add_protocol_output(self, out)
+            topo = gridpoint.getTopologyPath(self.system),
+            gridpoint.add_protocol_output(
+                self,
+                {'top': topo})
 
-
-class CustomProtocol(BaseProtocol):
+            
+class CustomProtocol(BaseProtocol,
+                     CustomizableAttributesMixin):
     _has_pv = False
 
     @staticmethod
@@ -685,6 +597,8 @@ class CustomProtocol(BaseProtocol):
 
     def __init__(self, simulator, calc_initial_len=None, calc_extend=None):
         self.properties = []
+        # This is initialized later on.
+        self.atomic_properties = None
         self.surrogate_models = []
         self.simulator = simulator
         if calc_initial_len is None:
@@ -713,22 +627,37 @@ class CustomProtocol(BaseProtocol):
         return self._calc_extend(errs_tols, length)
 
     @classmethod
-    def from_dict(cls, bd):
-        # 'name', 'system' and 'type' are required keys
-        for key in ['name', 'system', 'type']:
+    def from_dict(cls, bd, coordinates):
+        # 'name', 'system', 'coords' and 'type' are required keys
+        for key in ['name', 'system', 'coords', 'type']:
             if (key not in bd.keys()):
                 raise Exception(f"CustomProtocol must specify a '{key}'.")
+        if 'ensemble' in bd.keys():
+            ensemble = Ensemble.from_string(bd['ensemble'][0])
+        else:
+            # adopt NVT in case nothing is said.
+            # this should only affect including or not pV.
+            ensemble = Ensemble.NVT
         out = CustomProtocolFactory.create(bd['type'][0])
-        for k in bd.keys():
-            if len(bd[k]) == 1:
-                setattr(out, k, bd[k][0])
-            else:
-                setattr(out, k, bd[k])
+        out.name = bd['name'][0]
+        out.ensemble = ensemble
+        if ensemble == Ensemble.NPT:
+            out._has_pv = True
+        else:
+            out._has_pv = False
+        out.system = bd['system'][0]
+        out.type = bd['type'][0]
+        out.name = bd['name'][0]
+        out.coords = coordinates[bd['coords'][0]]
+        out.set_custom_attributes_from_blockdict(bd)
         return out
 
     def run_gridpoint_at_dir(self, gridpoint, workdir):
         length = gridpoint.getProtocolLength(self)
+        conf = self.coords.construct_configuration(
+            os.path.join(workdir, "start.gro"))
         out = self.simulator(gridpoint.getTopologyPath(self.system),
+                             conf.get_path(),
                              vars(self),
                              length,
                              workdir)
@@ -741,7 +670,8 @@ class CustomProtocol(BaseProtocol):
         #
         # if self.requires_reweight():
         #     self.simulator(..., simulate=False)
-        return
+        raise NotImplementedError("Reweighting not implemented for "
+                                  "custom protocols.")
 
 
 class CustomProtocolFactory:
@@ -750,7 +680,8 @@ class CustomProtocolFactory:
     ptable = {}
 
     @classmethod
-    def add_custom_protocol(cls, type_name, simulator, calc_initial_len=None, calc_extend=None):
+    def add_custom_protocol(cls, type_name, simulator,
+                            calc_initial_len=None, calc_extend=None):
         cls.ptable[type_name] = (simulator, calc_initial_len, calc_extend)
 
     @classmethod
@@ -759,28 +690,26 @@ class CustomProtocolFactory:
                               calc_initial_len=cls.ptable[type_name][1],
                               calc_extend=cls.ptable[type_name][2])
 
-def add_custom_protocol(type_name, simulator, calc_initial_len=None, calc_extend=None):
-    CustomProtocolFactory.add_custom_protocol(type_name, simulator, calc_initial_len, calc_extend)
+    
+def add_custom_protocol(type_name, simulator, calc_initial_len=None,
+                        calc_extend=None):
+    CustomProtocolFactory.add_custom_protocol(type_name, simulator,
+                                              calc_initial_len, calc_extend)
 
-def create_protocols(bd, protocols):
+    
+def create_protocols(bd, protocols, coordinates, grid):
     _type = bd['type'][0]
-    if _type == 'liquid':
-        return [LiquidProtocol.from_dict(bd),]
-    elif _type == 'gas':
-        return [GasProtocol.from_dict(bd),]
-    elif _type == 'slab':
-        return [SlabProtocol.from_dict(bd, protocols),]
-    elif _type == 'general':
-        return [GeneralProtocol.from_dict(bd),]
-    elif _type == 'solv':
-        out = SolvationProtocol.from_dict(bd)
+    if _type == 'gmx':
+        return GmxProtocol.from_dict(bd, coordinates)
+    elif _type == 'gmx_alchemical':
+        out = GmxAlchemicalProtocol.from_dict(bd, coordinates, grid)
         # TODO think of a nicer way to set parent
         for p in out.core_protocols:
             p.parent = out
-        return [out,]
+        return out
     else:
         # Custom
         try:
-            return [CustomProtocol.from_dict(bd),]
+            return CustomProtocol.from_dict(bd, coordinates)
         except KeyError:
             raise NotImplementedError(f"Can't create protocol of type {_type}.")

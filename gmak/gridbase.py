@@ -221,15 +221,7 @@ class GridPoint:
 
     def get_atomic_property_from_protocol(self, name, protocol, output):
         output = os.path.abspath(output)
-        if name == 'polcorr':
-            mu = protocol.dipole
-            alpha = protocol.polar
-            ap = atomic_properties.create_atomic_property(name, mu, alpha)
-        elif name == 'dgsolv':
-            temp = protocol.get_temperature()
-            ap = atomic_properties.create_atomic_property(name, temp)
-        else:
-            ap = atomic_properties.create_atomic_property(name)
+        ap = protocol.get_atomic_properties()[name]
         ap.calc(self.protocol_outputs[protocol.name], output)
         self.add_atomic_property_output(name, protocol, output)
 
