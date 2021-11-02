@@ -7,7 +7,7 @@ from gmak.parameters import *
 from gmak.variations import *
 from gmak.gridbase import *
 from gmak.topology import *
-from gmak.property import property2atomic
+import gmak.property 
 import gmak.configurations
 import gmak.atomic_properties as atomic_properties
 from gmak.protocols import create_protocols
@@ -177,6 +177,87 @@ def read_coordinates(blockdict, protocols, grid):
     return out
 
 
+def read_compute_extra_var(name: str,
+                           value: list,
+                           protocols: list,
+                           coordinates: dict,
+                           systems: dict):
+    if len(value) == 1:
+        return value[0]
+    else:
+        if value[0] == 'from':
+            if value[1] == 'protocol':
+                origin = protocols
+            elif value[1] == 'coordinates':
+                origin = coordinates
+            elif value[1] == 'system':
+                origin = systems
+            else:
+                raise InputError("$compute: Can't read from {value[1]}.")
+            attrs = origin[value[2]].get_custom_attributes()
+            out   = geattr(attrs, name)
+            # for safety, consider all cases
+            try:
+                # has length, is a list
+                size = len(out)
+                if size > 1:
+                    return out
+                else:
+                    # size == 1
+                    return out[0]
+            except TypeError:
+                # has no length
+                return out
+        else:
+            raise InputError("Unexpected format in $compute: {value}.")
+
+
+def read_compute(blockdict: dict,
+                 protocols: dict,
+                 coordinates: dict,
+                 systems: dict,
+                 bool_legacy: bool,
+                 validate_flag: bool):
+    base_options = [
+        'name',
+        'type',
+        'surrogate_model',
+        'protocols',
+    ]
+    verify_required(base_options, blockdict, "compute")
+    name = blockdict['name'][0]
+    type = blockdict['type'][0]
+    if validate_flag:
+        sms = 'empty'
+    else:
+        sms  = blockdict['surrogate_model'][0]
+    prots = blockdict['protocols']
+    # extra variables 
+    ext  = {}
+    for option, value in blockdict.items():
+        if option not in base_options:
+            ext[option] = read_compute_extra_var(option,
+                                                 value,
+                                                 protocols,
+                                                 coordinates,
+                                                 systems)
+
+    propDriver = gmak.property.PropertyDriver(name, type, prots, ext)
+    aps = propDriver.create_atomic_properties()
+    for ap, prot in zip(aps, prots):
+        if ap is None:
+            # this means skipping something, e.g. gas-phase potential
+            # energy, polcorr.
+            continue
+        else:
+            # fill protocol
+            prot_obj = protocols[prot]
+            if ap.name is not in prot_obj.properties:
+                prot_obj.properties.append(ap.name)
+            prot_obj.add_atomic_property(ap)
+            prot_obj.add_surrogate_model(sms, ap.name, bool_legacy)
+    return propDriver
+
 class ParameterIO:
     def __init__(self, stream, parRefFactory, domainSpaceFactory):
         self.stream             = stream
@@ -295,6 +376,8 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     output_grid = None
     output_gridshifter = None
     output_protocols = []
+    # dict form of output_protocols
+    output_protocols_dict = {}
     output_properties = {}
     output_protocolsHash = {}
     output_workdir = ""
@@ -390,45 +473,15 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                 blockDict, output_protocols,
                 output_coordinates, output_grid)
             output_protocols.append(new_protocols)
+            output_protocols_dict[new_protocols.name] = new_protocols
         if (line.rstrip() == '$compute'):
             blockDict = blockDict(fp, '$end', '#')
-            for propId, propContents in blockDict.items():
-                surrModel, propType = propContents[0:2]
-                if validateFlag:
-                    surrModel = 'empty'
-                try:
-                    usingIndex = propContents.index('using')
-                except ValueError:
-                    usingIndex = len(propContents)
-                propProtocols = propContents[2:usingIndex]
-                if usingIndex < len(propContents):
-                    extraDataList = propContents[usingIndex+1:]
-                    extraData = {
-                        extraDataList[dt_i]: extraDataList[dt_i+1]
-                        for dt_i in range(0, len(extraDataList), 2)}
-                else:
-                    extraData = {}
-                # fill outputs
-                output_surrogateModel[propId] = surrModel
-                output_properties[propId] = propType
-                output_protocolsHash[propId] = propProtocols
-                # fill protocols with data
-                atomic_properties = property2atomic(propType)
-                if len(atomic_properties) != len(propProtocols):
-                    raise InputError
-                for protname, ap in zip(propProtocols, atomic_properties):
-                    for prot in output_protocols:
-                        if prot.name == protname:
-                            break
-                    if prot.name == protname:
-                        if ap not in prot.properties:
-                            prot.properties.append(ap)
-                        prot.add_surrogate_model(surrModel, ap, bool_legacy)
-                        ap_obj = atomic_properties.create_atomic_property(
-                            ap, **extraData)
-                        prot.add_atomic_property(ap_obj)
-                    else:
-                        raise InputError(f"Protocol {protname} not found.")
+            read_compute(blockdict,
+                         output_protocols_dict,
+                         output_coordinates,
+                         outputTopoBundles,
+                         bool_legacy,
+                         validateFlag)
         if (line.rstrip() == '$optimize'):
             blockDict = block2dict(fp, '$end', '#')
             output_optimizer = gridOptimizer.from_dict(blockDict, validateFlag)

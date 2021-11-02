@@ -4,7 +4,18 @@ import os
 from shutil import copyfile
 import gmak.atomic_properties as atomic_properties
 
+class PropertyDriver:
 
+    def __init__(self):
+        pass
+
+    def create_atomic_properties(self):
+        pass
+
+    def compute(self, linear_index):
+        pass
+
+    
 def init_property_from_string(property_string, value, err):
     if (property_string == 'density'):
         return Density(value, err)
