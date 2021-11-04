@@ -13,7 +13,7 @@ import gmak.logger as logger
 from gmak.mdputils import *
 import gmak.atomic_properties as atomic_properties
 from gmak.traj_ana import get_box
-from gmak.configurations import FollowProtocolConfigurationFactory
+from gmak.configurations import ConfigurationFactory, FollowProtocolConfigurationFactory
 
 class Ensemble(Enum):
     NVT = 0
@@ -91,7 +91,7 @@ class DefaultExtendMixin:
 
 
 
-class BaseProtocol:
+class BaseProtocol(ABC):
     
     def get_filtering_properties(self):
         at_properties = self.get_atomic_properties()
@@ -128,11 +128,17 @@ class BaseProtocol:
 
 
     def add_atomic_property(self, ap_obj):
+        self.atomic_properties[ap_obj.name] = ap_obj
+
+
+    def add_property(self, prop: str):
         try:
-            self.atomic_properties[ap_obj.name] = ap_obj
-        except KeyError:
-            self.atomic_properties = {}
-            self.atomic_properties[ap_obj.name] = ap_obj
+            if prop not in self.properties:
+                self.properties.append(prop)
+        except AttributeError:
+            self.properties = []
+            if prop not in self.properties:
+                self.properties.append(prop)
 
 
     def get_temperature(self):
@@ -202,6 +208,9 @@ class BaseProtocol:
                     break
         return model.EA_pk[index,:], model.dEA_pk[index,:]
 
+    def get_avg_err_estimate_of_property_for_gridpoint(self, gridpoint, prop, kind):
+        EA, dEA = self.get_avg_err_estimate_of_property(prop, kind)
+        return EA[gridpoint.id], dEA[gridpoint.id]
     
     def requires_corners (self):
         """Checks if this protocol requires corners."""
@@ -249,6 +258,10 @@ class BaseProtocol:
     def has_pv(self):
         return self._has_pv
 
+    @abstractmethod
+    def get_last_frame(self, gridpoint):
+        pass
+
 
 class GmxBaseProtocol(BaseProtocol):
     """
@@ -264,6 +277,10 @@ class GmxBaseProtocol(BaseProtocol):
                 temp = float(line.split()[2])
         fp.close()
         return temp
+
+    def get_last_frame(self, gridpoint):
+        return ConfigurationFactory.from_file(
+            gridpoint.protocol_outputs[self.name]['gro'])
 
     
 class GmxCoreAlchemicalProtocol(GmxBaseProtocol):
@@ -299,6 +316,7 @@ class GmxCoreAlchemicalProtocol(GmxBaseProtocol):
             workdir,
             simulate)
         self.output_files = out
+        gridpoint.add_protocol_output(self, out)
         return out
 
     def prepare_gridpoint_at_dir (self, gridpoint, workdir):
@@ -360,6 +378,7 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
         
         self.name = name
         self.core_protocols = core_protocols
+        self.ensemble = ensemble
         # Set _has_pv just to avoid breaking existing code.
         if self.ensemble == Ensemble.NPT:
             self._has_pv = True
@@ -373,14 +392,14 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
         if minFactor is None:
             self.minFactor = 1.1
         # This is initialized later on.
-        self.atomic_properties = None
+        self.atomic_properties = {}
         
 
     @classmethod
     def from_dict(cls, bd, coordinates, grid):
-        maxSteps, minFactor = cls._ext_from_dict(bd, coordinates, grid)
+        maxSteps, minFactor = cls._ext_from_dict(bd)
         # first create the core protocols
-        core_protocols = CoreSolvationProtocol.from_dict(bd)
+        core_protocols = GmxCoreAlchemicalProtocol.from_dict(bd, coordinates, grid)
         if 'ensemble' in bd.keys():
             ensemble = Ensemble.from_string(bd['ensemble'][0])
         else:
@@ -400,41 +419,35 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
 
     # overriden
     def run_gridpoint_at_dir(self, gridpoint, workdir, simulate=True):
-        pre_out = []
+        out = {}
         for i, p in enumerate(self.core_protocols):
             # replace workdir name
             core_workdir = gridpoint.makeSimudir(
                 gridpoint.baseGrid.makeProtocolSimudir(p))
-            pre_out.append(p.run_gridpoint_at_dir(gridpoint,
+            this_out = p.run_gridpoint_at_dir(gridpoint,
                                               core_workdir,
-                                              simulate=simulate))
-        # pre_out is a list of dicts, all of them with the same keys.
-        # we have to convert it into the corresponding dict of lists.
-        keys = pre_out[0].keys()
-        out  = {}
-        for k in keys:
-            out[k] = []
-            for o in pre_out:
-                out[k].append(o[k])
+                                              simulate=simulate)
+            for k,v in this_out.items():
+                try:
+                    out[k].append(v)
+                except KeyError:
+                    out[k] = [v]
         gridpoint.add_protocol_output(self, out)
 
     # overriden
     def prepare_gridpoint_at_dir(self, gridpoint, workdir):
         if self.requires_reweight():
-            pre_out = []
+            out = {}
             for i, p in enumerate(self.core_protocols):
                 # replace workdir name
                 core_workdir = gridpoint.makeSimudir(
                     gridpoint.baseGrid.makeProtocolSimudir(p))
-                pre_out.append(p.prepare_gridpoint_at_dir(gridpoint, core_workdir))
-            # pre_out is a list of dicts, all of them with the same keys.
-            # we have to convert it into the corresponding dict of lists.
-            keys = pre_out[0].keys()
-            out  = {}
-            for k in keys:
-                out[k] = []
-                for o in pre_out:
-                    out[k].append(o[k])
+                this_out = p.prepare_gridpoint_at_dir(gridpoint, core_workdir)
+                for k,v in this_out.items():
+                    try:
+                        out[k].append(v)
+                    except KeyError:
+                        out[k] = [v]
             gridpoint.add_protocol_output(self, out)
 
 
@@ -481,7 +494,7 @@ class GmxProtocol(GmxBaseProtocol,
         to 1.1.
     """
     
-    def __init__(self, name, conf_fac, topo, mdps, ensemble, maxSteps,
+    def __init__(self, name, system, conf_fac, mdps, ensemble, maxSteps,
                  minFactor=None):
         """
         Parameters
@@ -516,6 +529,7 @@ class GmxProtocol(GmxBaseProtocol,
         self.system = system
         self.conf_fac = conf_fac
         self.ensemble = ensemble
+        self.mdps = mdps
         # Set _has_pv just to avoid breaking existing code.
         if self.ensemble == Ensemble.NPT:
             self._has_pv = True
@@ -530,7 +544,7 @@ class GmxProtocol(GmxBaseProtocol,
         else:
             self.minFactor = minFactor
         # This is initialized later on.
-        self.atomic_properties = None
+        self.atomic_properties = {}
         
     @classmethod
     def from_dict(cls, bd, coordinates):
@@ -598,7 +612,7 @@ class CustomProtocol(BaseProtocol,
     def __init__(self, simulator, calc_initial_len=None, calc_extend=None):
         self.properties = []
         # This is initialized later on.
-        self.atomic_properties = None
+        self.atomic_properties = {}
         self.surrogate_models = []
         self.simulator = simulator
         if calc_initial_len is None:

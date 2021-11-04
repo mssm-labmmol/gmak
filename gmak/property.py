@@ -3,17 +3,185 @@ import gmak.runcmd as runcmd
 import os
 from shutil import copyfile
 import gmak.atomic_properties as atomic_properties
+from abc import ABC, abstractmethod
 
-class PropertyDriver:
 
-    def __init__(self):
-        pass
+class PropertyDriver(ABC):
 
+    def __init__(self, name, type, surrmodel, prots, prot_objs, ext, property_class):
+        self.name = name
+        self.type = type
+        self.surrmodel = surrmodel
+        self.protocols = prots
+        self.protocol_objs = prot_objs
+        self.extra_vars = ext
+        self.property_cls = property_class
+
+    @abstractmethod
     def create_atomic_properties(self):
         pass
 
-    def compute(self, linear_index):
-        pass
+    # Basic implementation that works for simple properties like
+    # density, gamma, dg
+    def compute(self, gridpoint, protocols):
+        # note: protocols : list of BaseProtocol
+        protocolObjs = self.protocol_objs
+        mu, sigma = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
+            self.type, self.surrmodel)
+        prop_obj = self.property_cls(mu, sigma)
+        gridpoint.add_property_estimate(self.name, self.type, prop_obj) 
+
+    def _mask_list_with_none(self, input_list, none_str="none"):
+        outlist = []
+        for i,p in zip(input_list, self.protocols):
+           if p == none_str:
+               outlist.append(None)
+           else:
+               outlist.append(i)
+        return outlist
+
+
+class DensityDriver(PropertyDriver):
+    def create_atomic_properties(self):
+        return self._mask_list_with_none([
+            atomic_properties.create_atomic_property("density")
+        ])
+        
+        
+
+class DHvapDriver(PropertyDriver):
+    def create_atomic_properties(self):
+        try:
+            mu = self.extra_vars['mu']
+        except KeyError:
+            mu = None
+        try:
+            alpha = self.extra_vars['alpha']
+        except KeyError:
+            alpha = None
+        return self._mask_list_with_none([
+            atomic_properties.create_atomic_property("potential"),
+            atomic_properties.create_atomic_property("potential"),
+            atomic_properties.create_atomic_property("polcorr",
+                                                     mu=mu,
+                                                     alpha=alpha)
+        ])
+
+
+    def compute(self, gridpoint, protocols):
+        protocolObjs = self.protocol_objs
+        propertyTypes = [ap.name if ap is not None else None for ap in
+                         self.create_atomic_properties()]
+
+        if propertyTypes[0] is not None:
+            mu_u_liq, sigma_u_liq = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
+                propertyTypes[0], self.surrmodel)
+        else:
+            mu_u_liq, sigma_u_liq = 0.0, 0.0
+
+        if propertyTypes[1] is not None:
+            mu_u_gas, sigma_u_gas = protocolObjs[1].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
+                propertyTypes[1], self.surrmodel)
+        else:
+            mu_u_gas, sigma_u_gas = 0.0, 0.0
+
+        if propertyTypes[2] is not None:
+            mu_u_polcorr, sigma_u_polcorr = protocolObjs[2].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
+                propertyTypes[2], self.surrmodel)
+        else:
+            mu_u_polcorr, sigma_u_polcorr = 0.0, 0.0
+
+        # get temperature from $compute block if it was supplied;
+        # otherwise, try to get it from the liquid protocol
+        try:
+            temperature = self.extra_vars['temperature']
+        except KeyError:
+            try:
+                temperature = protocolObjs[0].get_temperature()
+            except:
+                raise Exception("Couldn't figure out temperature for calculating DHvap!")
+
+        # get corrections from $compute block; assume zero if not
+        # supplied.
+        try:
+            corrs = self.extra_vars['C']
+        except KeyError:
+            corrs = 0.0
+
+        try:
+            nmols = self.extra_vars['nmols']
+        except KeyError:
+            raise Exception("Couldn't figure out nmols for calculating DHvap!")
+            
+        prop_obj = self.property_cls(
+            mu_u_liq,
+            mu_u_gas,
+            mu_u_polcorr,
+            sigma_u_liq,
+            sigma_u_gas,
+            sigma_u_polcorr,
+            corrs,
+            nmols,
+            temperature)
+        gridpoint.add_property_estimate(
+            self.name,
+            self.type,
+            prop_obj) 
+
+
+class GammaDriver(PropertyDriver):
+    def create_atomic_properties(self):
+        return self._mask_list_with_none([
+            atomic_properties.create_atomic_property("gamma")
+        ])
+
+
+class DGDriver(PropertyDriver):
+    def create_atomic_properties(self):
+        # get temperature from $compute block if it was supplied;
+        # otherwise, try to get it from the liquid protocol
+        try:
+            temperature = self.extra_vars['temperature']
+        except KeyError:
+            try:
+                temperature = self.protocol_objs[0].get_temperature()
+            except:
+                raise Exception("Couldn't figure out temperature for calculating DG!")
+        return self._mask_list_with_none([
+            atomic_properties.create_atomic_property("dg", temperature)
+        ])
+    
+
+class CustomDriver(PropertyDriver):
+    def create_atomic_properties(self):
+        return self._mask_list_with_none([
+            atomic_properties.create_atomic_property(self.type,
+                                                       **self.extra_vars)
+        ])
+
+    def compute(self, gridpoint, protocols):
+        # note: protocols : list of BaseProtocol
+        protocolObjs = self.protocol_objs
+        mu, sigma = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
+            self.type, self.surrmodel)
+        prop_obj = self.property_cls(self.type, mu, sigma)
+        gridpoint.add_property_estimate(self.name, self.type, prop_obj) 
+
+
+class PropertyDriverFactory:
+    
+    @classmethod
+    def create(cls, name, type, surrmodel, prots, prot_objs, ext):
+        if type == 'density':
+            return DensityDriver(name, type, surrmodel, prots, prot_objs, ext, Density)
+        elif type == 'dhvap':
+            return DHvapDriver(name, type, surrmodel, prots, prot_objs, ext, dHvap)
+        elif type == 'gamma':
+            return GammaDriver(name, type, surrmodel, prots, prot_objs, ext, Gamma)
+        elif type == 'dg':
+            return DGDriver(name, type, surrmodel, prots, prot_objs, ext, DGAlchemicalAnalysis)
+        else:
+            return CustomDriver(name, type, surrmodel, prots, prot_objs, ext, CustomProperty)
 
     
 def init_property_from_string(property_string, value, err):
@@ -138,15 +306,15 @@ class GammaViaCohesiveEnergyDensity(PropertyBase):
         #self.err   = np.abs( ced.value * (1.0/3)*(v_m)**(-2.0/3)*err_v_m + ced.err * (v_m**(1.0/3)) ) / self.conversionConstant
         self.err   = self.value * np.sqrt( (((1.0/3) * v_m**(-2.0/3) * err_v_m)/(v_m**(1./3)))**2 + (ced.err/ced.value)**2)
 
-class DGsolvAlchemicalAnalysis(PropertyBase):
+class DGAlchemicalAnalysis(PropertyBase):
 
-    id_string = "dgsolv"
+    id_string = "dg"
 
     def __init__(self, value, err):
         # Set attributes
         self.value = value
         self.err = err
-        self.set_textual_elements("dgsolv",
+        self.set_textual_elements("dg",
                                   "kJ mol$^{-1}$",
                                   "$\\Delta G_{\\mathrm{solv}}$")
 

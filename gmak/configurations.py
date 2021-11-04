@@ -221,7 +221,8 @@ class FollowProtocolConfigurationFactory(ConfigurationFactory):
             # then update samples
             self._samples = self.grid.get_samples_id()
             self._current_gridpoint = 0
-        original_conf = self.grid[self._samples[self._current_gridpoint]].getLastFrame(self.protocol.name)
+        original_conf = self.protocol.get_last_frame(
+            self.grid[self._samples[self._current_gridpoint]])
         new_conf = original_conf.copy(path, tmp)
         self._current_gridpoint += 1
         if self._current_gridpoint >= len(self._samples):

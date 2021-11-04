@@ -12,7 +12,6 @@ from gmak.parameters import *
 from gmak.grid_ana import *
 from gmak.read_input import *
 from gmak.mdputils import mdpUtils
-from gmak.protocols import LiquidProtocol, GasProtocol, SlabProtocol
 from gmak.gridbase import GridPoint, ParameterGrid
 from gmak.gridoptimizer import gridOptimizer
 from gmak.subgrid import *

@@ -56,6 +56,9 @@ class GmxPolcorr(BaseAtomicProperty):
     def __init__(self, mu, alpha):
         self.name = "polcorr"
         self.is_timeseries = True
+        if (mu is None) or (alpha is None):
+            raise ValueError(f"Polarization correction requires float values of "
+                             f"\"mu\" and \"alpha\".")
         self.mu = mu
         self.alpha = alpha
 
@@ -70,9 +73,10 @@ class GmxPolcorr(BaseAtomicProperty):
 
 
 # exception---it is not really a GmxEnergyProperty.
-class GmxDGsolv(BaseAtomicProperty):
+class GmxDG(BaseAtomicProperty):
 
     def __init__(self, temperature):
+        self.name = "dg"
         self.temperature = temperature
         self.is_timeseries = False
 
@@ -127,8 +131,8 @@ class GmxPropertyFactory:
             return GmxEnergyProperty("gamma", "#Surf*SurfTen")
         elif (name == 'polcorr'):
             return GmxPolcorr(*args, **kwargs)
-        elif (name == 'dgsolv'):
-            return GmxDGsolv(*args, **kwargs)
+        elif (name == 'dg'):
+            return GmxDG(*args, **kwargs)
         else:
             raise PropertyNotInitialized
 

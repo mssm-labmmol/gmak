@@ -18,10 +18,7 @@ class GromacsReweighterAdapter:
         outputDict['tpr'] = originGridpoint.protocol_outputs[protocol.name]['tpr']
         outputDict['top'] = destGridpoint.protocol_outputs[protocol.name]['top'] # This is really destGridpoint!
         outputDict['mdp'] = protocol.mdps[-1]
-        if (protocol.type == 'slab'):
-            outputDict['xtc'] = originGridpoint.protocol_outputs[protocol.name]['trr']
-        else:
-            outputDict['xtc'] = originGridpoint.protocol_outputs[protocol.name]['xtc']
+        outputDict['xtc'] = originGridpoint.protocol_outputs[protocol.name]['xtc']
         return outputDict
 
 class ReweighterInterface(ABC):

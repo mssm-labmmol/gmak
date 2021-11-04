@@ -4,7 +4,7 @@ import re
 import os
 import shlex
 import numpy           as     np
-from gmak.property        import DGsolvAlchemicalAnalysis
+from gmak.property        import DGAlchemicalAnalysis
 from gmak.mdputils        import *
 from gmak.reweightbase    import *
 from gmak.traj_ana        import *
@@ -178,17 +178,18 @@ class GridPoint:
 
     def reweight_with_protocol_at_other (self, protocol, gp_other, workdir):
         # from reweight.py
-        if (protocol.type == 'slab'):
-            out_rw = reweight (self.protocol_outputs[protocol.name]['trr'],\
-                    self.protocol_outputs[protocol.name]['gro'],\
-                    gp_other.protocol_outputs[protocol.name]['top'],\
-                    protocol.mdps[-1], workdir)
-        else:
-            out_rw = reweight (self.protocol_outputs[protocol.name]['xtc'],\
-                    self.protocol_outputs[protocol.name]['gro'],\
-                    gp_other.protocol_outputs[protocol.name]['top'],\
-                    protocol.mdps[-1], workdir)
-        self.add_reweight_output (gp_other, protocol, out_rw)
+        raise NotImplementedError("Reweighting not implemented.")
+        #if (protocol.type == 'slab'):
+        #    out_rw = reweight (self.protocol_outputs[protocol.name]['trr'],\
+        #            self.protocol_outputs[protocol.name]['gro'],\
+        #            gp_other.protocol_outputs[protocol.name]['top'],\
+        #            protocol.mdps[-1], workdir)
+        #else:
+        #    out_rw = reweight (self.protocol_outputs[protocol.name]['xtc'],\
+        #            self.protocol_outputs[protocol.name]['gro'],\
+        #            gp_other.protocol_outputs[protocol.name]['top'],\
+        #            protocol.mdps[-1], workdir)
+        #self.add_reweight_output (gp_other, protocol, out_rw)
 
     def set_as_sample (self):
         self.is_sample = True
@@ -208,7 +209,7 @@ class GridPoint:
     # protocol_outputs is a dictionary for the output (which are also
     # dictionaries) of a simulation, where keys are the protocol names.
     #
-    def add_protocol_output (self, protocol, output):
+    def add_protocol_output(self, protocol, output):
         self.protocol_outputs[protocol.name] = output
 
     def add_reweight_output (self, gp_other, protocol, output):
@@ -287,6 +288,7 @@ class GridPoint:
         dirname = os.path.abspath(f"{protocolSimudir}/{self.id}")
         system(f"mkdir -p {dirname}")
         return dirname
+
 
     def get_errs_tols(self, optimizer, protocol, protocolsHash):
         """Returns a dictionary <property_name:str, {'tol': float, 'err': float}>.
@@ -548,11 +550,9 @@ class ParameterGrid:
     def filter_with_protocol_at_dir (self, protocol, workdir):
         for i,gp in enumerate(self.grid_points):
             if gp.is_sample:
-                # filter
-                if (protocol.type == 'slab'):
-                    gp.filter_trr_in_protocol (protocol, protocol.get_filtering_properties(), gp.makeSimudir(workdir))
-                else:
-                    gp.filter_xtc_in_protocol (protocol, protocol.get_filtering_properties(), gp.makeSimudir(workdir))
+                gp.filter_xtc_in_protocol (protocol,
+                                           protocol.get_filtering_properties(),
+                                           gp.makeSimudir(workdir))
 
     def nonfilter_with_protocol_at_dir (self, protocol, workdir):
         for i,gp in enumerate(self.grid_points):
@@ -575,99 +575,17 @@ class ParameterGrid:
     def retrieveReweightNumberOfConfigurations(self):
         return self.reweighter.getConfigurationMatrix()
 
-    def compute_final_properties (self, prop_id, prop, propProtocols, protocols, kind):
-        protocolObjs = []
-        for desiredProt in propProtocols:
-            for prot in protocols:
-                if prot.name == desiredProt:
-                    protocolObjs.append(prot)
+    def add_property_driver(self, prop_driver):
+        try:
+            self.prop_drivers[prop_driver.name] = prop_driver
+        except AttributeError:
+            self.prop_drivers = dict()
+            self.prop_drivers[prop_driver.name] = prop_driver
 
-        if (prop == 'density'):
-            estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(prop, kind)
-            for gp in self.grid_points:
-                estimateObj   = Density (estimateValue[gp.id], estimateErr[gp.id])
-                gp.add_property_estimate (prop_id, prop, estimateObj)
-        elif (prop == 'gamma'):
-            estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(prop, kind)
-            for gp in self.grid_points:
-                estimateObj   = Gamma (estimateValue[gp.id], estimateErr[gp.id])
-                gp.add_property_estimate (prop_id, prop, estimateObj)
-        elif (prop == 'dhvap'):
-            estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
-            nmols = protocolObjs[0].nmols
-            # for 'none' gas
-            if (propProtocols[1] == 'none'):
-                estimateValueGas, estimateErrGas = [0.0 for k in range(self.get_linear_size())], [0.0 for k in range(self.get_linear_size())]
-                estimateValuePol, estimateErrPol = [0.0 for k in range(self.get_linear_size())], [0.0 for k in range(self.get_linear_size())]
-                corr = propProtocols[2]
-            else:
-                #
-                estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)
-                #
-                estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)
-                try:
-                    corr = protocolObjs[1].other_corrections
-                except AttributeError:
-                    corr = 0.0
-            temp = protocolObjs[1].get_temperature() # temperature is of the gas
-            #
-            for gp in self.grid_points:
-                estimateObj   = dHvap (estimateValueLiq[gp.id], estimateValueGas[gp.id], estimateValuePol[gp.id],
-                                       estimateErrLiq[gp.id], estimateErrGas[gp.id], estimateErrPol[gp.id], corr, nmols, temp)
-                gp.add_property_estimate (prop_id, prop, estimateObj)
-        elif (prop == 'ced'):
-            estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
-            nmols            = protocolObjs[0].nmols
-            #
-            estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
-            #
-            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)
-            try:
-                corr = protocolObjs[1].other_corrections
-            except AttributeError:
-                corr = 0.0
-            temp             = protocolObjs[1].get_temperature()
-            #
-            estimateValueVol, estimateErrVol = protocolObjs[0].get_avg_err_estimate_of_property('volume', kind)
-            #
-            for gp in self.grid_points:
-                estimateObj   = CohesiveEnergyDensity (estimateValueLiq[gp.id], estimateValueGas[gp.id],
-                                                       estimateValueVol[gp.id], estimateValuePol[gp.id],
-                                                       estimateErrLiq[gp.id], estimateErrGas[gp.id],
-                                                       estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
-                gp.add_property_estimate (prop_id, prop, estimateObj)
-        elif (prop == 'gced'):
-            estimateValueLiq, estimateErrLiq = protocolObjs[0].get_avg_err_estimate_of_property('potential', kind)
-            nmols            = protocolObjs[0].nmols
-            #
-            estimateValueGas, estimateErrGas = protocolObjs[1].get_avg_err_estimate_of_property('potential', kind)                
-            #
-            estimateValuePol, estimateErrPol = protocolObjs[1].get_avg_err_estimate_of_property('polcorr', kind)                
-            corr             = protocolObjs[1].other_corrections
-            temp             = protocolObjs[1].get_temperature()
-            #
-            estimateValueVol, estimateErrVol = protocolObjs[0].get_avg_err_estimate_of_property('volume', kind)
-            #
-            for gp in self.grid_points:
-                estimateObj   = GammaViaCohesiveEnergyDensity (estimateValueLiq[gp.id], estimateValueGas[gp.id],
-                                                       estimateValueVol[gp.id], estimateValuePol[gp.id],
-                                                       estimateErrLiq[gp.id], estimateErrGas[gp.id],
-                                                       estimateErrVol[gp.id], estimateErrPol[gp.id], corr, nmols)
-                gp.add_property_estimate (prop_id, prop, estimateObj)
-        elif (prop == 'dgsolv'):
-            estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property('dgsolv', kind)
-            for gp in self.grid_points:
-                estimateObj = DGsolvAlchemicalAnalysis(estimateValue[gp.id], estimateErr[gp.id])
-                gp.add_property_estimate (prop_id, prop, estimateObj)
-        else:
-            # Custom property
-            estimateValue, estimateErr = protocolObjs[0].get_avg_err_estimate_of_property(
-                prop, kind)
-            for gp in self.grid_points:
-                estimateObj = init_property_from_string(prop,
-                                                        estimateValue[gp.id],
-                                                        estimateErr[gp.id])
-                gp.add_property_estimate(prop_id, prop, estimateObj)
+    def compute_final_properties(self, protocols):
+        for prop_driver in self.prop_drivers.values():
+            for gridpoint in self.grid_points:
+                prop_driver.compute(gridpoint, protocols)
 
     def setNewCenterForParameters(self, i):
         self.parSpaceGen.setNewCenter(i)
@@ -950,10 +868,11 @@ class ParameterGrid:
 
         self.make_grid_for_protocols(protocols, optimizer)
 
+        self.compute_final_properties(protocols)
+
         for prop in properties:
             referenceValue = optimizer.referenceValues[prop]
             kind = surrogateModelHash[prop]
-            self.compute_final_properties(prop, properties[prop], protocolsHash[prop], protocols, kind)
             self.save_property_values_to_file (prop, optimizer)
             self.save_property_err_to_file (prop, optimizer)
             self.save_property_diff_to_file (prop, referenceValue, optimizer)

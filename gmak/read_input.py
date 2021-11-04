@@ -156,7 +156,8 @@ def read_coordinates(blockdict, protocols, grid):
                 out = _name, gmak.configurations.GmxSlabFollowExtendConfigurationFactory(prot, grid, axis, factor)
                 break
         # Protocol not found.
-        raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
+        if (prot.name != protocol_name):
+            raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
     elif _type == "follow":
         # Required options: follow.
         verify_required(['follow'], blockdict, "coordinates/follow")
@@ -168,7 +169,8 @@ def read_coordinates(blockdict, protocols, grid):
                 out = _name, gmak.configurations.FollowProtocolConfigurationFactory(prot, grid)
                 break
         # Protocol not found.
-        raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
+        if (prot.name != protocol_name):
+            raise InputError(f"Followed protocol \"{protocol_name}\" was not found.")
     else:
         raise InputError(f"Unknown configuration type: \"{_type}\".")
 
@@ -195,7 +197,7 @@ def read_compute_extra_var(name: str,
             else:
                 raise InputError("$compute: Can't read from {value[1]}.")
             attrs = origin[value[2]].get_custom_attributes()
-            out   = geattr(attrs, name)
+            out   = getattr(attrs, name)
             # for safety, consider all cases
             try:
                 # has length, is a list
@@ -216,6 +218,7 @@ def read_compute(blockdict: dict,
                  protocols: dict,
                  coordinates: dict,
                  systems: dict,
+                 output_protocolsHash: dict,
                  bool_legacy: bool,
                  validate_flag: bool):
     base_options = [
@@ -242,7 +245,14 @@ def read_compute(blockdict: dict,
                                                  coordinates,
                                                  systems)
 
-    propDriver = gmak.property.PropertyDriver(name, type, prots, ext)
+    propDriver = gmak.property.PropertyDriverFactory.create(
+        name,
+        type,
+        sms,
+        prots,
+        [protocols[p] if p != "none" else None for p in prots],
+        ext)
+    output_protocolsHash[name] = prots
     aps = propDriver.create_atomic_properties()
     for ap, prot in zip(aps, prots):
         if ap is None:
@@ -252,8 +262,7 @@ def read_compute(blockdict: dict,
         else:
             # fill protocol
             prot_obj = protocols[prot]
-            if ap.name is not in prot_obj.properties:
-                prot_obj.properties.append(ap.name)
+            prot_obj.add_property(ap.name)
             prot_obj.add_atomic_property(ap)
             prot_obj.add_surrogate_model(sms, ap.name, bool_legacy)
     return propDriver
@@ -472,16 +481,19 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
             new_protocol = create_protocols(
                 blockDict, output_protocols,
                 output_coordinates, output_grid)
-            output_protocols.append(new_protocols)
-            output_protocols_dict[new_protocols.name] = new_protocols
+            output_protocols.append(new_protocol)
+            output_protocols_dict[new_protocol.name] = new_protocol
         if (line.rstrip() == '$compute'):
-            blockDict = blockDict(fp, '$end', '#')
-            read_compute(blockdict,
-                         output_protocols_dict,
-                         output_coordinates,
-                         outputTopoBundles,
-                         bool_legacy,
-                         validateFlag)
+            blockDict = block2dict(fp, '$end', '#')
+            propDriver = read_compute(blockDict,
+                                      output_protocols_dict,
+                                      output_coordinates,
+                                      outputTopoBundles,
+                                      output_protocolsHash,
+                                      bool_legacy,
+                                      validateFlag)
+            # Add property driver to grid.
+            output_grid.add_property_driver(propDriver)
         if (line.rstrip() == '$optimize'):
             blockDict = block2dict(fp, '$end', '#')
             output_optimizer = gridOptimizer.from_dict(blockDict, validateFlag)
@@ -503,5 +515,6 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
             output_gridshifter = block2dict(fp, '$end', '#')
     fp.close()
 
-    return (output_workdir, output_grid, output_protocols, output_properties, \
-            output_protocolsHash, output_optimizer, output_surrogateModel, output_subgrid)
+    return (output_workdir, output_grid, output_protocols,
+            output_properties, output_protocolsHash, output_optimizer,
+            output_surrogateModel, output_subgrid)
