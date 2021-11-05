@@ -143,8 +143,8 @@ class BaseProtocol(ABC):
 
     def get_temperature(self):
         return self.get_custom_attributes().temperature
-            
-    
+
+
     def add_surrogate_model (self, surrogate_model_string,
                              atomic_property, bool_legacy):
         """Add a (surrogate_model, property) tuple to the protocol. """
@@ -393,10 +393,10 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
             self.minFactor = 1.1
         # This is initialized later on.
         self.atomic_properties = {}
-        
+
 
     @classmethod
-    def from_dict(cls, bd, coordinates, grid):
+    def from_dict(cls, bd, systems, coordinates, protocols, grid):
         maxSteps, minFactor = cls._ext_from_dict(bd)
         # first create the core protocols
         core_protocols = GmxCoreAlchemicalProtocol.from_dict(bd, coordinates, grid)
@@ -414,7 +414,8 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
                   ensemble,
                   maxSteps=maxSteps,
                   minFactor=minFactor)
-        out.set_custom_attributes_from_blockdict(bd)
+        out.set_custom_attributes_from_blockdict(bd, systems, coordinates,
+                                                 protocols)
         return out
 
     # overriden
@@ -547,7 +548,7 @@ class GmxProtocol(GmxBaseProtocol,
         self.atomic_properties = {}
         
     @classmethod
-    def from_dict(cls, bd, coordinates):
+    def from_dict(cls, bd, systems, coordinates, protocols):
         maxSteps, minFactor = cls._ext_from_dict(bd)
         if 'ensemble' in bd.keys():
             ensemble = Ensemble.from_string(bd['ensemble'][0])
@@ -563,7 +564,8 @@ class GmxProtocol(GmxBaseProtocol,
                    maxSteps,
                    minFactor)
         # set custom attributes
-        out.set_custom_attributes_from_blockdict(bd)
+        out.set_custom_attributes_from_blockdict(bd, systems, coordinates,
+                                                 protocols)
         return out
 
     
@@ -641,7 +643,7 @@ class CustomProtocol(BaseProtocol,
         return self._calc_extend(errs_tols, length)
 
     @classmethod
-    def from_dict(cls, bd, coordinates):
+    def from_dict(cls, bd, systems, coordinates, protocols):
         # 'name', 'system', 'coords' and 'type' are required keys
         for key in ['name', 'system', 'coords', 'type']:
             if (key not in bd.keys()):
@@ -663,7 +665,8 @@ class CustomProtocol(BaseProtocol,
         out.type = bd['type'][0]
         out.name = bd['name'][0]
         out.coords = coordinates[bd['coords'][0]]
-        out.set_custom_attributes_from_blockdict(bd)
+        out.set_custom_attributes_from_blockdict(bd, systems, coordinates,
+                                                 protocols)
         return out
 
     def run_gridpoint_at_dir(self, gridpoint, workdir):
@@ -711,12 +714,13 @@ def add_custom_protocol(type_name, simulator, calc_initial_len=None,
                                               calc_initial_len, calc_extend)
 
     
-def create_protocols(bd, protocols, coordinates, grid):
+def create_protocols(bd, protocols, coordinates, systems, grid):
     _type = bd['type'][0]
     if _type == 'gmx':
-        return GmxProtocol.from_dict(bd, coordinates)
+        return GmxProtocol.from_dict(bd, systems, coordinates, protocols)
     elif _type == 'gmx_alchemical':
-        out = GmxAlchemicalProtocol.from_dict(bd, coordinates, grid)
+        out = GmxAlchemicalProtocol.from_dict(bd, systems, coordinates,
+                                              protocols, grid)
         # TODO think of a nicer way to set parent
         for p in out.core_protocols:
             p.parent = out
@@ -724,6 +728,7 @@ def create_protocols(bd, protocols, coordinates, grid):
     else:
         # Custom
         try:
-            return CustomProtocol.from_dict(bd, coordinates)
+            return CustomProtocol.from_dict(bd, systems, coordinates,
+                                            protocols)
         except KeyError:
             raise NotImplementedError(f"Can't create protocol of type {_type}.")

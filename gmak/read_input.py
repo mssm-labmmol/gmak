@@ -76,7 +76,7 @@ def get_optional(blockdict, optional_args):
     return tuple(out)
 
 
-def read_coordinates(blockdict, protocols, grid):
+def read_coordinates(blockdict, systems, coordinates, protocols, grid):
     """
     Creates the Configuration object for a system based on the
     contents of the input file given in the `blockdict` dictionary.
@@ -175,43 +175,9 @@ def read_coordinates(blockdict, protocols, grid):
         raise InputError(f"Unknown configuration type: \"{_type}\".")
 
     # custom attributes
-    out[1].set_custom_attributes_from_blockdict(blockdict)
+    out[1].set_custom_attributes_from_blockdict(blockdict, systems,
+                                                coordinates, protocols)
     return out
-
-
-def read_compute_extra_var(name: str,
-                           value: list,
-                           protocols: list,
-                           coordinates: dict,
-                           systems: dict):
-    if len(value) == 1:
-        return value[0]
-    else:
-        if value[0] == 'from':
-            if value[1] == 'protocol':
-                origin = protocols
-            elif value[1] == 'coordinates':
-                origin = coordinates
-            elif value[1] == 'system':
-                origin = systems
-            else:
-                raise InputError("$compute: Can't read from {value[1]}.")
-            attrs = origin[value[2]].get_custom_attributes()
-            out   = getattr(attrs, name)
-            # for safety, consider all cases
-            try:
-                # has length, is a list
-                size = len(out)
-                if size > 1:
-                    return out
-                else:
-                    # size == 1
-                    return out[0]
-            except TypeError:
-                # has no length
-                return out
-        else:
-            raise InputError("Unexpected format in $compute: {value}.")
 
 
 def read_compute(blockdict: dict,
@@ -235,23 +201,14 @@ def read_compute(blockdict: dict,
     else:
         sms  = blockdict['surrogate_model'][0]
     prots = blockdict['protocols']
-    # extra variables 
-    ext  = {}
-    for option, value in blockdict.items():
-        if option not in base_options:
-            ext[option] = read_compute_extra_var(option,
-                                                 value,
-                                                 protocols,
-                                                 coordinates,
-                                                 systems)
-
     propDriver = gmak.property.PropertyDriverFactory.create(
         name,
         type,
         sms,
         prots,
-        [protocols[p] if p != "none" else None for p in prots],
-        ext)
+        [protocols[p] if p != "none" else None for p in prots])
+    propDriver.set_custom_attributes_from_blockdict(
+        blockdict, systems, coordinates, protocols)
     output_protocolsHash[name] = prots
     aps = propDriver.create_atomic_properties()
     for ap, prot in zip(aps, prots):
@@ -421,6 +378,8 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
         if (line.split()[0] == "$coordinates"):
             blockdict = block2dict(fp, "$end", "#")
             name, conf_factory = read_coordinates(blockdict,
+                                                  outputTopoBundles,
+                                                  output_coordinates,
                                                   output_protocols,
                                                   output_grid)
             output_coordinates[name] = conf_factory
@@ -478,9 +437,9 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
                 validateFlag)
         if (line.rstrip() == "$protocol"):
             blockDict = block2dict(fp, '$end', '#')
-            new_protocol = create_protocols(
-                blockDict, output_protocols,
-                output_coordinates, output_grid)
+            new_protocol = create_protocols(blockDict, output_protocols_dict,
+                                            output_coordinates,
+                                            outputTopoBundles, output_grid)
             output_protocols.append(new_protocol)
             output_protocols_dict[new_protocol.name] = new_protocol
         if (line.rstrip() == '$compute'):

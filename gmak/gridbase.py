@@ -1018,8 +1018,9 @@ class ParameterGrid:
         """
         Set extended length for protocols.
 
-        Returns True if some protocol, at some gridpoint, was extended, and
-        False if everything has converged.
+        Returns True if some protocol, at some gridpoint, needs to be
+        extended, and False if everything has converged. The new
+        lengths are set if necessary.
         """
         output = False
         for gp in self.grid_points:

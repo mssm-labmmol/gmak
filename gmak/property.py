@@ -4,17 +4,19 @@ import os
 from shutil import copyfile
 import gmak.atomic_properties as atomic_properties
 from abc import ABC, abstractmethod
+from gmak.custom_attributes import CustomizableAttributesMixin
 
 
-class PropertyDriver(ABC):
+class PropertyDriver(ABC,
+                     CustomizableAttributesMixin):
 
-    def __init__(self, name, type, surrmodel, prots, prot_objs, ext, property_class):
+    def __init__(self, name, type, surrmodel, prots, prot_objs,
+                 property_class):
         self.name = name
         self.type = type
         self.surrmodel = surrmodel
         self.protocols = prots
         self.protocol_objs = prot_objs
-        self.extra_vars = ext
         self.property_cls = property_class
 
     @abstractmethod
@@ -46,18 +48,16 @@ class DensityDriver(PropertyDriver):
         return self._mask_list_with_none([
             atomic_properties.create_atomic_property("density")
         ])
-        
-        
 
 class DHvapDriver(PropertyDriver):
     def create_atomic_properties(self):
         try:
-            mu = self.extra_vars['mu']
-        except KeyError:
+            mu = self.get_custom_attribute('mu')
+        except AttributeError:
             mu = None
         try:
-            alpha = self.extra_vars['alpha']
-        except KeyError:
+            alpha = self.get_custom_attribute('alpha')
+        except AttributeError:
             alpha = None
         return self._mask_list_with_none([
             atomic_properties.create_atomic_property("potential"),
@@ -94,8 +94,8 @@ class DHvapDriver(PropertyDriver):
         # get temperature from $compute block if it was supplied;
         # otherwise, try to get it from the liquid protocol
         try:
-            temperature = self.extra_vars['temperature']
-        except KeyError:
+            temperature = self.get_custom_attribute('temperature')
+        except AttributeError:
             try:
                 temperature = protocolObjs[0].get_temperature()
             except:
@@ -104,13 +104,13 @@ class DHvapDriver(PropertyDriver):
         # get corrections from $compute block; assume zero if not
         # supplied.
         try:
-            corrs = self.extra_vars['C']
-        except KeyError:
+            corrs = self.get_custom_attribute('C')
+        except AttributeError:
             corrs = 0.0
 
         try:
-            nmols = self.extra_vars['nmols']
-        except KeyError:
+            nmols = self.get_custom_attribute('nmols')
+        except AttributeError:
             raise Exception("Couldn't figure out nmols for calculating DHvap!")
             
         prop_obj = self.property_cls(
@@ -126,7 +126,7 @@ class DHvapDriver(PropertyDriver):
         gridpoint.add_property_estimate(
             self.name,
             self.type,
-            prop_obj) 
+            prop_obj)
 
 
 class GammaDriver(PropertyDriver):
@@ -141,8 +141,8 @@ class DGDriver(PropertyDriver):
         # get temperature from $compute block if it was supplied;
         # otherwise, try to get it from the liquid protocol
         try:
-            temperature = self.extra_vars['temperature']
-        except KeyError:
+            temperature = self.get_custom_attribute('temperature')
+        except AttributeError:
             try:
                 temperature = self.protocol_objs[0].get_temperature()
             except:
@@ -150,40 +150,43 @@ class DGDriver(PropertyDriver):
         return self._mask_list_with_none([
             atomic_properties.create_atomic_property("dg", temperature)
         ])
-    
 
 class CustomDriver(PropertyDriver):
     def create_atomic_properties(self):
         return self._mask_list_with_none([
+            # NOTE: The use of `vars` below means that any custom attribute
+            # that is not necessary for the property will raise an error!
             atomic_properties.create_atomic_property(self.type,
-                                                       **self.extra_vars)
+                                                     **vars(self.get_custom_attributes()))
         ])
 
     def compute(self, gridpoint, protocols):
         # note: protocols : list of BaseProtocol
         protocolObjs = self.protocol_objs
-        mu, sigma = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
+        mu, sigma = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint,
             self.type, self.surrmodel)
         prop_obj = self.property_cls(self.type, mu, sigma)
-        gridpoint.add_property_estimate(self.name, self.type, prop_obj) 
+        gridpoint.add_property_estimate(self.name, self.type, prop_obj)
 
 
 class PropertyDriverFactory:
-    
-    @classmethod
-    def create(cls, name, type, surrmodel, prots, prot_objs, ext):
-        if type == 'density':
-            return DensityDriver(name, type, surrmodel, prots, prot_objs, ext, Density)
-        elif type == 'dhvap':
-            return DHvapDriver(name, type, surrmodel, prots, prot_objs, ext, dHvap)
-        elif type == 'gamma':
-            return GammaDriver(name, type, surrmodel, prots, prot_objs, ext, Gamma)
-        elif type == 'dg':
-            return DGDriver(name, type, surrmodel, prots, prot_objs, ext, DGAlchemicalAnalysis)
-        else:
-            return CustomDriver(name, type, surrmodel, prots, prot_objs, ext, CustomProperty)
 
-    
+    @classmethod
+    def create(cls, name, type, surrmodel, prots, prot_objs):
+        if type == 'density':
+            return DensityDriver(name, type, surrmodel, prots, prot_objs,
+                                 Density)
+        elif type == 'dhvap':
+            return DHvapDriver(name, type, surrmodel, prots, prot_objs, dHvap)
+        elif type == 'gamma':
+            return GammaDriver(name, type, surrmodel, prots, prot_objs, Gamma)
+        elif type == 'dg':
+            return DGDriver(name, type, surrmodel, prots, prot_objs,
+                            DGAlchemicalAnalysis)
+        else:
+            return CustomDriver(name, type, surrmodel, prots, prot_objs,
+                                CustomProperty)
+
 def init_property_from_string(property_string, value, err):
     if (property_string == 'density'):
         return Density(value, err)
