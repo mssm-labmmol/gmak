@@ -223,23 +223,11 @@ class GridPoint:
     def get_atomic_property_from_protocol(self, name, protocol, output):
         output = os.path.abspath(output)
         ap = protocol.get_atomic_properties()[name]
-        ap.calc(self.protocol_outputs[protocol.name], output)
+        ap.calc(self.protocol_outputs[protocol.name], output, state=self.id)
         self.add_atomic_property_output(name, protocol, output)
 
     def retrieve_atomic_property_from_protocol(self, propname, protocol):
         return self.atomic_properties[protocol.name][propname]
-
-    def get_number_of_configurations_for_protocol(self, protocol):
-        if (self.is_sample):
-            confs = [0] * len(self.atomic_properties[protocol.name])
-            for i, prop_keys in enumerate(self.atomic_properties[protocol.name]):
-                confs[i] = np.loadtxt(self.atomic_properties[protocol.name][prop_keys], comments=['@','#'], usecols=(0,)).shape[0]
-                if (i > 0):
-                    if confs[i] != confs[i-1]:
-                        raise ValueError("Incompatible number of configurations in gridpoint {} for protocol {}: {} vs {}.".format(self.id, protocol.name, confs[i], confs[i-1]))
-            return confs[0]
-        else:
-            return 0
 
     def add_atomic_property_output_from_name(self, prop, protocolName, output):
         try:
@@ -252,37 +240,6 @@ class GridPoint:
     def add_atomic_property_output (self, prop, protocol, output):
         self.add_atomic_property_output_from_name(prop, protocol.name, output)
 
-    def filter_traj_in_protocol (self, protocol, properties, odir, ext):
-        if len(properties) < 1:
-            return
-        sm_props = protocol.get_all_models_props()
-        kinds = []
-        for sm, prop in sm_props:
-            if prop in properties:
-                kinds.append(sm.kind)
-            self.get_atomic_property_from_protocol(prop,
-                                                   protocol,
-                                                   odir + "/" + prop + ".xvg")
-
-        # from traj_filter
-        extract_uncorrelated_frames (self.protocol_outputs[protocol.name][ext],
-                                     self.protocol_outputs[protocol.name]['tpr'],
-                                     [self.atomic_properties[protocol.name][x] for x in properties],
-                                     odir + '/filtered_trajectory.' + ext,
-                                     [odir + '/filtered_' + prop + '.xvg' for prop in properties],
-                                     methods=kinds)
-        # update gridpoint trajectory
-        self.protocol_outputs[protocol.name][ext] = \
-                os.path.abspath(odir + '/filtered_trajectory.' + ext)
-        # update path of filtered properties
-        for x in properties:
-            self.atomic_properties[protocol.name][x] = odir + '/filtered_' + x + '.xvg'
-
-    def filter_xtc_in_protocol (self, protocol, properties, odir):
-        return self.filter_traj_in_protocol(protocol, properties, odir, 'xtc')
-
-    def filter_trr_in_protocol (self, protocol, properties, odir):
-        return self.filter_traj_in_protocol(protocol, properties, odir, 'trr')
 
     def makeSimudir(self, protocolSimudir):
         dirname = os.path.abspath(f"{protocolSimudir}/{self.id}")
@@ -361,9 +318,14 @@ class ParameterGrid:
         return obj
 
     @staticmethod
-    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples=False, validateFlag=False):
+    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel,
+                            ylabel, reweighterType, reweighterFactory,
+                            shifterFactory, shifterArgs, workdir,
+                            keep_initial_samples=False, validateFlag=False):
         from gmak.gridshifter import EmptyGridShifter
-        parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles, EmptyReweighter(), EmptyGridShifter(), workdir)
+        parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles,
+                                             EmptyReweighter(),
+                                             EmptyGridShifter(), workdir)
         parameterGrid.xlabel = xlabel
         parameterGrid.ylabel = ylabel
         parameterGrid.init = True
@@ -378,7 +340,9 @@ class ParameterGrid:
         return parameterGrid
 
     @staticmethod
-    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles, reweighterFactory, shifterFactory, shifterArgs, workdir, validateFlag):
+    def createParameterGridFromStream(stream, parSpaceGen, topologyBundles,
+                                      reweighterFactory, shifterFactory,
+                                      shifterArgs, workdir, validateFlag):
         samples       = []
         keep_initial_samples = False
         # Assumes last line read was '$grid'.
@@ -407,7 +371,13 @@ class ParameterGrid:
                     pass
                 else:
                     raise ValueError("fixsamples can only be 'yes' or 'no'")
-        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel, ylabel, reweighterType, reweighterFactory, shifterFactory, shifterArgs, workdir, keep_initial_samples, validateFlag)
+        grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles,
+                                                 samples, xlabel, ylabel,
+                                                 reweighterType,
+                                                 reweighterFactory,
+                                                 shifterFactory, shifterArgs,
+                                                 workdir, keep_initial_samples,
+                                                 validateFlag)
         return grid
 
     def initProtocolLengths(self, protocols):
@@ -547,21 +517,26 @@ class ParameterGrid:
                 logger.globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
                 gp.prepare_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
 
-    def filter_with_protocol_at_dir (self, protocol, workdir):
-        for i,gp in enumerate(self.grid_points):
-            if gp.is_sample:
-                gp.filter_xtc_in_protocol (protocol,
-                                           protocol.get_filtering_properties(),
-                                           gp.makeSimudir(workdir))
 
-    def nonfilter_with_protocol_at_dir (self, protocol, workdir):
+    def compute_and_filter_properties_with_protocol_at_dir(self, protocol, workdir):
+        skips_dict = {}
         for i,gp in enumerate(self.grid_points):
             if gp.is_sample:
-                for prop in protocol.get_nonfiltering_properties():
+                filtering_properties = protocol.get_filtering_properties()
+                for prop in protocol.get_properties():
+                    oprop = os.path.join(gp.makeSimudir(workdir), f"{prop}.xvg")
                     gp.get_atomic_property_from_protocol(
                         prop,
                         protocol,
-                        gp.makeSimudir(workdir) + "/" + prop + ".xvg")
+                        oprop)
+                    if prop in filtering_properties:
+                        ofilter = os.path.join(gp.makeSimudir(workdir),
+                                               f"filtered_{prop}.xvg")
+                        skips_dict[prop] = filter_datafile(oprop, ofilter)
+                        # update path
+                        gp.atomic_properties[protocol.name][prop] = ofilter
+        return skips_dict
+
 
     def reweight(self, protocol, workdir):
         self.reweighter.run(protocol, workdir)
@@ -599,8 +574,8 @@ class ParameterGrid:
         return self.shifter.shift(optimizer)
 
     def read_property_values_err_from_file (self, prop, propType, filename_value, filename_err):
-        values = np.loadtxt(filename_value)
-        err = np.loadtxt(filename_err)
+        values = np.loadtxt(filename_value, usecols=(-1,))
+        err = np.loadtxt(filename_err, usecols=(-1,))
         for i,x in enumerate(self.grid_points):
             x.estimated_properties[prop] = init_property_from_string(propType, values[i], err[i])
 
@@ -784,15 +759,13 @@ class ParameterGrid:
             logger.globalLogger.unindent()
             logger.globalLogger.putMessage('END PROTOCOL {}'.format(protocol.name), dated=True)
 
-        # calculate properties/filter trajectory
-        # this also calculates the properties
+        # calculate properties
         for protocol in protocols:
             simu_dir = self.makeProtocolSimudir(protocol)
-            # this deals with timeseries properties that can be filtered
-            self.filter_with_protocol_at_dir(protocol, simu_dir)
-            # this deals with the other properties (avg +/- err)
-            self.nonfilter_with_protocol_at_dir(protocol, simu_dir)
-
+            # filter properties needed
+            skips_dict = self.compute_and_filter_properties_with_protocol_at_dir(
+                protocol,
+                simu_dir)
 
         # also get parameter values
         X_ki = self.getParameterValues()
@@ -800,6 +773,8 @@ class ParameterGrid:
         # reweight
         for protocol in protocols:
             if (protocol.requires_reweight()):
+                # PLACEHOLDER FOR FILTERING THE TRAJECTORIES
+                raise NotImplementedError(f"Reweight is not supported right now.")
                 logger.globalLogger.putMessage('BEGIN REWEIGHT PROTOCOL {}'.format(protocol.name), dated=True)
                 logger.globalLogger.indent()
                 rw_dir, mbar_dir = self.makeProtocolReweightdirs(protocol)
@@ -833,16 +808,14 @@ class ParameterGrid:
                 for s, gs in enumerate(self.get_samples()):
                     prop_file = gs.retrieve_atomic_property_from_protocol (prop, protocol)
                     A_psn[p].append([])
-                    if prop in protocol.get_filtering_properties():
-                        A_psn[p][s] = np.loadtxt(prop_file, usecols=(1,))
-                    else:
-                        A_psn[p][s] = np.loadtxt(prop_file, usecols=(0,))
+                    A_psn[p][s] = np.loadtxt(prop_file, comments=['#','@'],
+                                             usecols=(-1,))
             I_s = self.get_samples_id()
             # estimate properties
             for p, (model, prop) in enumerate(interp_models_props):
                 model.computeExpectations([A_psn[p]], I_s, tuple(self.get_size()), X_ki)
                 fn_avg, fn_err = self.makePathOfPropertyEstimates(protocol, model.kind, prop)
-                model.writeExpectationsToFile(fn_avg, fn_err, 0) # note that it is always property 0!
+                model.writeExpectationsToFile(fn_avg, fn_err, 0)
 
     def run(self, protocols, optimizer, surrogateModelHash, properties,
             protocolsHash, resultsAssembler, plotFlag=False):

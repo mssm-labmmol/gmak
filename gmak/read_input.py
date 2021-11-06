@@ -206,9 +206,11 @@ def read_compute(blockdict: dict,
         type,
         sms,
         prots,
-        [protocols[p] if p != "none" else None for p in prots])
+        [protocols[p] if p != "none" else None for p in prots],
+        list(systems.values()))
     propDriver.set_custom_attributes_from_blockdict(
-        blockdict, systems, coordinates, protocols)
+        blockdict, systems, coordinates, protocols,
+        exclude=base_options)
     output_protocolsHash[name] = prots
     aps = propDriver.create_atomic_properties()
     for ap, prot in zip(aps, prots):

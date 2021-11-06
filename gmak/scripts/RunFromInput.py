@@ -22,17 +22,16 @@ from gmak.gridpoint_selector import *
 
 import gmak.runcmd as runcmd
 import gmak.simulate as simulate
-import gmak.custom_atomic_properties as custom_atomic_properties
-import gmak.custom_protocols as custom_protocols
-import gmak.custom_surrogate_models as custom_surrogate_models
-import gmak.custom_scores as custom_scores
-import gmak.custom_topologies as custom_topologies
-import gmak.custom_gridshifter as custom_gridshifter
 
 if ('--legacy' in sys.argv):
     bool_legacy = True
 else:
     bool_legacy = False
+
+# Run-time custom files.
+if os.path.isfile("custom.py"):
+    sys.path.insert(0, '.')
+    import custom
 
 #plotFlag = not ('--no-plot' in sys.argv)
 plotFlag = False # never plot

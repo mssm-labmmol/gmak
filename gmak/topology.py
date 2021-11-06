@@ -346,7 +346,8 @@ class CustomTopologyOutputSetter(AbstractTopologyOutputSetter):
 
 class TopologyBundle:
 
-    def __init__(self, topology, topologyOutput, topologyOutputSetter):
+    def __init__(self, name, topology, topologyOutput, topologyOutputSetter):
+        self.name = name
         self.topology = topology
         self.topologyOutput = topologyOutput
         self.topologyOutputSetter = topologyOutputSetter
@@ -377,6 +378,7 @@ class TopologyBundleFactory:
         # Extract data from blockDict.
         nonbondedForcefield = forcefield[0]
         bondedForcefield    = forcefield[1]
+        _name = blockDict["names"]
         try:
             itpPath = blockDict['itp']
         except KeyError:
@@ -393,7 +395,7 @@ class TopologyBundleFactory:
         _top.updateBondedForcefield(bondedForcefield)
         _top.updateNonbondedForcefield(nonbondedForcefield)
         # Create and return bundle.
-        return TopologyBundle(_top, _out, _set)
+        return TopologyBundle(_name, _top, _out, _set)
 
     @classmethod
     def _createBundleCustom(cls, customName, blockDict, outputPreffix,
@@ -405,7 +407,8 @@ class TopologyBundleFactory:
         _set = CustomTopologyOutputSetter(outputPreffix, _gf)
         _out = CustomTopologyOutput(_writer, blockDict)
         _top = forcefield
-        return TopologyBundle(_top, _out, _set)
+        _name = blockDict["names"]
+        return TopologyBundle(_name, _top, _out, _set)
 
     @classmethod
     def addCustom(cls, name, writer, getfiles):

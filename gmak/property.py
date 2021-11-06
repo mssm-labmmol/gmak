@@ -137,6 +137,7 @@ class GammaDriver(PropertyDriver):
 
 
 class DGDriver(PropertyDriver):
+
     def create_atomic_properties(self):
         # get temperature from $compute block if it was supplied;
         # otherwise, try to get it from the liquid protocol
@@ -151,14 +152,28 @@ class DGDriver(PropertyDriver):
             atomic_properties.create_atomic_property("dg", temperature)
         ])
 
+
 class CustomDriver(PropertyDriver):
+
+    def __init__(self, name, type, surrmodel, prots, prot_objs,
+                 system_objs, property_class):
+
+        super().__init__(name, type, surrmodel, prots, prot_objs,
+                         property_class)
+        # find desired system
+        if len(prot_objs) > 1:
+            raise ValueError(f"Custom property only accepts one protocol.")
+        for system in system_objs:
+            if system.name == prot_objs[0].system:
+                desired_system = system
+                break
+        self.system_obj = desired_system
+
     def create_atomic_properties(self):
-        return self._mask_list_with_none([
-            # NOTE: The use of `vars` below means that any custom attribute
-            # that is not necessary for the property will raise an error!
-            atomic_properties.create_atomic_property(self.type,
-                                                     **vars(self.get_custom_attributes()))
-        ])
+        ap = atomic_properties.create_atomic_property(self.type,
+                                                      system=self.system_obj)
+        self.clone_custom_attributes(ap)
+        return self._mask_list_with_none([ap])
 
     def compute(self, gridpoint, protocols):
         # note: protocols : list of BaseProtocol
@@ -172,7 +187,7 @@ class CustomDriver(PropertyDriver):
 class PropertyDriverFactory:
 
     @classmethod
-    def create(cls, name, type, surrmodel, prots, prot_objs):
+    def create(cls, name, type, surrmodel, prots, prot_objs, system_objs):
         if type == 'density':
             return DensityDriver(name, type, surrmodel, prots, prot_objs,
                                  Density)
@@ -185,7 +200,7 @@ class PropertyDriverFactory:
                             DGAlchemicalAnalysis)
         else:
             return CustomDriver(name, type, surrmodel, prots, prot_objs,
-                                CustomProperty)
+                                system_objs, CustomProperty)
 
 def init_property_from_string(property_string, value, err):
     if (property_string == 'density'):

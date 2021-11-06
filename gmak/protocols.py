@@ -63,7 +63,6 @@ class DefaultExtendMixin:
         errs_tols = gridpoint.get_errs_tols(optimizer, self, protocolsHash)
         last_lenspec = gridpoint.getProtocolLength(self)
         maxSteps = self.maxSteps
-
         lenspec = None
         for prop in errs_tols.keys():
             err = errs_tols[prop]['err']
@@ -375,7 +374,6 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
                  ensemble,
                  maxSteps=None,
                  minFactor=None):
-        
         self.name = name
         self.core_protocols = core_protocols
         self.ensemble = ensemble
@@ -388,9 +386,13 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
         self.properties = properties
         self.surrogate_models = []
         if maxSteps is None:
-           raise ValueError("GmxAlchemicalProtocol must define maxsteps.")
+            raise ValueError("GmxAlchemicalProtocol must define maxsteps.")
+        else:
+            self.maxSteps = maxSteps
         if minFactor is None:
             self.minFactor = 1.1
+        else:
+            self.minFactor = minFactor
         # This is initialized later on.
         self.atomic_properties = {}
 
@@ -598,10 +600,9 @@ class GmxProtocol(GmxBaseProtocol,
                 self,
                 {'top': topo})
 
-            
+
 class CustomProtocol(BaseProtocol,
                      CustomizableAttributesMixin):
-    _has_pv = False
 
     @staticmethod
     def _default_calc_initial_len(args_dict):
@@ -611,7 +612,12 @@ class CustomProtocol(BaseProtocol,
     def _default_calc_extend(errs_tols, length):
         return None
 
-    def __init__(self, simulator, calc_initial_len=None, calc_extend=None):
+    @staticmethod
+    def _default_get_last_frame(protocol_output):
+        raise NotImplementedError("Can't get last frame for custom protocol.")
+
+    def __init__(self, simulator, calc_initial_len=None, calc_extend=None,
+                 get_last_frame=None):
         self.properties = []
         # This is initialized later on.
         self.atomic_properties = {}
@@ -625,13 +631,16 @@ class CustomProtocol(BaseProtocol,
             self._calc_extend = self._default_calc_extend
         else:
             self._calc_extend = calc_extend
+        if get_last_frame is None:
+            self._get_last_frame = self._default_get_last_frame
+        else:
+            self._get_last_frame = get_last_frame
 
     def calc_initial_len(self):
         """
         Wrapper for self._calc_initial_len.
         """
-        args = vars(self)
-        return self._calc_initial_len(args)
+        return self._calc_initial_len(self.get_custom_attributes())
 
     def calc_extend(self, gridpoint, optimizer, protocolsHash):
         """
@@ -639,8 +648,13 @@ class CustomProtocol(BaseProtocol,
         """
         errs_tols = gridpoint.get_errs_tols(optimizer, self, protocolsHash)
         length = gridpoint.getProtocolLength(self)
+        return self._calc_extend(errs_tols, length,
+                                 self.get_custom_attributes())
 
-        return self._calc_extend(errs_tols, length)
+    def get_last_frame(self, gridpoint):
+        protocol_output = gridpoint.protocol_outputs[self.name]
+        return ConfigurationFactory.from_file(self._get_last_frame(protocol_output))
+
 
     @classmethod
     def from_dict(cls, bd, systems, coordinates, protocols):
@@ -670,14 +684,17 @@ class CustomProtocol(BaseProtocol,
         return out
 
     def run_gridpoint_at_dir(self, gridpoint, workdir):
+        initial_length = self.calc_initial_len()
         length = gridpoint.getProtocolLength(self)
         conf = self.coords.construct_configuration(
             os.path.join(workdir, "start.gro"))
-        out = self.simulator(gridpoint.getTopologyPath(self.system),
-                             conf.get_path(),
-                             vars(self),
-                             length,
-                             workdir)
+        out = self.simulator(
+            length,
+            gridpoint.getTopologyPath(self.system),
+            conf.get_path(),
+            initial_length != length,
+            self.get_custom_attributes(),
+            workdir)
         gridpoint.add_protocol_output(self, out)
 
     def prepare_gridpoint_at_dir(self, gridpoint, workdir):
@@ -698,22 +715,52 @@ class CustomProtocolFactory:
 
     @classmethod
     def add_custom_protocol(cls, type_name, simulator,
-                            calc_initial_len=None, calc_extend=None):
-        cls.ptable[type_name] = (simulator, calc_initial_len, calc_extend)
+                            calc_initial_len=None, calc_extend=None,
+                            get_last_frame=None):
+        cls.ptable[type_name] = (simulator, calc_initial_len, calc_extend,
+                                 get_last_frame)
 
     @classmethod
     def create(cls, type_name):
         return CustomProtocol(cls.ptable[type_name][0],
                               calc_initial_len=cls.ptable[type_name][1],
-                              calc_extend=cls.ptable[type_name][2])
+                              calc_extend=cls.ptable[type_name][2],
+                              get_last_frame=cls.ptable[type_name][3])
 
-    
+
 def add_custom_protocol(type_name, simulator, calc_initial_len=None,
-                        calc_extend=None):
-    CustomProtocolFactory.add_custom_protocol(type_name, simulator,
-                                              calc_initial_len, calc_extend)
+                        calc_extend=None, get_last_frame=None):
+    """
+    Adds a custom protocol to the program. In the input file, it can be
+    referenced with the type ``type_name``.
 
-    
+    :param type_name: Name of the type of the custom protocol.
+    :type type_name: str
+    :param simulator: The simulator function (see
+        :py:func:`~gmak.custom_protocols.simulator`)
+    :type simulator: callable
+    :param calc_initial_len: (optional) The function to calculate the initial
+        length of the production run (see
+        :py:func:`~gmak.custom_protocols.calc_inital_len`). This is used only
+        when support for extensions is desired. Defaults to :py:obj:`None`,
+        indicating that extensions are not desired.
+    :type calc_initial_len: callable
+    :param calc_extend: (optional) The function to calculate the new length of
+        the production run (see :py:func:`~gmak.custom_protocols.calc_extend`).
+        This is used only when support for extensions is desired. Defaults to
+        :py:obj:`None`, indicating that extensions are not desired.
+    :type calc_extend: callable
+    :param get_last_frame: (optional) The function to extract the last frame of
+        a production run (see :py:func:`~gmak.custom_protocols.get_last_frame`).
+        This is used only when the coordinates for the protocol follow those of
+        another. Defaults to :py:obj:`None`.
+    :type get_last_frame: callable
+    """
+    CustomProtocolFactory.add_custom_protocol(type_name, simulator,
+                                              calc_initial_len, calc_extend,
+                                              get_last_frame)
+
+
 def create_protocols(bd, protocols, coordinates, systems, grid):
     _type = bd['type'][0]
     if _type == 'gmx':

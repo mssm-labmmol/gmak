@@ -114,7 +114,7 @@ class StandardReweighterInterface(ReweighterInterface):
 
     def _calculatePropertiesCopy(self, inputData, rwData, prop, out):
         copyfile(inputData[prop], out)
-        return list(np.loadtxt(out, comments=['@','#'], usecols=(1,)))
+        return list(np.loadtxt(out, comments=['@','#'], usecols=(-1,)))
                 
     def _calculatePropertiesAnalyze(self, inputData, rwData, prop, out):
         return list(self.analyze(rwData, prop, out))

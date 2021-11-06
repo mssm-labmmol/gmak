@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import gmak.traj_ana as traj_ana
+from gmak.custom_attributes import CustomizableAttributesMixin
 
 class PropertyNotInitialized(Exception):
     pass
@@ -31,7 +32,7 @@ class BaseAtomicProperty(ABC):
         else:
             raise NotImplementedError
 
-    def calc(self, input_traj, out_path):
+    def calc(self, input_traj, out_path, state=None):
         return self.calculator(input_traj, out_path)
 
 
@@ -62,7 +63,7 @@ class GmxPolcorr(BaseAtomicProperty):
         self.mu = mu
         self.alpha = alpha
 
-    def calc(self, input_traj, out_path):
+    def calc(self, input_traj, out_path, state=None):
         traj_ana.obtain_polcorr(input_traj['xtc'],
                                 input_traj['edr'],
                                 input_traj['gro'],
@@ -80,7 +81,7 @@ class GmxDG(BaseAtomicProperty):
         self.temperature = temperature
         self.is_timeseries = False
 
-    def calc(self, input_traj, out_path):
+    def calc(self, input_traj, out_path, state=None):
         # in this particular case, we expect each member of input_traj to be
         # a list of files for each core protocol
         # ------------------------------------------------------------------------
@@ -137,11 +138,24 @@ class GmxPropertyFactory:
             raise PropertyNotInitialized
 
 
-class CustomAtomicProperty(BaseAtomicProperty):
-    def __init__(self, name, calculator, is_timeseries):
+class CustomAtomicProperty(BaseAtomicProperty,
+                           CustomizableAttributesMixin):
+
+    def __init__(self, name, calculator, is_timeseries, *args, **kwargs):
         self.name = name
-        self.calculator = calculator
+        self._calculator = calculator
         self.is_timeseries = is_timeseries
+        self.system = kwargs['system']
+
+    def calc(self, input_traj, out_path, state=None):
+        return self.calculator(input_traj, out_path, state)
+
+    def calculator(self, input_traj, out_path, state):
+        topology = self.system.getPathsForStatepath(state)
+        prop_data = self._calculator(topology,
+                                     input_traj,
+                                     self.get_custom_attributes())
+        np.savetxt(out_path, prop_data)
 
 
 class CustomAtomicPropertyFactory:
@@ -155,12 +169,27 @@ class CustomAtomicPropertyFactory:
                             'is_timeseries': is_timeseries}
 
     @classmethod
-    def create_custom_atomic_property(cls, name):
+    def create_custom_atomic_property(cls, name, *args, **kwargs):
         return CustomAtomicProperty(name, cls.ptable[name]['calculator'],
-                                    cls.ptable[name]['is_timeseries'])
+                                    cls.ptable[name]['is_timeseries'],
+                                    *args, **kwargs)
 
-def add_custom_atomic_property(name, calculator, is_timeseries):
-    CustomAtomicPropertyFactory.add_custom_atomic_property(name,
+def add_custom_property(type_name, calculator, is_timeseries):
+    """
+    Adds a custom property to the program. In the input file, it can be
+    referenced with the type ``type_name``.
+
+    :param type_name: Name of the type of the custom property.
+    :type type_name: str
+    :param calculator: The function used to calculate the custom property (see
+        :py:func:`~gmak.custom_properties.calculator`)
+    :type calculator: callable
+    :param is_timeseries: ``True`` indicates that the custom property is
+        obtained as a timeseries; ``False``, as a tuple ``(EA, dEA)`` with the
+        expected value and statistical uncertainty.
+    :type is_timeseries: bool
+    """
+    CustomAtomicPropertyFactory.add_custom_atomic_property(type_name,
                                                            calculator,
                                                            is_timeseries)
 
