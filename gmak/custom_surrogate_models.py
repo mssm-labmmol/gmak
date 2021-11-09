@@ -1,83 +1,38 @@
 from gmak.surrogate_model import add_custom_surrogate_model
 from gmak.cartesiangrid import flat2tuple
 
-"""
-    To add your own surrogate model to the program, there are two
-steps.  First, you must implement the core function that calculates
-the property estimates and errors for every point of the
-parameter-space grid based on the estimates and errors of the sampled
-parameter-space points. This function (let's say, `compute`) must have
-the following signature:
+def compute(EA_s, dEA_s, I_s, gridshape, X_ki):
+    """
+    Computes the expected values and uncertainties of a given property for the
+    entire grid.
 
-    compute(EA_s, dEA_s, I_s, gridshape, X_ki) -> EA_k, dEA_k
-
-where
-
-Input:
-    EA_s: flat 1D np.ndarray with the average values of the properties
-          for each sampled point.
-
-    dEA_s: flat 1D np.ndarray with the uncertainties of the properties
-           for each sampled point.
-
-    I_s: list with the flat indexes of the sampled points.
-
-    gridshape: tuple with the shape of the grid
-
-    X_ki: np.ndarray with parameter-space values for each grid point.
-          The first index refers to the flat position in the grid, and
-          the second index refers to the coordinate of the
-          parameter-space point.  For example, X_ki[0,0] is the first
-          parameter-space coordinate of the first point of the grid.
-
-Returns:
-    EA_k: flat 1D np.ndarray with the estimated values of the
-          properties for all points in the grid.
-
-    dEA_k: flat 1D np.ndarray with the estimate uncertainties of the
-           properties for all points in the grid.
-
-If convenient, you can convert flat indexes into tuple indexes using
-the function `flat2tuple` imported from the `cartesiangrid` module.
-For example:
-
->>> flat2tuple((10,10), 5)
-(0,5)
-
->>> flat2tuple((10,10), 10)
-(1,0)
-
-In this case, it may also be convenient to convert the flat arrays
-`EA_s` and `dEA_s` into multidimensional arrays using the
-`numpy.reshape` function, with the parameter `gridshape` as the
-desired shape. Just remember that you must return flat arrays in the
-end, so, if you use this approach, also use the
-`numpy.ndarray.flatten` method to flatten the estimated arrays EA_k,
-dEA_k.
-
-"""
-
-def example_compute(EA_s, dEA_s, I_s, gridshape, X_ki):
-    import numpy as np
-    flattened_size = np.prod(gridshape)
-    return np.zeros((flattened_size,)), np.zeros((flattened_size,))
-
-def example_tests(EA_s, dEA_s, I_s, gridshape, X_ki):
-    # This is used for tests, it always returns a value that is the
-    # average of the main parameters for the gridpoint.
-    import numpy as np
-    EA_k = []
-    dEA_k = []
-    for X in X_ki:
-        EA_k.append(np.mean(X))
-        dEA_k.append(np.std(X))
-    return np.array(EA_k), np.array(dEA_k)
+    :param EA_s: A 1D array of shape ``(NSAMP,)`` with the average values of the
+        property for each sampled point.
+    :type EA_s: np.ndarray
+    :param dEA_s: A 1D array of shape ``(NSAMP,)`` with the uncertainties of the
+        property for each sampled point.
+    :type dEA_s: np.ndarray
+    :param I_s: A list of length ``NSAMP``with the linear indexes of the
+        sampled grid points.
+    :type I_s: list
+    :param gridshape: A tuple with the grid dimensions.
+    :type gridshape: tuple
+    :param X_ki: A 2D array with the parameter-space values for each grid point
+        (more specifically, of the :ref:`main variation`). The first index is
+        the linear index, and the second index is the coordinate the
+        parameter-space point.  For example, ``X_ki[1,0]`` is the value of
+        the first parameter of the :ref:`main variation` for the grid point
+        with linear index equal to 1.
+    :type X_ki: np.ndarray
+    :return: A tuple ``(EA_k, dEA_k)`` containing the estimated values and
+        uncertainties, respectively, of the property for each grid point.
+        ``EA_k`` and ``dEA_k`` are 1D arrays indexed by the linear index of
+        the grid point.
+    :rtype: tuple
 
 
-add_custom_surrogate_model("smexample",
-                           compute=example_compute,
-                           corners=True)
+    .. note:: The function :py:func:`gmak.cartesiangrid.flat2tuple` can be
+       used to convert a linear to a tuple index if desired.
+    """
+    pass
 
-add_custom_surrogate_model("smtest",
-                           compute=example_tests,
-                           corners=True)

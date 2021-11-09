@@ -1,9 +1,3 @@
-"""This file defines the base class SurrogateModel and the derived
-classes for each type of surrogate model: MBAR, the three
-interpolation methods nearest neighbor, linear and (bi)cubic spline
-interpolation, and Gaussian Process Regression.
-"""
-
 # TODO: Rewrite it so that there are two types of SurrogateModel:
 # those based on Reweight (MBAR) and those based on Avgs and Stds (all
 # interpolations + GPR).
@@ -458,13 +452,10 @@ class CustomSurrogateModel(SurrogateModel, AvgStdMixin):
 
     reweight = False
 
-    def __init__(self, kind, compute, corners=None):
+    def __init__(self, kind, compute, corners=False):
         self.kind = kind
         self.compute = compute
-        if corners is not None:
-            self.corners = corners
-        else:
-            self.corners = False
+        self.corners = corners
 
     def computeExpectations(self, A_psn, I_s, gridShape, X_ki):
         (A_ps, dA_ps) = self._computeAvgStd(A_psn)
@@ -484,7 +475,7 @@ class CustomSurrogateModelFactory:
     ptable = {}
 
     @classmethod
-    def add_custom_surrogate_model(cls, type_name, compute, corners=None):
+    def add_custom_surrogate_model(cls, type_name, compute, corners=False):
         cls.ptable[type_name] = (compute, corners)
 
     @classmethod
@@ -498,7 +489,20 @@ class CustomSurrogateModelFactory:
                                                f" model of type {type_name}.")
 
 
-def add_custom_surrogate_model(type_name, compute, corners=None):
+def add_custom_surrogate_model(type_name, compute, corners=False):
+    """
+    Adds a custom surrogate model to the program. In the input file, it can be
+    referenced with the type ``type_name``.
+
+    :param type_name: Name of the type of the custom surrogate model
+    :type type_name: str
+    :param compute: The surrogate model function (see
+        :py:func:`~gmak.custom_surrogate_models.compute`)
+    :type compute: callable
+    :param corners: Indicates whether the surrogate model requires the corners
+        of the grid to be simulated (e.g., interpolation does). Defaults to ``False``.
+    :type corners: bool
+    """
     CustomSurrogateModelFactory.add_custom_surrogate_model(type_name,
                                                            compute,
                                                            corners)

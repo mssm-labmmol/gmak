@@ -311,5 +311,18 @@ class gridOptimizer:
             nTested += 1
 
 
-def add_custom_score(name, calc_score, calc_score_err=None):
-    ScoreFactory.add_custom_score(name, calc_score, calc_score_err)
+def add_custom_score(type_name, calc_score, calc_score_err=None):
+    """
+    Adds a custom score function to the program. In the input file, it can be
+    referenced with the type ``type_name``.
+
+    :param type_name: Name of the type of the custom function
+    :type type_name: str
+    :param calc_score: The score function (see :py:func:`~gmak.custom_scores.calc_score`)
+    :type calc_score: callable
+    :param calc_score_err: (optional) The score uncertainty function (see
+        :py:func:`~gmak.custom_scores.calc_score_err`). Defaults to
+        :py:obj:`None`, which means that the uncertainties are not calculated.
+    :type calc_score_err: callable
+    """
+    ScoreFactory.add_custom_score(type_name, calc_score, calc_score_err)

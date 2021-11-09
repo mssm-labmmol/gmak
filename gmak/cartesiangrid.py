@@ -71,6 +71,17 @@ class CartesianGrid:
         return list(np.ndindex(self.lens))
 
 def flat2tuple(gridshape, idx):
+    """
+    For a grid with dimensions ``gridshape``, convert a linear index ``idx`` to
+    a tuple index.
+
+    :param gridshape: A tuple with the grid dimensions.
+    :type gridshape: tuple
+    :param idx: The linear index to be converted.
+    :type idx: int
+    :return: The tuple index corresponding to the linear index ``idx``.
+    :rtype: tuple
+    """
     return CartesianGrid(gridshape).linear2tuple(idx)
 
 class CartesianGridIterator:
