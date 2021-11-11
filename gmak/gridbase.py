@@ -21,7 +21,7 @@ import copy
 import pickle
 import gmak.logger as logger
 from gmak.state           import *
-import gmak.atomic_properties as atomic_properties
+import gmak.component_properties as component_properties
 
 def replaceMacros(fn, macros):
     print("Replacing macros in %s:" % fn)
@@ -88,7 +88,7 @@ def core_parallel_clean_reweight_i_at_j (aux_input_list):
         # If file already exists, no need to create it again, just set the variable.
         if not (os.path.isfile(out_file)):
             # copy from original trajectory
-            original_file = gi.retrieve_atomic_property_from_protocol('pV', protocol)            
+            original_file = gi.retrieve_component_property_from_protocol('pV', protocol)            
             runcmd.run("cp {} {}".format(original_file, out_file))
     # Delete trajectory files (the ones that are big).
     # We don't need to delete the xtc file because it corresponds to the original trajectory.
@@ -116,9 +116,9 @@ class GridPoint:
         protocol_outputs: Dictionary containing final output files of
             the protocols executed.
 
-        atomic_properties: 2-d dictionary containing output files for
+        component_properties 2-d dictionary containing output files for
             the properties extracted,
-            e.g. atomic_properties['liquid']['potential'] is the file
+            e.g. component_properties['liquid']['potential'] is the file
             containing potential energies for protocol liquid.
 
         rw_outputs: A dictionary where keys are other gridpoints and
@@ -139,7 +139,7 @@ class GridPoint:
         self.is_sample = False
         self.is_simulated = []
         self.protocol_outputs = {}
-        self.atomic_properties = {}
+        self.component_properties = {}
         # self.rw_outputs = {}
         # self.rw_outputs[self.id] = {}
         self.estimated_properties = {}
@@ -220,25 +220,25 @@ class GridPoint:
             self.rw_outputs[gp_other.id] = {}
             self.rw_outputs[gp_other.id][protocol.name] = output
 
-    def get_atomic_property_from_protocol(self, name, protocol, output):
+    def get_component_property_from_protocol(self, name, protocol, output):
         output = os.path.abspath(output)
-        ap = protocol.get_atomic_properties()[name]
+        ap = protocol.get_component_properties()[name]
         ap.calc(self.protocol_outputs[protocol.name], output, state=self.id)
-        self.add_atomic_property_output(name, protocol, output)
+        self.add_component_property_output(name, protocol, output)
 
-    def retrieve_atomic_property_from_protocol(self, propname, protocol):
-        return self.atomic_properties[protocol.name][propname]
+    def retrieve_component_property_from_protocol(self, propname, protocol):
+        return self.component_properties[protocol.name][propname]
 
-    def add_atomic_property_output_from_name(self, prop, protocolName, output):
+    def add_component_property_output_from_name(self, prop, protocolName, output):
         try:
-            self.atomic_properties[protocolName][prop] = output
+            self.component_properties[protocolName][prop] = output
         except KeyError:
-            # this means atomic_properties[protocol-name] has not been initialized
-            self.atomic_properties[protocolName] = {}
-            self.atomic_properties[protocolName][prop] = output
+            # this means component_properties[protocol-name] has not been initialized
+            self.component_properties[protocolName] = {}
+            self.component_properties[protocolName][prop] = output
 
-    def add_atomic_property_output (self, prop, protocol, output):
-        self.add_atomic_property_output_from_name(prop, protocol.name, output)
+    def add_component_property_output (self, prop, protocol, output):
+        self.add_component_property_output_from_name(prop, protocol.name, output)
 
 
     def makeSimudir(self, protocolSimudir):
@@ -525,7 +525,7 @@ class ParameterGrid:
                 filtering_properties = protocol.get_filtering_properties()
                 for prop in protocol.get_properties():
                     oprop = os.path.join(gp.makeSimudir(workdir), f"{prop}.xvg")
-                    gp.get_atomic_property_from_protocol(
+                    gp.get_component_property_from_protocol(
                         prop,
                         protocol,
                         oprop)
@@ -534,7 +534,7 @@ class ParameterGrid:
                                                f"filtered_{prop}.xvg")
                         skips_dict[prop] = filter_datafile(oprop, ofilter)
                         # update path
-                        gp.atomic_properties[protocol.name][prop] = ofilter
+                        gp.component_properties[protocol.name][prop] = ofilter
         return skips_dict
 
 
@@ -557,10 +557,10 @@ class ParameterGrid:
             self.prop_drivers = dict()
             self.prop_drivers[prop_driver.name] = prop_driver
 
-    def compute_final_properties(self, protocols):
+    def compute_final_properties(self):
         for prop_driver in self.prop_drivers.values():
             for gridpoint in self.grid_points:
-                prop_driver.compute(gridpoint, protocols)
+                prop_driver.compute(gridpoint)
 
     def setNewCenterForParameters(self, i):
         self.parSpaceGen.setNewCenter(i)
@@ -572,12 +572,6 @@ class ParameterGrid:
     def shift (self, optimizer):
         optimizer.reset()
         return self.shifter.shift(optimizer)
-
-    def read_property_values_err_from_file (self, prop, propType, filename_value, filename_err):
-        values = np.loadtxt(filename_value, usecols=(-1,))
-        err = np.loadtxt(filename_err, usecols=(-1,))
-        for i,x in enumerate(self.grid_points):
-            x.estimated_properties[prop] = init_property_from_string(propType, values[i], err[i])
 
     def save_property_values_to_file (self, prop, optimizer):
         # make data
@@ -806,7 +800,7 @@ class ParameterGrid:
             for p, (model, prop) in enumerate(interp_models_props):
                 A_psn.append([])
                 for s, gs in enumerate(self.get_samples()):
-                    prop_file = gs.retrieve_atomic_property_from_protocol (prop, protocol)
+                    prop_file = gs.retrieve_component_property_from_protocol (prop, protocol)
                     A_psn[p].append([])
                     A_psn[p][s] = np.loadtxt(prop_file, comments=['#','@'],
                                              usecols=(-1,))
@@ -841,7 +835,7 @@ class ParameterGrid:
 
         self.make_grid_for_protocols(protocols, optimizer)
 
-        self.compute_final_properties(protocols)
+        self.compute_final_properties()
 
         for prop in properties:
             referenceValue = optimizer.referenceValues[prop]
@@ -923,69 +917,6 @@ class ParameterGrid:
                  protocolsHash,
                  resultsAssembler,
                  plotFlag)
-
-    #def create_refined_subgrid(self, factors_list: list, model_str: str, propid2type: dict):            
-    def create_refined_subgrid(self, factors_list, model_str, propid2type):
-        # first check everything is compatible
-        if (len(factors_list) != self.dim):
-            raise ValueError
-        for a_i in factors_list:
-            if not(isinstance(a_i, int)) or not(a_i >= 1):
-                raise ValueError
-        # initialize model
-        model = init_surrogate_model_from_string(model_str, False)
-        if (model.kind == 'mbar'):
-            raise ValueError("Can't use mbar for generating subgrid.")
-        # copy this grid and alter data
-        subgrid = ParameterGrid()
-        subgrid.xlabel = self.xlabel
-        subgrid.ylabel = self.ylabel
-        subgrid.dim = self.dim 
-        subgrid.size = [int(a_i * d_i - a_i + 1) for a_i, d_i in zip(factors_list, self.size)]
-        subgrid.linear_size = int(np.prod(subgrid.size))
-        # the list of grid_points is a bit tricky to be created
-        # what needs to be done is the following:
-        #
-        #     a - If idx does not correspond to an old sample, create a new empty grid point with id = idx.
-        #     b - If idx corresponds to an old estimated point, copy the corresponding grid point from self.grid_points[idx]
-        #
-        # by definition of refinement, an idx corresponds to an old
-        # estimated point iff each coordinate x_i of linear2tuple(idx) is
-        # such that x_i % a_i == 0, where a_i \in factors_list.
-        subgrid.grid_points = [None] * subgrid.linear_size
-        I_e = []
-        for gp in self.grid_points:
-            old_coordinates = list(self.linear2tuple(gp.id))
-            new_coordinates = [int(x_i * a_i) for x_i, a_i in zip(old_coordinates, factors_list)]
-            new_linear_position = subgrid.tuple2linear(tuple(new_coordinates))
-            subgrid.grid_points[new_linear_position] = copy.deepcopy(gp)
-            # change id
-            subgrid.grid_points[new_linear_position].id = new_linear_position
-            I_e.append(new_linear_position)
-        # those that do not come from old estimated points become new grid points
-        for idx, gp in enumerate(subgrid.grid_points):
-            if (gp is None):
-                subgrid.grid_points[idx] = GridPoint('', idx)
-        # re-build property matrix for estimation
-        list_of_property_names = list(subgrid.grid_points[I_e[0]].estimated_properties.keys())
-        A_pe = [None] * len(list_of_property_names)
-        dA_pe = [None] * len(list_of_property_names)
-        for p, prop_id in enumerate(list_of_property_names):
-            A_pe[p] = [None] * self.linear_size # self.linear_size corresponds to the number of previously estimated points
-            dA_pe[p] = [None] * self.linear_size # self.linear_size corresponds to the number of previously estimated points            
-            for e in range(self.linear_size):
-                A_pe[p][e] = subgrid.grid_points[I_e[e]].get_property_estimate(prop_id)
-                dA_pe[p][e] = subgrid.grid_points[I_e[e]].get_property_err(prop_id)
-        A_pe = np.array(A_pe)
-        dA_pe = np.array(dA_pe)
-        (EA_pk, dEA_pk) = model.computeExpectationsFromAvgStd(A_pe, dA_pe, I_e, tuple(subgrid.size))
-        for p, prop_id in enumerate(list_of_property_names):
-            for gp in subgrid.grid_points:
-                propertyObj = init_property_from_string(propid2type[prop_id], EA_pk[p, gp.id], dEA_pk[p, gp.id])
-                gp.add_property_estimate(prop_id, propid2type[prop_id], propertyObj)
-
-        # return new instance
-        return subgrid
 
     def setExtendedProtocolLengths(self, protocols, optimizer, protocolsHash):
         """

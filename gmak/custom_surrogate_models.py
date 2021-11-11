@@ -12,7 +12,7 @@ def compute(EA_s, dEA_s, I_s, gridshape, X_ki):
     :param dEA_s: A 1D array of shape ``(NSAMP,)`` with the uncertainties of the
         property for each sampled point.
     :type dEA_s: np.ndarray
-    :param I_s: A list of length ``NSAMP``with the linear indexes of the
+    :param I_s: A list of length ``NSAMP`` with the linear indexes of the
         sampled grid points.
     :type I_s: list
     :param gridshape: A tuple with the grid dimensions.

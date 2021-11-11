@@ -2,7 +2,7 @@ import numpy as np
 import gmak.runcmd as runcmd
 import os
 from shutil import copyfile
-import gmak.atomic_properties as atomic_properties
+import gmak.component_properties as component_properties
 from abc import ABC, abstractmethod
 from gmak.custom_attributes import CustomizableAttributesMixin
 
@@ -20,12 +20,12 @@ class PropertyDriver(ABC,
         self.property_cls = property_class
 
     @abstractmethod
-    def create_atomic_properties(self):
+    def create_component_properties(self):
         pass
 
     # Basic implementation that works for simple properties like
     # density, gamma, dg
-    def compute(self, gridpoint, protocols):
+    def compute(self, gridpoint):
         # note: protocols : list of BaseProtocol
         protocolObjs = self.protocol_objs
         mu, sigma = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
@@ -44,13 +44,13 @@ class PropertyDriver(ABC,
 
 
 class DensityDriver(PropertyDriver):
-    def create_atomic_properties(self):
+    def create_component_properties(self):
         return self._mask_list_with_none([
-            atomic_properties.create_atomic_property("density")
+            component_properties.create_component_property("density")
         ])
 
 class DHvapDriver(PropertyDriver):
-    def create_atomic_properties(self):
+    def create_component_properties(self):
         try:
             mu = self.get_custom_attribute('mu')
         except AttributeError:
@@ -60,18 +60,18 @@ class DHvapDriver(PropertyDriver):
         except AttributeError:
             alpha = None
         return self._mask_list_with_none([
-            atomic_properties.create_atomic_property("potential"),
-            atomic_properties.create_atomic_property("potential"),
-            atomic_properties.create_atomic_property("polcorr",
+            component_properties.create_component_property("potential"),
+            component_properties.create_component_property("potential"),
+            component_properties.create_component_property("polcorr",
                                                      mu=mu,
                                                      alpha=alpha)
         ])
 
 
-    def compute(self, gridpoint, protocols):
+    def compute(self, gridpoint):
         protocolObjs = self.protocol_objs
         propertyTypes = [ap.name if ap is not None else None for ap in
-                         self.create_atomic_properties()]
+                         self.create_component_properties()]
 
         if propertyTypes[0] is not None:
             mu_u_liq, sigma_u_liq = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint, 
@@ -130,15 +130,15 @@ class DHvapDriver(PropertyDriver):
 
 
 class GammaDriver(PropertyDriver):
-    def create_atomic_properties(self):
+    def create_component_properties(self):
         return self._mask_list_with_none([
-            atomic_properties.create_atomic_property("gamma")
+            component_properties.create_component_property("gamma")
         ])
 
 
 class DGDriver(PropertyDriver):
 
-    def create_atomic_properties(self):
+    def create_component_properties(self):
         # get temperature from $compute block if it was supplied;
         # otherwise, try to get it from the liquid protocol
         try:
@@ -149,45 +149,64 @@ class DGDriver(PropertyDriver):
             except:
                 raise Exception("Couldn't figure out temperature for calculating DG!")
         return self._mask_list_with_none([
-            atomic_properties.create_atomic_property("dg", temperature)
+            component_properties.create_component_property("dg", temperature)
         ])
 
 
 class CustomDriver(PropertyDriver):
 
     def __init__(self, name, type, surrmodel, prots, prot_objs,
-                 system_objs, property_class):
+                 component_props, system_objs, property_factory):
 
         super().__init__(name, type, surrmodel, prots, prot_objs,
-                         property_class)
-        # find desired system
-        if len(prot_objs) > 1:
-            raise ValueError(f"Custom property only accepts one protocol.")
-        for system in system_objs:
-            if system.name == prot_objs[0].system:
-                desired_system = system
-                break
-        self.system_obj = desired_system
+                         property_factory)
+        # find desired systems
+        # this list is filled in the same order of the protocols in prot_objs
+        self.system_objs = []
+        for prot in prot_objs:
+            for system in system_objs:
+                if system.name == prot.system:
+                    self.system_objs.append(system)
+                    break
+        if component_props is None:
+            raise ValueError(f"Component properties not specified for composite"
+                             f"property {name}.")
+        else:
+            self.component_props = component_props
 
-    def create_atomic_properties(self):
-        ap = atomic_properties.create_atomic_property(self.type,
-                                                      system=self.system_obj)
-        self.clone_custom_attributes(ap)
-        return self._mask_list_with_none([ap])
+    def create_component_properties(self):
+        out = []
+        for prop_type, system_obj in zip(self.component_props,
+                                         self.system_objs):
+            ap = component_properties.create_component_property(prop_type,
+                                                          system=system_obj)
+            self.clone_custom_attributes(ap)
+            out.append(ap)
+        return self._mask_list_with_none(out)
 
-    def compute(self, gridpoint, protocols):
-        # note: protocols : list of BaseProtocol
+    def compute(self, gridpoint):
         protocolObjs = self.protocol_objs
-        mu, sigma = protocolObjs[0].get_avg_err_estimate_of_property_for_gridpoint(gridpoint,
-            self.type, self.surrmodel)
-        prop_obj = self.property_cls(self.type, mu, sigma)
+        mus = []
+        sigmas = []
+        for protocolObj, propType in zip(self.protocol_objs,
+                                         self.component_props):
+            mu, sigma = protocolObj.get_avg_err_estimate_of_property_for_gridpoint(
+                gridpoint, propType, self.surrmodel)
+            mus.append((propType, mu))
+            sigmas.append((propType, sigma))
+
+        prop_obj = self.property_cls.create(self.type, mus, sigmas)
+        self.clone_custom_attributes(prop_obj)
+        prop_obj.compute_values()
         gridpoint.add_property_estimate(self.name, self.type, prop_obj)
 
 
 class PropertyDriverFactory:
 
     @classmethod
-    def create(cls, name, type, surrmodel, prots, prot_objs, system_objs):
+    def create(cls, name, type, surrmodel, prots, prot_objs, system_objs,
+               component_props=None):
+        # component_props is None for all drivers except the custom
         if type == 'density':
             return DensityDriver(name, type, surrmodel, prots, prot_objs,
                                  Density)
@@ -200,32 +219,7 @@ class PropertyDriverFactory:
                             DGAlchemicalAnalysis)
         else:
             return CustomDriver(name, type, surrmodel, prots, prot_objs,
-                                system_objs, CustomProperty)
-
-def init_property_from_string(property_string, value, err):
-    if (property_string == 'density'):
-        return Density(value, err)
-    elif (property_string == 'dhvap'):
-        return dHvap(0, value, 0, 0, err, 0, 0, 1, 0)
-    elif (property_string == 'gamma'):
-        return Gamma(value, err)
-    elif (property_string == 'ced'):
-        # cohesive energy dummy
-        ced = CohesiveEnergyDensity(0, 1.0, 1.0, 0, 0, 1.0, 0, 0, 0, 1)
-        # modify
-        ced.value = value
-        ced.err = err
-        return ced
-    elif (property_string == 'gced'):
-        # gamma via cohesive energy
-        gamma_ced = GammaViaCohesiveEnergyDensity(0, 1.0, 1.0, 0, 0, 1.0, 1.0, 0, 0, 1)
-        # modify
-        gamma_ced.value = value
-        gamma_ced.err   = err
-        return gamma_ced
-    else:
-        # custom property
-        return CustomProperty(property_string, value, err)
+                                component_props, system_objs, CustomPropertyFactory)
 
 class PropertyBase:
 
@@ -280,49 +274,6 @@ class dHvap (PropertyBase):
         self.set_textual_elements ("dhvap", "kJ mol$^{-1}$", "$\\Delta H_\\mathrm{vap}$")
         self.value = value_gas - value_liq/nmols - value_pol + corrs + R*temperature
         self.err   = np.sqrt(err_gas**2 + (err_liq/nmols)**2 + (err_pol)**2)
-        #print( "************************************")
-        #print( "Initialized dHvap = %.2f +/- %.2f " % (self.value, self.err))
-        #print( "Components:")
-        #print( "U_liq = %.2f (%.2f)" % (value_liq, value_liq/nmols))
-        #print( "U_gas = %.4f " % (value_gas))
-        #print( "Polcorr = %.2f " % (value_pol))
-        #print( "Other corrections = %.2f " % (corrs))
-        #print( "RT = %.2f " % (R*temperature))
-
-class CohesiveEnergyDensity(PropertyBase):
-
-    id_string = "ced"
-    avogadroConstant = 6.02214076e+23
-
-    def __init__(self, u_liq, u_gas, v, pol, err_liq, err_gas, err_v, err_pol, corrs, nmols):
-        v_m = self.avogadroConstant * (v/nmols) * 1e-27 # in m3
-        err_v_m = self.avogadroConstant * (err_v/nmols) * 1e-27 # in m3
-        self.set_textual_elements("ced", "MPa", "$\\delta^2$")
-        self.value = 1e-3 * (u_gas - u_liq/nmols - pol + corrs)/(v_m)
-        self.err = self.value * np.sqrt((err_v_m/v_m)**2 + ((np.sqrt(err_gas**2 + (err_liq/nmols)**2 + err_pol**2))/(u_gas - u_liq/nmols - pol + corrs))**2)
-        #print("**** COHESIVE ENERGY DENSITY ****")
-        #print("molar volume (cm^3/mol) = {}".format(v_m * 1e6))
-        #print("error (cm^3/mol)        = {}".format(err_v_m*1e6))
-        #print("delta2 (MPa) = {}".format(self.value))
-        #print("error (MPa) = {}".format(self.err))
-
-class GammaViaCohesiveEnergyDensity(PropertyBase):
-
-    id_string = "gced"
-
-    # see https://www.sciencedirect.com/science/article/abs/pii/0021979772902457
-    # we use the "quasi-thermodynamic" value derived in the last section of this paper, converted to our units
-    # (in the paper, delta2 is in cal/cm3, gamma is is dynes/cm and vm is in cm3/mol)
-    conversionConstant = 0.01 * 14.041 * (2.045**2)
-
-    def __init__(self, u_liq, u_gas, v, pol, err_liq, err_gas, err_v, err_pol, corrs, nmols):
-        ced = CohesiveEnergyDensity(u_liq, u_gas, v, pol, err_liq, err_gas, err_v, err_pol, corrs, nmols)
-        v_m = ced.avogadroConstant * (v/nmols) * 1e-27 # in m3
-        err_v_m = ced.avogadroConstant * (err_v/nmols) * 1e-27 # in m3
-        self.set_textual_elements("gced", "mN m$^{-1}$", "$\\gamma_{\\delta^2}$")
-        self.value = (v_m**(1.0/3)) * ced.value / self.conversionConstant
-        #self.err   = np.abs( ced.value * (1.0/3)*(v_m)**(-2.0/3)*err_v_m + ced.err * (v_m**(1.0/3)) ) / self.conversionConstant
-        self.err   = self.value * np.sqrt( (((1.0/3) * v_m**(-2.0/3) * err_v_m)/(v_m**(1./3)))**2 + (ced.err/ced.value)**2)
 
 class DGAlchemicalAnalysis(PropertyBase):
 
@@ -337,16 +288,61 @@ class DGAlchemicalAnalysis(PropertyBase):
                                   "$\\Delta G_{\\mathrm{solv}}$")
 
 
-
-class CustomProperty(PropertyBase):
-    # NOTE: A CustomProperty is always associated with a CustomAtomicProperty.
-    def __init__ (self, name, value, err):
-        # Just to check if it works.
-        _ = atomic_properties.\
-            CustomAtomicPropertyFactory.\
-            create_custom_atomic_property(name)
-        # Now do stuff.
+class CustomProperty(PropertyBase,
+                     CustomizableAttributesMixin):
+    def __init__ (self, name, values, errs, calculator=None):
+        """
+        values : list of (protype, value) pairs for each component.
+        errs : list of (protype, value) pairs for each component.
+        """
         self.set_textual_elements(name, f"{name} units", name)
-        self.value = value
-        self.err = err
+        if calculator is None:
+            self.calculator = self._default_calculator
+        else:
+            self.calculator = calculator
+        self._values = values
+        self._errs = errs
 
+    def compute_values(self):
+        self.value, self.err = self.calculator(self._values,
+                                               self._errs,
+                                               self.get_custom_attributes())
+
+    @staticmethod
+    def _default_calculator(values, errs, propertry_attrs):
+        if len(values) > 1:
+            raise ValueError(f"If the composite property has more than one"
+                             " component property, you most supply a proper"
+                             " calculator function.")
+        return float(values[0][1]), float(errs[0][1])
+
+
+class CustomPropertyFactory:
+
+    ptable = {}
+
+    @classmethod
+    def add_custom_composite_property(cls, type_name, calculator=None):
+        cls.ptable[type_name] = calculator
+
+    @classmethod
+    def create(cls, type_name, values, errs):
+        return CustomProperty(type_name, values, errs, cls.ptable[type_name])
+
+
+def add_custom_composite_property(type_name, composite_calculator=None):
+    """
+    Adds a custom composite property to the program. In the input file, it can
+    be referenced with the type ``type_name``.
+
+    :param type_name: Name of the type of the custom composite property.
+    :type type_name: str
+    :param composite_calculator: (optional) The calculator function (see
+        :py:func:`~gmak.custom_properties.composite_calculator`). If it is
+        not supplied, the program implicitly assumes that the property has only
+        one component and identifies the values and errors of the composite
+        property with those of the component property.
+    :type composite_calculator: callable
+    """
+    return CustomPropertyFactory.add_custom_composite_property(type_name,
+                                                               composite_calculator)

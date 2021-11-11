@@ -11,7 +11,7 @@ import copy
 import os
 import gmak.logger as logger
 from gmak.mdputils import *
-import gmak.atomic_properties as atomic_properties
+import gmak.component_properties as component_properties
 from gmak.traj_ana import get_box
 from gmak.configurations import ConfigurationFactory, FollowProtocolConfigurationFactory
 
@@ -93,7 +93,7 @@ class DefaultExtendMixin:
 class BaseProtocol(ABC):
     
     def get_filtering_properties(self):
-        at_properties = self.get_atomic_properties()
+        at_properties = self.get_component_properties()
         # filter those that are timeseries
         standard_properties = []
         for name, obj in at_properties.items():
@@ -122,12 +122,12 @@ class BaseProtocol(ABC):
         return self.properties
 
 
-    def get_atomic_properties(self):
-        return self.atomic_properties
+    def get_component_properties(self):
+        return self.component_properties
 
 
-    def add_atomic_property(self, ap_obj):
-        self.atomic_properties[ap_obj.name] = ap_obj
+    def add_component_property(self, ap_obj):
+        self.component_properties[ap_obj.name] = ap_obj
 
 
     def add_property(self, prop: str):
@@ -145,16 +145,16 @@ class BaseProtocol(ABC):
 
 
     def add_surrogate_model (self, surrogate_model_string,
-                             atomic_property, bool_legacy):
+                             component_property, bool_legacy):
         """Add a (surrogate_model, property) tuple to the protocol. """
         model = init_surrogate_model_from_string(
             surrogate_model_string, bool_legacy)
         try:
-            self.surrogate_models.append((model, atomic_property))
+            self.surrogate_models.append((model, component_property))
         except AttributeError:
             # this probably means the list has not been initialized
             self.surrogate_models = []
-            self.surrogate_models.append((model, atomic_property))
+            self.surrogate_models.append((model, component_property))
 
 
     def get_mbar_model (self):
@@ -394,7 +394,7 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
         else:
             self.minFactor = minFactor
         # This is initialized later on.
-        self.atomic_properties = {}
+        self.component_properties = {}
 
 
     @classmethod
@@ -478,7 +478,7 @@ class GmxProtocol(GmxBaseProtocol,
         Property types (e.g., density, potential, ...).
         Usually initialized with the empty list.
 
-    atomic_properties : dict of BaseAtomicProperty
+    component_properties : dict of BaseAtomicProperty
         Keys are the types of the properties.
         This is not initialized together with the Protocol.
 
@@ -547,7 +547,7 @@ class GmxProtocol(GmxBaseProtocol,
         else:
             self.minFactor = minFactor
         # This is initialized later on.
-        self.atomic_properties = {}
+        self.component_properties = {}
         
     @classmethod
     def from_dict(cls, bd, systems, coordinates, protocols):
@@ -620,7 +620,7 @@ class CustomProtocol(BaseProtocol,
                  get_last_frame=None):
         self.properties = []
         # This is initialized later on.
-        self.atomic_properties = {}
+        self.component_properties = {}
         self.surrogate_models = []
         self.simulator = simulator
         if calc_initial_len is None:
@@ -741,7 +741,7 @@ def add_custom_protocol(type_name, simulator, calc_initial_len=None,
     :type simulator: callable
     :param calc_initial_len: (optional) The function to calculate the initial
         length of the production run (see
-        :py:func:`~gmak.custom_protocols.calc_inital_len`). This is used only
+        :py:func:`~gmak.custom_protocols.calc_initial_len`). This is used only
         when support for extensions is desired. Defaults to :py:obj:`None`,
         indicating that extensions are not desired.
     :type calc_initial_len: callable

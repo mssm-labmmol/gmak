@@ -32,8 +32,8 @@ def wrmsd_calc_score_err(propertyEstimates,
             devMin = refs[p] - ests[p] - Z
             if (devMin < 0):
                 devMin = 0
-        scoreMax += weis[p] * (devMax/refs[p]) ** 2
-        scoreMin += weis[p] * (devMin/refs[p]) ** 2
+        scoreMax += weis[p] * (devMax) ** 2
+        scoreMin += weis[p] * (devMin) ** 2
     scoreMax = np.sqrt(scoreMax/np.sum(weis))
     scoreMin = np.sqrt(scoreMin/np.sum(weis))
     return (scoreMin, scoreMax)

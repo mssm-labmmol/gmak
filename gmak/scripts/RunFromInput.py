@@ -14,7 +14,6 @@ from gmak.read_input import *
 from gmak.mdputils import mdpUtils
 from gmak.gridbase import GridPoint, ParameterGrid
 from gmak.gridoptimizer import gridOptimizer
-from gmak.subgrid import *
 from gmak.state import *
 from gmak.write_input import *
 from gmak.results_assembler import *
@@ -57,8 +56,7 @@ def main():
          properties,   # this way the rest of this program can remain the same
          protocolsHash,
          optimizer,
-         surrogateModelHash,
-         subgridHash) = globalState.getInitializationState()
+         surrogateModelHash) = globalState.getInitializationState()
 
         logger.globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
@@ -71,8 +69,7 @@ def main():
          properties,
          protocolsHash,
          optimizer,
-         surrogateModelHash,
-         subgridHash) = globalState.getInitializationState()
+         surrogateModelHash) = globalState.getInitializationState()
 
         # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
         mdp_ut = mdpUtils()

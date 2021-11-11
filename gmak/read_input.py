@@ -9,7 +9,7 @@ from gmak.gridbase import *
 from gmak.topology import *
 import gmak.property 
 import gmak.configurations
-import gmak.atomic_properties as atomic_properties
+import gmak.component_properties as component_properties
 from gmak.protocols import create_protocols
 import os
 
@@ -201,18 +201,23 @@ def read_compute(blockdict: dict,
     else:
         sms  = blockdict['surrogate_model'][0]
     prots = blockdict['protocols']
+    try:
+        component_props = blockdict['components']
+    except KeyError:
+        component_props = None
     propDriver = gmak.property.PropertyDriverFactory.create(
         name,
         type,
         sms,
         prots,
         [protocols[p] if p != "none" else None for p in prots],
-        list(systems.values()))
+        list(systems.values()),
+        component_props)
     propDriver.set_custom_attributes_from_blockdict(
         blockdict, systems, coordinates, protocols,
         exclude=base_options)
     output_protocolsHash[name] = prots
-    aps = propDriver.create_atomic_properties()
+    aps = propDriver.create_component_properties()
     for ap, prot in zip(aps, prots):
         if ap is None:
             # this means skipping something, e.g. gas-phase potential
@@ -222,7 +227,7 @@ def read_compute(blockdict: dict,
             # fill protocol
             prot_obj = protocols[prot]
             prot_obj.add_property(ap.name)
-            prot_obj.add_atomic_property(ap)
+            prot_obj.add_component_property(ap)
             prot_obj.add_surrogate_model(sms, ap.name, bool_legacy)
     return propDriver
 
@@ -356,7 +361,6 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     # 'name' option, i.e. a system/molecule name chosen by the user.
     output_coordinates = {}
 
-    output_subgrid = {'method': 'cubic', 'factors': [1, 1]}
     fp = open(input_file, "r")
 
     # NEW
@@ -460,22 +464,10 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
             output_optimizer = gridOptimizer.from_dict(blockDict, validateFlag)
         if (line.rstrip() == '$parameters'):
             output_paramLoop.readFromStream (fp)
-        if (line.rstrip() == '$subgrid'):
-            for line in fp:
-                if line[0] == '#':
-                    continue
-                if line.rstrip() == '$end':
-                    output_subgrid['parspacegen'] = outputParameterSpaceGen
-                    break
-                option = line.split()[0]
-                if (option == 'method'):
-                    output_subgrid[option] = line.split()[1]
-                if (option == 'factors'):
-                    output_subgrid[option] = [int(x) for x in line.split()[1:]]
         if (line.rstrip() == '$gridshift'):
             output_gridshifter = block2dict(fp, '$end', '#')
     fp.close()
 
     return (output_workdir, output_grid, output_protocols,
             output_properties, output_protocolsHash, output_optimizer,
-            output_surrogateModel, output_subgrid)
+            output_surrogateModel)

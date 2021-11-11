@@ -13,7 +13,7 @@ class GromacsReweighterAdapter:
         properties = protocol.get_reweighting_properties()
         outputDict = {}
         for prop in properties:
-            outputDict[prop] = originGridpoint.retrieve_atomic_property_from_protocol(prop, protocol)
+            outputDict[prop] = originGridpoint.retrieve_component_property_from_protocol(prop, protocol)
         outputDict['gro'] = originGridpoint.protocol_outputs[protocol.name]['gro']
         outputDict['tpr'] = originGridpoint.protocol_outputs[protocol.name]['tpr']
         outputDict['top'] = destGridpoint.protocol_outputs[protocol.name]['top'] # This is really destGridpoint!

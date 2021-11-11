@@ -13,8 +13,7 @@ class State:
                  properties=None,
                  protocolsHash=None,
                  optimizer=None,
-                 surrogateModelHash=None,
-                 subgridHash=None):
+                 surrogateModelHash=None):
         self.base_workdir = base_workdir
         self.grid = grid
         self.protocols = protocols
@@ -22,7 +21,6 @@ class State:
         self.protocolsHash = protocolsHash
         self.optimizer = optimizer
         self.surrogateModelHash = surrogateModelHash
-        self.subgridHash = subgridHash
 
     def makeCurrentWorkdir(self):
         shifts = 0
@@ -66,8 +64,7 @@ class State:
                self.properties,
                self.protocolsHash,
                self.optimizer,
-               self.surrogateModelHash,
-               self.subgridHash)
+               self.surrogateModelHash)
 
     def saveToFile(self):
         print(vars(self))

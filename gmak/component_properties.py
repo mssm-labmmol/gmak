@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import gmak.traj_ana as traj_ana
 from gmak.custom_attributes import CustomizableAttributesMixin
+import numpy as np
 
 class PropertyNotInitialized(Exception):
     pass
@@ -14,7 +15,8 @@ class GmxCalculatorMixin:
         traj_ana.analyzeWrapper(input_traj, self.gmx_name, out_path)
 
 
-class BaseAtomicProperty(ABC):
+class BaseAtomicProperty(ABC,
+                         CustomizableAttributesMixin):
     # basic attributes:
     #
     # name: str
@@ -121,7 +123,7 @@ class GmxDG(BaseAtomicProperty):
 class GmxPropertyFactory:
 
     @classmethod
-    def create_gmx_atomic_property(cls, name, *args, **kwargs):
+    def create_gmx_component_property(cls, name, *args, **kwargs):
         if (name == 'density'):
             return GmxEnergyProperty("density", "Density")
         elif (name == 'potential'):
@@ -134,12 +136,13 @@ class GmxPropertyFactory:
             return GmxPolcorr(*args, **kwargs)
         elif (name == 'dg'):
             return GmxDG(*args, **kwargs)
+        elif (name.startswith("gmx_")):
+            return GmxEnergyProperty(name, name[4:])
         else:
             raise PropertyNotInitialized
 
 
-class CustomAtomicProperty(BaseAtomicProperty,
-                           CustomizableAttributesMixin):
+class CustomAtomicProperty(BaseAtomicProperty):
 
     def __init__(self, name, calculator, is_timeseries, *args, **kwargs):
         self.name = name
@@ -164,40 +167,41 @@ class CustomAtomicPropertyFactory:
     ptable = {}
 
     @classmethod
-    def add_custom_atomic_property(cls, name, calculator, is_timeseries):
+    def add_custom_component_property(cls, name, calculator, is_timeseries):
         cls.ptable[name] = {'calculator': calculator,
                             'is_timeseries': is_timeseries}
 
     @classmethod
-    def create_custom_atomic_property(cls, name, *args, **kwargs):
+    def create_custom_component_property(cls, name, *args, **kwargs):
         return CustomAtomicProperty(name, cls.ptable[name]['calculator'],
                                     cls.ptable[name]['is_timeseries'],
                                     *args, **kwargs)
 
-def add_custom_property(type_name, calculator, is_timeseries):
+def add_custom_component_property(type_name, component_calculator, is_timeseries):
     """
-    Adds a custom property to the program. In the input file, it can be
-    referenced with the type ``type_name``.
+    Adds a custom component property to the program. In the input file, it can
+    be referenced with the type ``type_name``.
 
-    :param type_name: Name of the type of the custom property.
+    :param type_name: Name of the type of the custom component property.
     :type type_name: str
-    :param calculator: The function used to calculate the custom property (see
-        :py:func:`~gmak.custom_properties.calculator`)
-    :type calculator: callable
-    :param is_timeseries: ``True`` indicates that the custom property is
+    :param component_calculator: The function used to calculate the custom
+        component property (see
+        :py:func:`~gmak.custom_properties.component_calculator`)
+    :type component_calculator: callable
+    :param is_timeseries: ``True`` indicates that the component property is
         obtained as a timeseries; ``False``, as a tuple ``(EA, dEA)`` with the
         expected value and statistical uncertainty.
     :type is_timeseries: bool
     """
-    CustomAtomicPropertyFactory.add_custom_atomic_property(type_name,
-                                                           calculator,
+    CustomAtomicPropertyFactory.add_custom_component_property(type_name,
+                                                           component_calculator,
                                                            is_timeseries)
 
 
-def create_atomic_property(name, *args, **kwargs):
+def create_component_property(name, *args, **kwargs):
     ptable = [
-        GmxPropertyFactory.create_gmx_atomic_property,
-        CustomAtomicPropertyFactory.create_custom_atomic_property,
+        GmxPropertyFactory.create_gmx_component_property,
+        CustomAtomicPropertyFactory.create_custom_component_property,
     ]
     while True:
         factory = ptable.pop(0)

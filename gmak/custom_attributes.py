@@ -1,6 +1,52 @@
 class CustomizableAttributesMixin:
 
     class CustomizableAttributesData:
+        """
+        This class stores the data that is passed to the program's customizable
+        objects (e.g., protocols) in the input file. Every such object contains
+        an instance of this class that is passed to the functions implemented
+        and supplied by the user *via* the customization API.
+
+        In the context of an input-file block defining a given customizable
+        object, every line follows the syntax::
+
+            ATTRNAME    VALUES
+
+        ``ATTRNAME`` is a string containing only lowercase characters and
+        underscores. It is separated by one or more white spaces from
+        ``VALUES``, which is either a string not containing white spaces or a
+        sequence of those (henceforth referred to as tokens) separated by any
+        number of spaces. The lines below show examples with proper syntax::
+
+            extend z 5.0
+            total_mass 2.3e+03
+            index_group /path/to/index.ndx OW
+
+        The data defined in the input-file line is made available as an instance
+        attribute with name ``ATTRNAME``. The value of the attribute depends on
+        the syntax of ``VALUES``. If there is a single numerical token, the value
+        is the numerical value of the corresponding string (type conversion is
+        done automatically). If there is a single non-numerical token, it is the
+        corresponding string itself. If there is a sequence of tokens, it is a
+        list of values resulting from the processing of each token as described
+        above.  For the examples above::
+
+            >>> attr.extend
+            ['z', 5.0]
+            >>> attr.total_mass
+            2.3e+03
+            >>> attr.index_group
+            ['/path/to/index.ndx', 'OW']
+
+
+        where ``attr`` stands for the defined instance of type
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`.
+
+        .. note:: Since ``ATTRNAME`` is used as the name of an instance attribute,
+           the use of only lowercase characters and underscores is highly
+           recommended to avoid run-time errors.
+
+        """
         def __init__(self):
             pass
 
