@@ -59,13 +59,20 @@ class DHvapDriver(PropertyDriver):
             alpha = self.get_custom_attribute('alpha')
         except AttributeError:
             alpha = None
-        return self._mask_list_with_none([
-            component_properties.create_component_property("potential"),
-            component_properties.create_component_property("potential"),
-            component_properties.create_component_property("polcorr",
-                                                     mu=mu,
-                                                     alpha=alpha)
-        ])
+        if (mu is None) or (alpha is None):
+            return self._mask_list_with_none([
+                component_properties.create_component_property("potential"),
+                component_properties.create_component_property("potential"),
+                None,
+            ])
+        else:
+            return self._mask_list_with_none([
+                component_properties.create_component_property("potential"),
+                component_properties.create_component_property("potential"),
+                component_properties.create_component_property("polcorr",
+                                                         mu=mu,
+                                                         alpha=alpha)
+            ])
 
 
     def compute(self, gridpoint):
