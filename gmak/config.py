@@ -1,5 +1,4 @@
 import subprocess
-import gmak.runcmd as runcmd
 
 class ConfigVariables:
 
