@@ -34,7 +34,7 @@ class BaseAtomicProperty(ABC,
         else:
             raise NotImplementedError
 
-    def calc(self, input_traj, out_path, state=None):
+    def calc(self, input_traj, out_path, topology=None):
         return self.calculator(input_traj, out_path)
 
 
@@ -65,7 +65,7 @@ class GmxPolcorr(BaseAtomicProperty):
         self.mu = mu
         self.alpha = alpha
 
-    def calc(self, input_traj, out_path, state=None):
+    def calc(self, input_traj, out_path, topology=None):
         traj_ana.obtain_polcorr(input_traj['xtc'],
                                 input_traj['edr'],
                                 input_traj['gro'],
@@ -83,7 +83,7 @@ class GmxDG(BaseAtomicProperty):
         self.temperature = temperature
         self.is_timeseries = False
 
-    def calc(self, input_traj, out_path, state=None):
+    def calc(self, input_traj, out_path, topology=None):
         # in this particular case, we expect each member of input_traj to be
         # a list of files for each core protocol
         # ------------------------------------------------------------------------
@@ -150,11 +150,10 @@ class CustomAtomicProperty(BaseAtomicProperty):
         self.is_timeseries = is_timeseries
         self.system = kwargs['system']
 
-    def calc(self, input_traj, out_path, state=None):
-        return self.calculator(input_traj, out_path, state)
+    def calc(self, input_traj, out_path, topology=None):
+        return self.calculator(input_traj, out_path, topology)
 
-    def calculator(self, input_traj, out_path, state):
-        topology = self.system.getPathsForStatepath(state)
+    def calculator(self, input_traj, out_path, topology):
         prop_data = self._calculator(topology,
                                      input_traj,
                                      self.get_custom_attributes())

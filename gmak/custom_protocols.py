@@ -6,8 +6,8 @@ def simulator(length, topology, coords, ext, protocol_attrs, workdir):
 
     :param length: The length of the current production run
     :type length: int or float
-    :param topology: The topology file(s) considered in the simulations
-    :type topology: str or list of str
+    :param topology: The topology considered in the simulations
+    :type topology: :py:class:`~gmak.systems.TopologyOutput`
     :param coords: The initial configuration file for the simulations
     :type coords: str or list of str
     :param ext: Indicates whether this is an extension or the first simulation.

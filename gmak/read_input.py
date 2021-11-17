@@ -1,16 +1,17 @@
-#from RunFromInput import ParameterGrid
 import gmak.runcmd as runcmd
 from gmak.reweightbase import ReweighterFactory
 from gmak.gridoptimizer import gridOptimizer
 from gmak.gridshifter import *
-from gmak.parameters import *
+from gmak.parameter_space import *
 from gmak.variations import *
 from gmak.gridbase import *
 from gmak.topology import *
-import gmak.property 
+from gmak.systems import *
+import gmak.property
 import gmak.configurations
 import gmak.component_properties as component_properties
 from gmak.protocols import create_protocols
+import gmak.interaction_parameter
 import os
 
 # --------------------------------------------------------------------
@@ -40,7 +41,7 @@ def convert(value):
 def dict2types(bd):
     """Converts a block dict to the appropriate types."""
     return {k: [convert(x) for x in v] for k,v in bd.items()}
-    
+
 
 def block2dict(stream, endString, comment):
     out_dict = {}
@@ -231,14 +232,52 @@ def read_compute(blockdict: dict,
             prot_obj.add_surrogate_model(sms, ap.name, bool_legacy)
     return propDriver
 
+
+class ParameterOptionIterator:
+
+    def __init__(self, iterable):
+        self._iter = iterable.__iter__()
+        self.ret = self._iter.__next__()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        kwargs = {}
+        if self.ret is None:
+            raise StopIteration
+        ret = self.ret
+        # the range is the number of possible options
+        while(True):
+            try:
+                option = self._iter.__next__()
+                self.ret = option
+            except StopIteration:
+                self.ret = None
+                return ret, kwargs
+            if option == 'exclude':
+                try:
+                    value = self._iter.__next__()
+                    kwargs['exclude_pairs'] = value
+                except StopIteration:
+                    raise ValueError
+            elif option == 'include':
+                try:
+                    value = self._iter.__next__()
+                    kwargs['include_pairs'] = value
+                except StopIteration:
+                    raise ValueError
+            else:
+                return ret, kwargs
+
+
 class ParameterIO:
-    def __init__(self, stream, parRefFactory, domainSpaceFactory):
+    def __init__(self, stream, domainSpaceFactory):
         self.stream             = stream
         self.using              = None
         self.names              = []
         self.types              = []
         self.parRefs            = []
-        self.parRefFactory      = parRefFactory
         self.domainSpaceFactory = domainSpaceFactory
         self.parSpaceGen        = ParameterSpaceGenerator()
 
@@ -257,17 +296,10 @@ class ParameterIO:
 
     def _addParameterReferences(self, options):
         _theseParameters = []
-        for refstring in options:
-            splitted_refstring = refstring.split('/')
-            if len(splitted_refstring) == 2:
-                [atom, parameter] = splitted_refstring
-            elif len(splitted_refstring) == 1:
-                atom, = splitted_refstring
-                parameter = None
-            else:
-                raise ValueError("Can't parse refstring %s" % refstring)
-            newReference = self.parRefFactory.create(atom, parameter)
-            _theseParameters.append(newReference)
+        for refstring, kwargs in ParameterOptionIterator(options):
+            param = gmak.interaction_parameter.InteractionParameter.from_string(
+                refstring, **kwargs)
+            _theseParameters.append(param)
         # Add list of parameter references to list of list of parameter references.
         self.parRefs.append(_theseParameters)
         return True
@@ -299,51 +331,6 @@ class ParameterIO:
                 break
         return
 
-# class TestParameterIO:
-#     def __init__(self):
-#         from io import StringIO
-#         dsfac = DomainSpaceFactory
-
-#         # for forcefield
-#         txt = "standard\nCH3 1.0 2.0 3.0 4.0\nCH2 0.1 0.2 0.3 0.4\nCH1 0 2.0 1.0 2.0\n$end"
-#         strio = StringIO(txt)
-#         nbff = NonbondedForcefieldFactory.createFromStream(strio)
-#         parreffac = ParameterReferenceFactory(nbff, EmptyBondedForcefield(), [EmptyTopology()])
-
-#         # for variations
-#         txt = "$variation\n"
-#         txt += "name        main\n"
-#         txt += "pars        CH3/c6           CH3/c12\n"
-#         txt += "type        cartesian\n"
-#         txt += "start       9.3471353e-03    2.6266240e-05\n"
-#         txt += "step        2.336783825e-05  6.566559999999999e-08\n"
-#         txt += "size        33               33\n"
-#         txt += "$end\n"
-#         txt += "\n"
-#         txt += "$variation\n"
-#         txt += "name     ties\n"
-#         txt += "pars     CH2/c6  CH2/c12\n"
-#         txt += "using    main\n"
-#         txt += "type     scale\n"
-#         txt += "factors  0.1      20\n"
-#         txt += "$end\n"
-#         strio = StringIO(txt)
-#         self.pario = ParameterIO(strio, parreffac, dsfac)
-
-#     def run(self):
-#         # set at first variation
-#         self.pario.stream.readline()
-#         # do the thing
-#         self.pario.read()
-#         # set at next variation
-#         self.pario.stream.readline()
-#         self.pario.stream.readline()
-#         # do the thing
-#         self.pario.read()
-#         # end
-#         psgen = self.pario.getParameterSpaceGenerator()
-#         # debug
-#         psgen.debugPrint()
 
 def initialize_from_input (input_file, bool_legacy, validateFlag=False):
     output_grid = None
@@ -363,9 +350,6 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
 
     fp = open(input_file, "r")
 
-    # NEW
-    outputNonbondedForcefield = EmptyNonbondedForcefield()
-    outputBondedForcefield    = EmptyBondedForcefield()
     parameterIO               = None
     moleculesDict             = {}
     outputTopoBundles         = {}
@@ -393,41 +377,20 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
         # grid
         if (line.split()[0] == "workdir"):
             output_workdir = os.path.abspath(line.split()[1])
-        if (line.rstrip() == "$atomtypes"):
-            outputNonbondedForcefield = NonbondedForcefieldFactory.createFromStream(fp)
         if (line.rstrip() == "$variation"):
             if parameterIO is None:
-                parameterIO = ParameterIO(fp, ParameterReferenceFactory(outputNonbondedForcefield, outputBondedForcefield, [EmptyTopology()]), DomainSpaceFactory)
+                parameterIO = ParameterIO(fp, DomainSpaceFactory)
                 parameterIO.read()
             else:
                 parameterIO.read()
-        # This is specific to GROMACS stuff.
-        if (line.rstrip() == '$molecules') or (line.rstrip() == '$systems'):
-            blockDict = block2dict(fp, '$end', '#')
-            keys = blockDict.keys()
-            for i, name in enumerate(blockDict['names']):
-                prefix = "{}/{}/{}_0".format(output_workdir, name, name)
-                molecularBlockDict = {}
-                for k in keys:
-                    molecularBlockDict[k] = blockDict[k][i]
-                outputTopoBundles[name] = TopologyBundleFactory.createBundle(
-                    'gromacs',
-                    molecularBlockDict,
-                    prefix,
-                    (outputNonbondedForcefield, outputBondedForcefield))
-                runcmd.run("mkdir -p {}/{}".format(output_workdir, name))
         # This is for custom topology.
         if (line.rstrip() == '$system'):
             blockDict = block2dict(fp, '$end', '#')
             name = blockDict['name'][0]
             stype = blockDict['type'][0]
-            prefix = "{}/{}/{}_0".format(output_workdir, name, name)
-            parRefList = parameterIO.getParameterSpaceGenerator().getParameterReferences()
-            outputTopoBundles[name] = TopologyBundleFactory.createBundle(
-                stype,
-                blockDict,
-                prefix,
-                parRefList)
+            outputTopoBundles[name] = create_system(stype, name, blockDict, outputTopoBundles,
+                                                    output_coordinates, output_protocols,
+                                                    exclude=None)
         if (line.rstrip() == "$grid"):
             # This also signifies that no more $variation blocks exist
             # beyond this point.

@@ -116,6 +116,9 @@ class GridPoint:
         protocol_outputs: Dictionary containing final output files of
             the protocols executed.
 
+        topology_outputs: Dictionary containing the topology output
+            objects for each system
+
         component_properties 2-d dictionary containing output files for
             the properties extracted,
             e.g. component_properties['liquid']['potential'] is the file
@@ -139,6 +142,7 @@ class GridPoint:
         self.is_sample = False
         self.is_simulated = []
         self.protocol_outputs = {}
+        self.topology_outputs = {}
         self.component_properties = {}
         # self.rw_outputs = {}
         # self.rw_outputs[self.id] = {}
@@ -161,7 +165,7 @@ class GridPoint:
             self.is_simulated.remove(protocol.name)
 
     def getTopologyPath(self, molecule):
-        return self.baseGrid.topologyBundles[molecule].getPathsForStatepath(self.id)
+        return self.topology_outputs[molecule]
 
     def get_property_estimate(self, prop):
         return self.estimated_properties[prop].value
@@ -223,7 +227,8 @@ class GridPoint:
     def get_component_property_from_protocol(self, name, protocol, output):
         output = os.path.abspath(output)
         ap = protocol.get_component_properties()[name]
-        ap.calc(self.protocol_outputs[protocol.name], output, state=self.id)
+        topo = self.topology_outputs[protocol.system]
+        ap.calc(self.protocol_outputs[protocol.name], output, topology=topo)
         self.add_component_property_output(name, protocol, output)
 
     def retrieve_component_property_from_protocol(self, propname, protocol):
@@ -399,23 +404,20 @@ class ParameterGrid:
     def get_molecules(self):
         return list(self.topologyBundles.keys())
 
-    def incrementPrefixOfTopologies(self):
-        for topoBundle in self.topologyBundles.values():
-            topoBundle.incrementPrefix()
-
     def writeTopologies(self):
-        macros = self.parSpaceGen.getMacros()
-        print("MACROS: ", macros)
-        for t, topoBundle in enumerate(self.topologyBundles.values()):
-            for i in range(self.get_linear_size()):
-                self.parSpaceGen.setState(i)
-                topoBundle.writeFilesForStatepath(i)
-                files = topoBundle.getPathsForStatepath(i)
-                if (type(files) is list):
-                    for fn in files:
-                        replaceMacros(fn, macros)
-                else:
-                    replaceMacros(files, macros)
+        for state in range(self.get_linear_size()):
+            grid = self.shifter.get_current_number_of_shifts()
+            params = self.parSpaceGen.getStateParameters(state)
+            for systemName, topoBundle in self.topologyBundles.items():
+                workdir = os.path.join(self.workdir, topoBundle.name)
+                # ensure that workdir exists; if it does not, create it
+                if not os.path.isdir(workdir):
+                    os.mkdir(workdir)
+                topoOut = topoBundle.write_topology(
+                    workdir, grid, state, params)
+                # save topology output to gridpoint
+                self.grid_points[state].topology_outputs[systemName] = topoOut
+
 
     def writeParameters(self):
         self.parSpaceGen.writeParameters(self.makePrefixOfParameters())

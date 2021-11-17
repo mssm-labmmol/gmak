@@ -3,7 +3,7 @@ import numpy as np
 import gmak.runcmd as runcmd
 import gmak.logger as logger
 from abc import ABC, abstractmethod
-from gmak.parameters import *
+from gmak.parameter_space import *
 from gmak.cartesiangrid import *
 from gmak.gridbase import *
 from copy import deepcopy

@@ -8,7 +8,7 @@ import pickle
 
 import gmak.logger as logger
 from gmak.gridshifter import *
-from gmak.parameters import *
+from gmak.parameter_space import *
 from gmak.grid_ana import *
 from gmak.read_input import *
 from gmak.mdputils import mdpUtils

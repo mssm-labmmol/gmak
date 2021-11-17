@@ -4,8 +4,8 @@ def component_calculator(topology, protocol_output, property_attrs):
     """
     The function used to calculate the custom component property.
 
-    :param topology: The topology file(s) considered in the simulations
-    :type topology: str or list of str
+    :param topology: The topology considered in the simulations
+    :type topology: :py:class:`~gmak.systems.TopologyOutput`
     :param protocol_output: The output files of the simulation. For custom
         protocols, it is the ``dict`` returned by the
         :py:func:`~gmak.custom_protocols.simulator` function. For GROMACS-based
