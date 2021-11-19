@@ -176,26 +176,6 @@ class CustomAtomicPropertyFactory:
                                     cls.ptable[name]['is_timeseries'],
                                     *args, **kwargs)
 
-def add_custom_component_property(type_name, component_calculator, is_timeseries):
-    """
-    Adds a custom component property to the program. In the input file, it can
-    be referenced with the type ``type_name``.
-
-    :param type_name: Name of the type of the custom component property.
-    :type type_name: str
-    :param component_calculator: The function used to calculate the custom
-        component property (see
-        :py:func:`~gmak.custom_properties.component_calculator`)
-    :type component_calculator: callable
-    :param is_timeseries: ``True`` indicates that the component property is
-        obtained as a timeseries; ``False``, as a tuple ``(EA, dEA)`` with the
-        expected value and statistical uncertainty.
-    :type is_timeseries: bool
-    """
-    CustomAtomicPropertyFactory.add_custom_component_property(type_name,
-                                                           component_calculator,
-                                                           is_timeseries)
-
 
 def create_component_property(name, *args, **kwargs):
     ptable = [

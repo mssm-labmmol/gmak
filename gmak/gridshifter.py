@@ -282,20 +282,6 @@ class CustomGridShifterFactory:
         return CustomGridShifter(cls.ptable[type_name])
 
 
-def add_custom_gridshifter(type_name, calculator):
-    """
-    Adds a custom grid-shifting procedure to the program. In the input file, it
-    can be referenced with the type ``type_name``.
-
-    :param type_name: Name of the type of the custom protocol.
-    :type type_name: str
-    :param calculator: The custom grid-shifting function (see
-        :py:func:`~gmak.custom_gridshifter.calculator`).
-    :type calculator: callable
-    """
-    CustomGridShifterFactory.add_custom_gridshifter(type_name, calculator)
-
-
 def create_gridshifter(grid, bd):
     if ('type' not in bd.keys()) or (bd['type'][0] == 'default'):
         # if type is not specified or is 'default', use default

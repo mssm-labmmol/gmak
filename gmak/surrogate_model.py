@@ -487,22 +487,3 @@ class CustomSurrogateModelFactory:
         except:
             raise SurrogateModelNotInitialized(f"Couldn't initialize surrogate"
                                                f" model of type {type_name}.")
-
-
-def add_custom_surrogate_model(type_name, compute, corners=False):
-    """
-    Adds a custom surrogate model to the program. In the input file, it can be
-    referenced with the type ``type_name``.
-
-    :param type_name: Name of the type of the custom surrogate model
-    :type type_name: str
-    :param compute: The surrogate model function (see
-        :py:func:`~gmak.custom_surrogate_models.compute`)
-    :type compute: callable
-    :param corners: Indicates whether the surrogate model requires the corners
-        of the grid to be simulated (e.g., interpolation does). Defaults to ``False``.
-    :type corners: bool
-    """
-    CustomSurrogateModelFactory.add_custom_surrogate_model(type_name,
-                                                           compute,
-                                                           corners)

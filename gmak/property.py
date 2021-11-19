@@ -337,19 +337,3 @@ class CustomPropertyFactory:
         return CustomProperty(type_name, values, errs, cls.ptable[type_name])
 
 
-def add_custom_composite_property(type_name, composite_calculator=None):
-    """
-    Adds a custom composite property to the program. In the input file, it can
-    be referenced with the type ``type_name``.
-
-    :param type_name: Name of the type of the custom composite property.
-    :type type_name: str
-    :param composite_calculator: (optional) The calculator function (see
-        :py:func:`~gmak.custom_properties.composite_calculator`). If it is
-        not supplied, the program implicitly assumes that the property has only
-        one component and identifies the values and errors of the composite
-        property with those of the component property.
-    :type composite_calculator: callable
-    """
-    return CustomPropertyFactory.add_custom_composite_property(type_name,
-                                                               composite_calculator)

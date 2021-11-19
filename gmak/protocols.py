@@ -728,39 +728,6 @@ class CustomProtocolFactory:
                               get_last_frame=cls.ptable[type_name][3])
 
 
-def add_custom_protocol(type_name, simulator, calc_initial_len=None,
-                        calc_extend=None, get_last_frame=None):
-    """
-    Adds a custom protocol to the program. In the input file, it can be
-    referenced with the type ``type_name``.
-
-    :param type_name: Name of the type of the custom protocol.
-    :type type_name: str
-    :param simulator: The simulator function (see
-        :py:func:`~gmak.custom_protocols.simulator`)
-    :type simulator: callable
-    :param calc_initial_len: (optional) The function to calculate the initial
-        length of the production run (see
-        :py:func:`~gmak.custom_protocols.calc_initial_len`). This is used only
-        when support for extensions is desired. Defaults to :py:obj:`None`,
-        indicating that extensions are not desired.
-    :type calc_initial_len: callable
-    :param calc_extend: (optional) The function to calculate the new length of
-        the production run (see :py:func:`~gmak.custom_protocols.calc_extend`).
-        This is used only when support for extensions is desired. Defaults to
-        :py:obj:`None`, indicating that extensions are not desired.
-    :type calc_extend: callable
-    :param get_last_frame: (optional) The function to extract the last frame of
-        a production run (see :py:func:`~gmak.custom_protocols.get_last_frame`).
-        This is used only when the coordinates for the protocol follow those of
-        another. Defaults to :py:obj:`None`.
-    :type get_last_frame: callable
-    """
-    CustomProtocolFactory.add_custom_protocol(type_name, simulator,
-                                              calc_initial_len, calc_extend,
-                                              get_last_frame)
-
-
 def create_protocols(bd, protocols, coordinates, systems, grid):
     _type = bd['type'][0]
     if _type == 'gmx':

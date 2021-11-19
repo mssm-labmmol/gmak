@@ -362,17 +362,3 @@ class GmxSystem(System):
     def __init__(self, name: str):
         super().__init__(name, "gmx", gmx_topo_out_creator,
                          gmx_topo_out_writer)
-
-
-def add_gmx_custom_parameter_writer(funct):
-    """
-    Adds to the program a function to apply the values of custom parameters
-    (see :ref:`overview/systems_and_topologies:custom parameters`) to a GROMACS
-    topology file.
-
-    :param funct: The function used to apply the values of custom parameters
-        (see :py:meth:`~gmak.custom_systems.gmx_custom_parameter_writer`)
-    :type funct: callable
-    """
-    global gmx_custom_replace
-    gmx_custom_replace = funct

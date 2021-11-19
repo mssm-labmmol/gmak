@@ -5,14 +5,15 @@ from typing import Optional, Callable, List
 
 class TopologyOutput:
     """
-    This class is intended to be used as a generalization of the path of the
-    topology file, when more flexibility is needed in constructing it. It is
-    essentially a container for data that the user wants to transfer around and
-    that is identified by the program as a topology. The way to store data in
-    objects of this type is via instance attributes, which can be freely set by
-    the user. These objects are created individually for each system,
-    grid-shift iteration and grid point
-    (:ref:`overview/general_workflow:general workflow`).
+    This class encodes a topology. It is intended to be used as a
+    generalization of the path of the topology file, when more flexibility is
+    needed in constructing it. It is essentially a container for data that the
+    user wants to transfer around and that is identified by the program as
+    representing the topology of a system. The way to store data in objects
+    of this type is via instance attributes, which can be freely set by the
+    user. These objects are created individually for each system, grid-shift
+    iteration and grid point (:ref:`overview/general_workflow:general
+    workflow`).
     """
     def __init__(self):
         pass
@@ -78,27 +79,6 @@ class CustomSystemFactory:
                           cls.ptable[type_name][1])
         except KeyError:
             raise ValueError(f"Unknown custom-system type \"{type_name}\".")
-
-
-def add_custom_system(type_name, topo_out_creator, topo_out_writer):
-    """
-    Adds a custom system type to the program. In the input file, it
-    can be referenced with the type ``type_name``.
-
-    :param type_name: Name of the type of the custom system.
-    :type type_name: str
-    :param topo_out_creator: A function that creates a
-        :py:class:`~gmak.systems.TopologyOutput` object for a given
-        system, grid-shift iteration and grid point (see
-        :ref:`overview/general_workflow:general workflow`
-        and :py:func:`~gmak.custom_systems.topo_out_creator`).
-    :type topo_out_creator: callable
-    :param topo_out_writer: A function that writes the topology file
-        in the path specified
-    :type topo_out_writer: callable
-    """
-    CustomSystemFactory.add_custom_system(type_name, topo_out_creator,
-                                          topo_out_writer)
 
 
 def create_system(type_name: str,
