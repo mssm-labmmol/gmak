@@ -63,7 +63,15 @@ class InteractionAtom(InteractionParticles):
     """
     The class representing an interaction atom.
     """
-    def __init__(self, name: str, pairs_include=None, pairs_exclude=None):
+    def __init__(self, name, pairs_include=None, pairs_exclude=None):
+        """
+        :param name: the name of the atom
+        :type name: str
+        :param pairs_include: regular expression controlling the standard pairtypes affected by this atom
+        :param pairs_include: str
+        :param pairs_include: regular expression controlling the standard pairtypes which are not affected by this atom
+        :param pairs_include: str
+        """
         self.name = name
         if pairs_include is None:
             self.pairs_include = r'.*'
@@ -90,6 +98,32 @@ class InteractionAtom(InteractionParticles):
     @name.setter
     def name(self, n):
         self._name = n
+
+    @property
+    def pairs_include(self):
+        """
+        The regular expression controlling the standard pairtypes affected by the atom.
+
+        :type: str
+        """
+        return self._pairs_include
+
+    @pairs_include.setter
+    def pairs_include(self, s):
+        self._pairs_include = s
+
+    @property
+    def pairs_exclude(self):
+        """
+        The regular expression controlling the standard pairtypes that are not affected by the atom.
+
+        :type: str
+        """
+        return self._pairs_exclude
+
+    @pairs_exclude.setter
+    def pairs_exclude(self, s):
+        self._pairs_exclude = s
 
 
 class InteractionPair(InteractionParticles):
@@ -169,7 +203,17 @@ class InteractionPair(InteractionParticles):
         """
         return (self.name_i, self.name_j)
 
-    def derives_from_atom(self, atom: InteractionAtom) -> bool:
+    def derives_from_atom(self, atom):
+        """
+        Verifies if the pair derives from an atom based on the properties
+        :py:attr:`~InteractionAtom.pairs_include` and
+        :py:attr:`~InteractionAtom.pairs_exclude` of the latter.
+
+        :param atom: The atom that is verified if the pair derives from
+        :type atom: :py:class:`~InteractionAtom`
+        :return: True if the the pair derives from the atom; False otherwise.
+        :rtype: bool
+        """
         incl = atom.pairs_include
         excl = atom.pairs_exclude
         other = self.get_other(atom)

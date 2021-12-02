@@ -174,7 +174,7 @@ class GridShifter(BaseGridShifter):
             maxshifts = int(dictargs['maxshifts'][0])
             margins   = [[float(dictargs['margins'][2*i]), float(dictargs['margins'][2*i+1])] for i in range(grid.get_dim())]
             ncut      = float(dictargs['ncut'][0])
-            keepsamples = True if dictargs['keepsamples'][0] == 'yes' else False
+            keepsamples = False #True if dictargs['keepsamples'][0] == 'yes' else False
         else:
             maxshifts = 0
             margins   = None

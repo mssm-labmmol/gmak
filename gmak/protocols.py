@@ -55,10 +55,10 @@ class DefaultExtendMixin:
         Returns the new number of steps in the protocol, or None if there
         is no need to extend the protocol.
 
-        The new number of steps will always be less than self.maxSteps
-        to avoid very long simulations. Also, it will always be at
-        least self.minFactor * (the current number of steps), where,
-        by default, self.minFactor = 1.1.
+        The new number of steps will always be less than self.maxSteps to avoid
+        very long simulations. Also, it will always be at least self.minFactor
+        * (the current number of steps), where, by default, self.minFactor =
+        1.1, except if this ends up being greater than self.maxSteps.
         """
         errs_tols = gridpoint.get_errs_tols(optimizer, self, protocolsHash)
         last_lenspec = gridpoint.getProtocolLength(self)
@@ -452,6 +452,10 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
                     except KeyError:
                         out[k] = [v]
             gridpoint.add_protocol_output(self, out)
+
+    # override
+    def get_last_frame(self, gridpoint):
+        raise ValueError("Can't get last frame for alchemical protocol.")
 
 
 class GmxProtocol(GmxBaseProtocol,

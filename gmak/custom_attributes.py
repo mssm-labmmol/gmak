@@ -22,14 +22,16 @@ class CustomizableAttributesMixin:
             total_mass 2.3e+03
             index_group /path/to/index.ndx OW
 
-        The data defined in the input-file line is made available as an instance
-        attribute with name ``ATTRNAME``. The value of the attribute depends on
-        the syntax of ``VALUES``. If there is a single numerical token, the value
-        is the numerical value of the corresponding string (type conversion is
-        done automatically). If there is a single non-numerical token, it is the
-        corresponding string itself. If there is a sequence of tokens, it is a
-        list of values resulting from the processing of each token as described
-        above.  For the examples above::
+        The data defined in the input-file line is made available as an
+        instance attribute with name ``ATTRNAME``. The value of the attribute
+        depends on the syntax of ``VALUES``. If there is a single numerical
+        token, the value is the numerical value of the corresponding string
+        (type conversion is done automatically). If there is a single
+        non-numerical token, it is the corresponding string itself. If there is
+        a sequence of tokens, it is a list of values resulting from the
+        processing of each token as described above, except if the first token
+        equals ``from`` (more on that exception below).  For the examples
+        above::
 
             >>> attr.extend
             ['z', 5.0]
@@ -46,6 +48,25 @@ class CustomizableAttributesMixin:
            the use of only lowercase characters and underscores is highly
            recommended to avoid run-time errors.
 
+        It is possible to recycle custom attributes from other objects using
+        input lines with the following syntax:
+
+        .. code-block:: text
+
+           ATTRNAME from OBJECT OBJNAME
+
+        ``OBJNAME`` and ``OBJECT`` are the name and type (either ``system``,
+        ``coordinates`` or ``protocol``) of the object from which
+        the attribute is recycled, and ``ATTRNAME`` is the name of the recycled
+        attribute. For example, the line
+
+        .. code-block:: text
+
+           nmols from coordinates water_liq
+
+        sets in the object being defined a custom attribute ``nmols`` with the
+        same value as that for an existing coordinates object named
+        ``water_liq``.
         """
         def __init__(self):
             pass

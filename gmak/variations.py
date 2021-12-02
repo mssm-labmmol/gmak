@@ -393,13 +393,13 @@ class AbstractVariationFactory:
         options_dict = AbstractVariationFactory.parseTillEnd(stream)
         if 'function' not in options_dict.keys():
             # for this case it is necessary
-            raise ValueError("A 'tie' variation must specify a function.")
+            raise ValueError("A 'coupled' variation must specify a function.")
         try:
             variation    = used.generators[0]
         except AttributeError:
-            raise Exception(f"In a 'tie' variation, make sure the "
+            raise Exception(f"In a 'coupled' variation, make sure the "
                             f"line \"using <base_variation>\" appears before the "
-                            f"line \"type  tie\" in the input file.")
+                            f"line \"type  coupled\" in the input file.")
         size         = used.get_linear_size()
         dim          = len(options_dict['function'])
         # no need to return func_strings below, because I am already creating a
@@ -412,7 +412,7 @@ class AbstractVariationFactory:
         # all of them can be decorated
         func_dict = {
             'cartesian' : AbstractVariationFactory._createCartesian,
-            'tie'       : AbstractVariationFactory._createTie,
+            'coupled'       : AbstractVariationFactory._createTie,
             'explicit'  : AbstractVariationFactory._createExplicit,
         }
         try:

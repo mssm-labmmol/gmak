@@ -111,19 +111,25 @@ class gridOptimizer:
             # then choose from custom types
             _score, _score_err = ScoreFactory.create(bd['function'][0])
             _conf_ls = None
+        if 'maxsteps' not in bd.keys():
+            _maxsteps = 1000
+        else:
+            _maxsteps = int(bd['maxsteps'][0])
+        if 'ncut' not in bd.keys():
+            _ncut = 0.5
+        else:
+            _ncut = float(bd['ncut'][0])
         # mount dicts
         _refs = {}
         _tols = {}
         _weis = {}
-        for key in bd.keys():
-            if key not in reserved_keys:
-                prop_id = key
-                _refs[prop_id] = float(bd[key][0])
-                _weis[prop_id] = float(bd[key][1])
-                _tols[prop_id] = float(bd[key][2])
+        for k, prop_id in enumerate(bd['properties']):
+            _refs[prop_id] = float(bd['references'][k])
+            _weis[prop_id] = float(bd['weights'][k])
+            _tols[prop_id] = float(bd['tolerances'][k])
 
-        return cls(maxSteps=bd['maxsteps'][0],
-                   percentCutoff=bd['ncut'][0],
+        return cls(maxSteps=_maxsteps,
+                   percentCutoff=_ncut,
                    refs=_refs,
                    tols=_tols,
                    weis=_weis,

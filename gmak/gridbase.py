@@ -326,7 +326,7 @@ class ParameterGrid:
     def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel,
                             ylabel, reweighterType, reweighterFactory,
                             shifterFactory, shifterArgs, workdir,
-                            keep_initial_samples=False, validateFlag=False):
+                            keep_initial_samples=True, validateFlag=False):
         from gmak.gridshifter import EmptyGridShifter
         parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles,
                                              EmptyReweighter(),
@@ -349,7 +349,7 @@ class ParameterGrid:
                                       reweighterFactory, shifterFactory,
                                       shifterArgs, workdir, validateFlag):
         samples       = []
-        keep_initial_samples = False
+        keep_initial_samples = True
         # Assumes last line read was '$grid'.
         for line in stream:
             if line[0] == '#':
@@ -373,7 +373,7 @@ class ParameterGrid:
                 if (line.split()[1] == 'yes'):
                     keep_initial_samples = True
                 elif (line.split()[1] == 'no'):
-                    pass
+                    keep_initial_samples = False
                 else:
                     raise ValueError("fixsamples can only be 'yes' or 'no'")
         grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles,
