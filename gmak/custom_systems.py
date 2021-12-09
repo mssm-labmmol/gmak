@@ -38,7 +38,7 @@ def topo_out_creator(workdir, name, grid, state, system_attrs):
     :type state: int
     :param system_attrs: The system attributes defined in the input file
     :type system_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: A :py:class:`~gmak.systems.TopologyOutput` instance
         containing any data the user considers necessary to write the topology
         files later on in the workflow. This instance can be initialized with a
@@ -76,6 +76,6 @@ def topo_out_writer(params, topo_out, system_attrs):
     :type topo_out: :py:class:`~gmak.systems.TopologyOutput`
     :param system_attrs: The system attributes defined in the input file
     :type system_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     """
     pass

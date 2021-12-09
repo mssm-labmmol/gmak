@@ -29,11 +29,11 @@ class System(CustomizableAttributesMixin):
                  type: str,
                  topo_out_creator: Callable[
                      [str, str, int, int,
-                         CustomizableAttributesMixin.CustomizableAttributesData],
+                         CustomizableAttributesMixin.InputParameters],
                      TopologyOutput],
                  topo_out_writer: Callable[
                      [List[InteractionParameter], TopologyOutput,
-                      CustomizableAttributesMixin.CustomizableAttributesData], None]):
+                      CustomizableAttributesMixin.InputParameters], None]):
         self.name = name
         self.type = type
         self.topo_out_creator = topo_out_creator
@@ -63,11 +63,11 @@ class CustomSystemFactory:
                           type_name: str,
                           topo_out_creator: Callable[
                               [str, str, int, int,
-                                  CustomizableAttributesMixin.CustomizableAttributesData],
+                                  CustomizableAttributesMixin.InputParameters],
                               TopologyOutput],
                           topo_out_writer: Callable[
                               [List[InteractionParameter], TopologyOutput,
-                               CustomizableAttributesMixin.CustomizableAttributesData],None]):
+                               CustomizableAttributesMixin.InputParameters],None]):
         cls.ptable[type_name] = topo_out_creator, topo_out_writer
 
     @classmethod

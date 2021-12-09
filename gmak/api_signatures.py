@@ -28,13 +28,14 @@ def calculator(tuple_indexes,
         linear index of the grid point.  The second index corresponds to the
         property index in ``propnames``.
     :type uncertainties: numpy.ndarray
-    :return: The tuple index of the new origin.
-    :rtype: tuple
+    :return: The tuple index of the new origin, or :py:obj:`None` to complete
+        the run.
+    :rtype: tuple or None
     """
     pass
 
 
-def component_calculator(topology, protocol_output, property_attrs):
+def component_calculator(topology, protocol_output, property_pars):
     """
     The function used to calculate the custom component property.
 
@@ -46,9 +47,9 @@ def component_calculator(topology, protocol_output, property_attrs):
         protocols, it is the simulation-output ``dict`` described in
         :ref:`protocols:gromacs-based protocols`.
     :type protocol_output: dict
-    :param property_attrs: The property attributes defined in the input file
-    :type property_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param property_pars: The property input parameters defined in the input file
+    :type property_pars:
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: A tuple ``(EA, dEA)`` with the expected value and uncertainty of
         the property, or a list with the values of the property for each frame of
         the simulation. In the latter case, the program will automatically
@@ -58,7 +59,7 @@ def component_calculator(topology, protocol_output, property_attrs):
     pass
 
 
-def composite_calculator(values, errs, property_attrs):
+def composite_calculator(values, errs, property_pars):
     """
     The function used to calculate the custom composite property.
 
@@ -72,9 +73,9 @@ def composite_calculator(values, errs, property_attrs):
         (str) is the type of component property and ``VALUE`` (float) is the
         estimated uncertainty.
     :type errs: list
-    :param property_attrs: The property attributes defined in the input file
-    :type property_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param property_pars: The property input parameters defined in the input file
+    :type property_pars:
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: A tuple ``(EA, dEA)`` with the expected value and uncertainty of
         the composite property
     :rtype: tuple
@@ -82,7 +83,7 @@ def composite_calculator(values, errs, property_attrs):
     pass
 
 
-def simulator(length, topology, coords, ext, protocol_attrs, workdir):
+def simulator(length, topology, coords, ext, protocol_pars, workdir):
     """
     The main simulator function.
 
@@ -94,8 +95,8 @@ def simulator(length, topology, coords, ext, protocol_attrs, workdir):
     :type coords: str
     :param ext: Indicates whether this is an extension or the first simulation.
     :type ext: bool
-    :param protocol_attrs: The protocol attributes defined in the input file
-    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param protocol_pars: The protocol input parameters defined in the input file
+    :type protocol_pars: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :param workdir: The directory where the simulations are run.
     :type workdir: str
     :return: Output files of the simulation
@@ -104,19 +105,19 @@ def simulator(length, topology, coords, ext, protocol_attrs, workdir):
     pass
 
 
-def calc_initial_len(protocol_attrs):
+def calc_initial_len(protocol_pars):
     """
     Calculates the initial length of the production runs.
 
-    :param protocol_attrs: The protocol attributes defined in the input file
-    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param protocol_pars: The protocol input parameters defined in the input file
+    :type protocol_pars: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: The initial length of the production run
     :rtype: int or float
     """
     pass
 
 
-def calc_extend(errs_tols, last_length, protocol_attrs):
+def calc_extend(errs_tols, last_length, protocol_pars):
     """
     Returns the new length of the simulation based on the uncertainties and
     tolerances of the properties involving the protocol.  Return :py:obj:`None`
@@ -129,8 +130,8 @@ def calc_extend(errs_tols, last_length, protocol_attrs):
     :type errs_tols: dict
     :param last_length: The current length of the production run.
     :type last_length: int or float
-    :param protocol_attrs: The protocol attributes defined in the input file
-    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param protocol_pars: The protocol input parameters defined in the input file
+    :type protocol_pars: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: The new length of the production run, or None
     :rtype: int or float or None
     """
@@ -263,7 +264,7 @@ def gmx_custom_parameter_writer(param, istream, ostream):
     pass
 
 
-def topo_out_creator(workdir, name, grid, state, system_attrs):
+def topo_out_creator(workdir, name, grid, state, system_pars):
     """
     Returns a :py:class:`~gmak.systems.TopologyOutput` that encodes a topology.
 
@@ -284,9 +285,9 @@ def topo_out_creator(workdir, name, grid, state, system_attrs):
     :param state: The linear index of the current grid point (see
         :ref:`overview/grid_variations:indexing`)
     :type state: int
-    :param system_attrs: The system attributes defined in the input file
-    :type system_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param system_pars: The system input parameters defined in the input file
+    :type system_pars:
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: The topology-output object
     :rtype: :py:class:`~gmak.systems.TopologyOutput`
 
@@ -307,7 +308,7 @@ def topo_out_creator(workdir, name, grid, state, system_attrs):
     pass
 
 
-def topo_out_writer(params, topo_out, system_attrs):
+def topo_out_writer(params, topo_out, system_pars):
     """
     Applies the interaction-parameter values to the topology-output object.  If
     any topology files need to be written, this should also be done in this
@@ -320,8 +321,8 @@ def topo_out_writer(params, topo_out, system_attrs):
     :param topo_out: The :py:class:`~gmak.systems.TopologyOutput` instance
         returned by the :py:func:`~gmak.api_signatures.topo_out_creator` function.
     :type topo_out: :py:class:`~gmak.systems.TopologyOutput`
-    :param system_attrs: The system attributes defined in the input file
-    :type system_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :param system_pars: The system input parameters defined in the input file
+    :type system_pars:
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     """
     pass

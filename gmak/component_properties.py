@@ -98,7 +98,7 @@ class GmxDG(BaseAtomicProperty):
         dhdlFiles = input_traj['dhdl']
 
         # calculate kbT value
-        kbT = self.temperature * 0.83144626
+        kbT = self.temperature * 0.0083144626
         # intialize MBAR object with default settings
         mbar = estimators.MBAR()
         # extract u_nk from the dHdl files

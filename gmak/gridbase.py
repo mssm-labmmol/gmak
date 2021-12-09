@@ -304,16 +304,12 @@ class ParameterGrid:
         self.shifter         = shifter
         self.workdir         = workdir
 
-        """
-        plotting stuff that I do not wish to alter right now.
-        yMHG ter jul 14 14:40:02 -03 2020
-        """
-        self.xlabel     = "$X$"
-        self.ylabel     = "$Y$"
-
         # Initialize GridPoints
         for i in range(self.get_linear_size()):
             self.grid_points.append( GridPoint(self, i) ) 
+
+    def merge(self, other):
+        self.shifter.merge(other.shifter)
 
     @staticmethod
     def load_from_binary(fn):
@@ -323,16 +319,14 @@ class ParameterGrid:
         return obj
 
     @staticmethod
-    def createParameterGrid(parSpaceGen, topologyBundles, samples, xlabel,
-                            ylabel, reweighterType, reweighterFactory,
+    def createParameterGrid(parSpaceGen, topologyBundles, samples,
+                            reweighterType, reweighterFactory,
                             shifterFactory, shifterArgs, workdir,
                             keep_initial_samples=True, validateFlag=False):
         from gmak.gridshifter import EmptyGridShifter
         parameterGrid        = ParameterGrid(parSpaceGen, topologyBundles,
                                              EmptyReweighter(),
                                              EmptyGridShifter(), workdir)
-        parameterGrid.xlabel = xlabel
-        parameterGrid.ylabel = ylabel
         parameterGrid.init = True
         parameterGrid.reweighter = reweighterFactory.create(reweighterType, parameterGrid)
         if (validateFlag):
@@ -350,6 +344,7 @@ class ParameterGrid:
                                       shifterArgs, workdir, validateFlag):
         samples       = []
         keep_initial_samples = True
+        reweighterType = "standard"
         # Assumes last line read was '$grid'.
         for line in stream:
             if line[0] == '#':
@@ -360,15 +355,6 @@ class ParameterGrid:
                 samples = [int(x) for x in line.split()[1:]]
             if (line.split()[0] == 'reweight'):
                 reweighterType = line.split()[1]
-            if (line.split()[0] == 'labels'):
-                xlabel = ""
-                ylabel = ""
-                splitted = shlex.split(line)
-                try:
-                    xlabel = splitted[1]
-                    ylabel = splitted[2]
-                except IndexError:
-                    pass
             if (line.split()[0] == 'fixsamples'):
                 if (line.split()[1] == 'yes'):
                     keep_initial_samples = True
@@ -377,7 +363,7 @@ class ParameterGrid:
                 else:
                     raise ValueError("fixsamples can only be 'yes' or 'no'")
         grid = ParameterGrid.createParameterGrid(parSpaceGen, topologyBundles,
-                                                 samples, xlabel, ylabel,
+                                                 samples,
                                                  reweighterType,
                                                  reweighterFactory,
                                                  shifterFactory, shifterArgs,
@@ -779,9 +765,9 @@ class ParameterGrid:
                 u_kn  = self.retrieveReweightProperty('potential')
                 if (protocol.has_pv()):
                     pv_kn = self.retrieveReweightProperty('pV')
-                    u_kn  = (u_kn + pv_kn) / (0.83144626 * protocol.get_temperature())
+                    u_kn  = (u_kn + pv_kn) / (0.0083144626 * protocol.get_temperature())
                 else:
-                    u_kn  = u_kn / (0.83144626 * protocol.get_temperature())
+                    u_kn  = u_kn / (0.0083144626 * protocol.get_temperature())
                 N_k   = self.retrieveReweightNumberOfConfigurations()
                 # retrieve MBAR model (one model for all properties!)
                 mbar_model = protocol.get_mbar_model()
@@ -897,7 +883,6 @@ class ParameterGrid:
             if self.shift(optimizer):
                 logger.globalLogger.unindent()
                 logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
-                self.incrementPrefixOfTopologies()
             else:
                 logger.globalLogger.unindent()
                 logger.globalLogger.putMessage('END MAINLOOP', dated=True)

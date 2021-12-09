@@ -22,18 +22,24 @@ class State:
         self.optimizer = optimizer
         self.surrogateModelHash = surrogateModelHash
 
+    def merge(self, other):
+        self.grid.merge(other.grid)
+        for pi, pj in zip(self.protocols, other.protocols):
+            pi.merge(pj)
+        self.optimizer.merge(other.optimizer)
+
     def makeCurrentWorkdir(self):
         shifts = 0
-        outdir = "{}/grid_{}".format(self.workdir, shifts)
+        outdir = "{}/grid_{}".format(self.base_workdir, shifts)
         while(os.path.exists(outdir)):
             shifts += 1
-            outdir = "{}/grid_{}".format(self.workdir, shifts)
+            outdir = "{}/grid_{}".format(self.base_workdir, shifts)
         shifts -= 1
-        outdir = "{}/grid_{}".format(self.workdir, shifts)
+        outdir = "{}/grid_{}".format(self.base_workdir, shifts)
         return self.makeDir(outdir)
 
     def resetWorkdir(self, workdir):
-        self.workdir = workdir
+        self.base_workdir = workdir
 
     def setFromInput(self, inputTuple):
         self.__init__(*inputTuple)
@@ -68,7 +74,7 @@ class State:
 
     def saveToFile(self):
         print(vars(self))
-        _fn = self.base_workdir + '/state.' + datetime.now().strftime('%Y-%m-%d_%H:%M:%S') + '.bin'
+        _fn = self.base_workdir + '/state_' + str(os.getpid()) + '.bin'
         _fp = open(_fn, 'wb')
         pickle.dump(self, _fp, pickle.HIGHEST_PROTOCOL)
         _fp.close()

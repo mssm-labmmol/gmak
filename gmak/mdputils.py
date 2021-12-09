@@ -98,7 +98,13 @@ class mdpUtils:
                 pass
 
     def set_lambda_state(self, value):
-        option = 'init-lambda-state'
+        if 'init-lambda-state' in self.optionsDict.keys():
+            option = 'init-lambda-state'
+        elif 'init_lambda_state' in self.optionsDict.keys():
+            option = 'init_lambda_state'
+        else:
+            # use hyphens if option is not there
+            option = 'init-lambda-state'
         self.optionsDict[option] = [value]
 
     def write_to_file(self, fn):

@@ -15,6 +15,6 @@ def filter_datafile(datafile, filteredfile, filter_function=None):
         filter_function = filter_data
     data = np.loadtxt(datafile, comments=["@", "#"], usecols=(-1,))
     skip, fdata = filter_function(data)
-    np.savetxt(filteredfile, data)
+    np.savetxt(filteredfile, fdata)
     return skip
 

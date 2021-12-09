@@ -145,6 +145,9 @@ class BaseGridShifter(ABC):
 
         return True
 
+    def merge(self, other):
+        self.maxshifts = other.maxshifts
+
 
 
 class GridShifter(BaseGridShifter):
@@ -167,6 +170,11 @@ class GridShifter(BaseGridShifter):
 
         # Do we keep samples from old grids?
         self.keepsamples = keepsamples
+
+    def merge(self, other):
+        self.maxshifts = other.maxshifts
+        self.margins = other.margins
+        self.ncut = other.ncut
 
     @classmethod
     def create_from_grid_and_dict(cls, grid, dictargs):
@@ -253,10 +261,9 @@ class CustomGridShifter(BaseGridShifter):
 
     @classmethod
     def from_dict(cls, bd, grid):
-        for key in ['type', 'keepsamples', 'maxshifts']:
+        for key in ['type', 'maxshifts']:
             if (key not in bd.keys()):
                 raise Exception(f"CustomGridShifter must specify a '{key}'.")
-        bd['keepsamples'][0] = {'yes': True, 'no': False}[bd['keepsamples'][0]]
         bd['maxshifts'][0] = int(bd['maxshifts'][0])
         out = CustomGridShifterFactory.create(bd['type'][0])
         for k in bd.keys():

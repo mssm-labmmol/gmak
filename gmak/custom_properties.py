@@ -14,7 +14,7 @@ def component_calculator(topology, protocol_output, property_attrs):
     :type protocol_output: dict
     :param property_attrs: The property attributes defined in the input file
     :type property_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: A tuple ``(EA, dEA)`` with the expected value and uncertainty of
         the property, or a list with the values of the property for each frame of
         the simulation. In the latter case, the program will automatically
@@ -37,7 +37,7 @@ def composite_calculator(values, errs, property_attrs):
     :type errs: list
     :param property_attrs: The property attributes defined in the input file
     :type property_attrs:
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: A tuple ``(EA, dEA)`` with the expected value and uncertainty of
         the composite property
     :rtype: tuple

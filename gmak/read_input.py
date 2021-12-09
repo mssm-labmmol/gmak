@@ -215,8 +215,7 @@ def read_compute(blockdict: dict,
         list(systems.values()),
         component_props)
     propDriver.set_custom_attributes_from_blockdict(
-        blockdict, systems, coordinates, protocols,
-        exclude=base_options)
+        blockdict, systems, coordinates, protocols)
     output_protocolsHash[name] = prots
     aps = propDriver.create_component_properties()
     for ap, prot in zip(aps, prots):
@@ -272,8 +271,7 @@ class ParameterOptionIterator:
 
 
 class ParameterIO:
-    def __init__(self, stream, domainSpaceFactory):
-        self.stream             = stream
+    def __init__(self, domainSpaceFactory):
         self.using              = None
         self.names              = []
         self.types              = []
@@ -286,50 +284,35 @@ class ParameterIO:
         return self.parSpaceGen
 
     def _addName(self, options):
-        self.names.append( options[0] )
-        return True
+        self.names.append(options['name'][0])
 
     def _updateUsing(self, options):
-        usingString = options[0]
-        self.using = self.parSpaceGen.getDomainSpace(usingString)
-        return True
+        try:
+            usingString = options['using'][0]
+            self.using = self.parSpaceGen.getDomainSpace(usingString)
+        except KeyError:
+            pass
 
     def _addParameterReferences(self, options):
         _theseParameters = []
-        for refstring, kwargs in ParameterOptionIterator(options):
+        for refstring, kwargs in ParameterOptionIterator(options['pars']):
             param = gmak.interaction_parameter.InteractionParameter.from_string(
                 refstring, **kwargs)
             _theseParameters.append(param)
         # Add list of parameter references to list of list of parameter references.
         self.parRefs.append(_theseParameters)
-        return True
 
     def _addTypeAndDelegateRest(self, options):
-        self.types.append( options[0] )
+        self.types.append(options['type'][0])
         # Create domain space and add to ParameterSpaceGenerator.
-        ds = self.domainSpaceFactory.readFromTypeAndStream(self.types[-1], self.stream, self.using)
+        ds = self.domainSpaceFactory.readFromTypeAndOptions(self.types[-1], options, self.using)
         self.parSpaceGen.addMember(self.names[-1], ds, self.parRefs[-1])
-        return False
 
-    def read(self):
-        # Dictionary of behaviors based on identifiers.
-        funct_dict   = {
-            'name': self._addName,
-            'pars': self._addParameterReferences,
-            'type': self._addTypeAndDelegateRest,
-            'using': self._updateUsing,
-        }
-        for line in self.stream:
-            if line[0] == '#':
-                continue
-            # Assumes the given stream has just read a '$variations' line.
-            splittedLine = line.split()
-            identifier   = splittedLine[0]
-            options      = splittedLine[1:]
-            # Execute behavior - funct_dict returns False after '$end' is reached in behavior.
-            if not funct_dict[identifier](options):
-                break
-        return
+    def read(self, options):
+        self._addName(options)
+        self._updateUsing(options)
+        self._addParameterReferences(options)
+        self._addTypeAndDelegateRest(options)
 
 
 def initialize_from_input (input_file, bool_legacy, validateFlag=False):
@@ -378,11 +361,10 @@ def initialize_from_input (input_file, bool_legacy, validateFlag=False):
         if (line.split()[0] == "workdir"):
             output_workdir = os.path.abspath(line.split()[1])
         if (line.rstrip() == "$variation"):
+            blockDict = block2dict(fp, '$end', '#')
             if parameterIO is None:
-                parameterIO = ParameterIO(fp, DomainSpaceFactory)
-                parameterIO.read()
-            else:
-                parameterIO.read()
+                parameterIO = ParameterIO(DomainSpaceFactory)
+            parameterIO.read(blockDict)
         # This is for custom topology.
         if (line.rstrip() == '$system'):
             blockDict = block2dict(fp, '$end', '#')

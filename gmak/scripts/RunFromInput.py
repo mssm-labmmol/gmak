@@ -60,6 +60,13 @@ def main():
 
         logger.globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
+        # Merge new settings from input file, if it is given
+        if not sys.argv[1].startswith('-'):
+            # Set a merging state
+            mergeState = State()
+            mergeState.setFromInput(initialize_from_input(sys.argv[1], bool_legacy, validateFlag))
+            globalState.merge(mergeState)
+
     else:
         globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy, validateFlag))
 
@@ -71,24 +78,11 @@ def main():
          optimizer,
          surrogateModelHash) = globalState.getInitializationState()
 
-        # In each protocol, check writing frequencies of energy and trajectory to avoid any problems
-        mdp_ut = mdpUtils()
-        for protocol in protocols:
-            try:
-                # Check only production run.
-                mdp_ut.parse_file(protocol.mdps[-1])
-                efreq = mdp_ut.get_writefreq_energy()
-                xfreq = mdp_ut.get_writefreq_compressedpos()
-                if (efreq != xfreq):
-                    raise ValueError("For protocol {}, efreq ({}) and xfreq ({}) don't match.".format(
-                        protocol.name, efreq, xfreq))
-            except AttributeError:
-                # CustomProtocols don't have a *.mdps attribute.
-                pass
-
-        # *********************** End of checks for run  **************************        
-
     # Initialize logger.globalLogger with output file inside the workdir
+    try:
+        os.mkdir(base_workdir)
+    except FileExistsError:
+        pass
     logger.globalLogger = logger.Logger(
         os.path.join(
             base_workdir,

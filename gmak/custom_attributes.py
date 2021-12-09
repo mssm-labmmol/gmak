@@ -1,73 +1,48 @@
 class CustomizableAttributesMixin:
 
-    class CustomizableAttributesData:
+    class InputParameters:
         """
-        This class stores the data that is passed to the program's customizable
-        objects (e.g., protocols) in the input file. Every such object contains
-        an instance of this class that is passed to the functions implemented
-        and supplied by the user *via* the customization API.
+        An instance of this class stores the input parameters supplied in a
+        block of the input file as attributes. Input parameters that correspond
+        to a single value token are stored as objects with type appropriate to
+        the token value. Input parameters that correspond to a list of multiple
+        value tokens are stored as a list of objects, each one processed as above.
 
-        In the context of an input-file block defining a given customizable
-        object, every line follows the syntax::
+        For example, the block
 
-            ATTRNAME    VALUES
+        .. code-block:: gmi
 
-        ``ATTRNAME`` is a string containing only lowercase characters and
-        underscores. It is separated by one or more white spaces from
-        ``VALUES``, which is either a string not containing white spaces or a
-        sequence of those (henceforth referred to as tokens) separated by any
-        number of spaces. The lines below show examples with proper syntax::
+            $coords
+            name liquid
+            type gmx_liquid
+            coords molecule.gro
+            nmols 1500
+            box 3.0 3.0 3.0
+            $end
 
-            extend z 5.0
-            total_mass 2.3e+03
-            index_group /path/to/index.ndx OW
+        corresponds to an object ``coords_attr`` for which
 
-        The data defined in the input-file line is made available as an
-        instance attribute with name ``ATTRNAME``. The value of the attribute
-        depends on the syntax of ``VALUES``. If there is a single numerical
-        token, the value is the numerical value of the corresponding string
-        (type conversion is done automatically). If there is a single
-        non-numerical token, it is the corresponding string itself. If there is
-        a sequence of tokens, it is a list of values resulting from the
-        processing of each token as described above, except if the first token
-        equals ``from`` (more on that exception below).  For the examples
-        above::
+            >>> coords_attr.name
+            'liquid'
+            >>> coords_attr.type
+            'gmx_liquid'
+            >>> coords_attr.coords
+            'molecule.gro'
+            >>> coords_attr.nmols
+            1500
+            >>> coords_attr.box
+            [3.0, 3.0, 3.0]
+        
+        Note the automatic type conversion for the parameters ``nmols`` and
+        ``box``, from :py:class:`string` and :py:class:`list` of
+        :py:class:`string` to :py:class:`int` and :py:class:`list` of
+        :py:class:`float`, respectively.
 
-            >>> attr.extend
-            ['z', 5.0]
-            >>> attr.total_mass
-            2.3e+03
-            >>> attr.index_group
-            ['/path/to/index.ndx', 'OW']
+        .. note:: Since the parameter is used as the name of an instance
+            attribute, the use of only lowercase characters and underscores for
+            custom parameters is highly recommended to avoid run-time errors.
+       """
 
-
-        where ``attr`` stands for the defined instance of type
-        :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`.
-
-        .. note:: Since ``ATTRNAME`` is used as the name of an instance attribute,
-           the use of only lowercase characters and underscores is highly
-           recommended to avoid run-time errors.
-
-        It is possible to recycle custom attributes from other objects using
-        input lines with the following syntax:
-
-        .. code-block:: text
-
-           ATTRNAME from OBJECT OBJNAME
-
-        ``OBJNAME`` and ``OBJECT`` are the name and type (either ``system``,
-        ``coordinates`` or ``protocol``) of the object from which
-        the attribute is recycled, and ``ATTRNAME`` is the name of the recycled
-        attribute. For example, the line
-
-        .. code-block:: text
-
-           nmols from coordinates water_liq
-
-        sets in the object being defined a custom attribute ``nmols`` with the
-        same value as that for an existing coordinates object named
-        ``water_liq``.
-        """
         def __init__(self):
             pass
 
@@ -76,7 +51,7 @@ class CustomizableAttributesMixin:
         # custom attributes are attributes of
         # self._custom_attributes_data
         if not hasattr(self, "_custom_attributes_data"):
-            self._custom_attributes_data = self.CustomizableAttributesData()
+            self._custom_attributes_data = self.InputParameters()
         try:
             if len(attr_value) == 1:
                 setattr(self._custom_attributes_data, attr_name, attr_value[0])
@@ -89,7 +64,7 @@ class CustomizableAttributesMixin:
     def set_custom_attributes_from_blockdict(self, blockdict, systems,
                                              coordinates, protocols,
                                              exclude=None):
-        self._custom_attributes_data = self.CustomizableAttributesData()
+        self._custom_attributes_data = self.InputParameters()
         for k, v in blockdict.items():
             if (exclude is None) or (k not in exclude):
                 try:

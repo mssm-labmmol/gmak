@@ -298,12 +298,12 @@ class GmxSlabFollowExtendConfigurationFactory(ConfigurationFactory):
         else:
             self.factor = 5.0
         self.grid = grid
+        self.follow_fac = FollowProtocolConfigurationFactory(self.protocol, self.grid)
 
     def _construct_configuration(self, path, tmp=False):
         apath = os.path.abspath(path)
-        follow_fac  = FollowProtocolConfigurationFactory(self.protocol, self.grid)
         follow_path = os.path.join(os.path.dirname(apath), 'pre-liquid.gro')
-        follow_conf = follow_fac.construct_configuration(follow_path, True)
+        follow_conf = self.follow_fac.construct_configuration(follow_path, True)
         # extend
         return follow_conf.extend_axis(apath, self.factor, which=self.axis, tmp=tmp)
         

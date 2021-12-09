@@ -100,16 +100,23 @@ class gridOptimizer:
         self.score_err = score_err
         self.confidenceLevels = confidence_levels
 
+    def merge(self, other):
+        self.referenceTolerances = other.referenceTolerances
+        self.referenceValues = other.referenceValues
+        self.referenceWeights = other.referenceWeights
+        self.score = other.score
+        self.score_err = other.score_err
+
     @classmethod
     def from_dict(cls, bd, validateFlag):
-        reserved_keys = ['function', 'maxsteps', 'ncut']
-        if 'function' not in bd.keys():
+        reserved_keys = ['type', 'maxsteps', 'ncut']
+        if 'type' not in bd.keys():
             _score = wrmsd_calc_score
             _score_err = wrmsd_calc_score_err
             _conf_ls = [0.68, 0.80, 0.90, 0.95]
         else:
             # then choose from custom types
-            _score, _score_err = ScoreFactory.create(bd['function'][0])
+            _score, _score_err = ScoreFactory.create(bd['type'][0])
             _conf_ls = None
         if 'maxsteps' not in bd.keys():
             _maxsteps = 1000

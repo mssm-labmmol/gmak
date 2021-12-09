@@ -356,8 +356,7 @@ class AbstractVariationFactory:
         return options_dict
 
     @staticmethod
-    def _createCartesian(stream, used):
-        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+    def _createCartesian(options_dict, used):
         if 'function' not in options_dict.keys():
             options_dict['function'] = None
         dim          = len(options_dict['size'])
@@ -368,8 +367,7 @@ class AbstractVariationFactory:
         return VariationCartesian(dim, size, starts, steps, lens), options_dict['function']
 
     @staticmethod
-    def _createScale(stream, used):
-        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+    def _createScale(options_dict, used):
         if 'function' not in options_dict.keys():
             options_dict['function'] = None
         variation    = used.generators[0]
@@ -379,8 +377,7 @@ class AbstractVariationFactory:
         return VariationFromVariationScale(dim, size, variation, factors), options_dict['function']
 
     @staticmethod
-    def _createExplicit(stream, used):
-        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+    def _createExplicit(options_dict, used):
         if 'function' not in options_dict.keys():
             options_dict['function'] = None
         dim = int(options_dict['dim'][0])
@@ -389,8 +386,7 @@ class AbstractVariationFactory:
         return VariationExplicit(dim, values), options_dict['function']
 
     @staticmethod
-    def _createTie(stream, used):
-        options_dict = AbstractVariationFactory.parseTillEnd(stream)
+    def _createTie(options_dict, used):
         if 'function' not in options_dict.keys():
             # for this case it is necessary
             raise ValueError("A 'coupled' variation must specify a function.")
@@ -408,7 +404,7 @@ class AbstractVariationFactory:
                 None)
 
     @staticmethod
-    def readFromTypeAndStream(typestring, stream, used):
+    def readFromTypeAndOptions(typestring, options_dict, used):
         # all of them can be decorated
         func_dict = {
             'cartesian' : AbstractVariationFactory._createCartesian,
@@ -416,7 +412,7 @@ class AbstractVariationFactory:
             'explicit'  : AbstractVariationFactory._createExplicit,
         }
         try:
-            base, func_strings = func_dict[typestring](stream, used)
+            base, func_strings = func_dict[typestring](options_dict, used)
             if func_strings is not None:
                 return FunctionDecoratedVariation(base, func_strings)
             else:
@@ -506,6 +502,6 @@ class DomainSpace:
 class DomainSpaceFactory:
 
     @staticmethod
-    def readFromTypeAndStream(typestring, stream, used):
-        variation = AbstractVariationFactory.readFromTypeAndStream(typestring, stream, used)
+    def readFromTypeAndOptions(typestring, options_dict, used):
+        variation = AbstractVariationFactory.readFromTypeAndOptions(typestring, options_dict, used)
         return DomainSpace([variation])

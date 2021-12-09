@@ -13,7 +13,7 @@ def simulator(length, topology, coords, ext, protocol_attrs, workdir):
     :param ext: Indicates whether this is an extension or the first simulation.
     :type ext: bool
     :param protocol_attrs: The protocol attributes defined in the input file
-    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :param workdir: The directory where the simulations are run.
     :type workdir: str
     :return: Output files of the simulation
@@ -27,7 +27,7 @@ def calc_initial_len(protocol_attrs):
     point.
 
     :param protocol_attrs: The protocol attributes defined in the input file
-    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: The initial length of the production run
     :rtype: int or float
     """
@@ -49,7 +49,7 @@ def calc_extend(errs_tols, last_length, protocol_attrs):
     :param last_length: The current length of the production run.
     :type last_length: int or float
     :param protocol_attrs: The protocol attributes defined in the input file
-    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.CustomizableAttributesData`
+    :type protocol_attrs: :py:class:`~gmak.custom_attributes.CustomizableAttributesMixin.InputParameters`
     :return: The new length of the production run, or None
     :rtype: int or float
     """

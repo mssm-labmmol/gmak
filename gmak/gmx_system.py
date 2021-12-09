@@ -39,7 +39,7 @@ def gmx_topo_out_creator(workdir: str,
                          name: str,
                          grid: int,
                          state: int,
-                         attrs: CustomizableAttributesMixin.CustomizableAttributesData):
+                         attrs: CustomizableAttributesMixin.InputParameters):
     return GmxTopologyOutput(workdir, name, grid, state)
 
 
@@ -300,15 +300,24 @@ def gmx_lj_replace(param: InteractionParameter,
         raise ValueError("LJ particles should be an atom or pair.")
 
 
-# overriden by user
-def gmx_custom_replace(p, s, o):
-    raise NotImplementedError(f"Gmx custom type was not implemented and {p.name} is a custom parameter.")
+class GmxCustomReplace:
+
+    writer = None
+
+    @classmethod
+    def add_gmx_custom_parameter_writer(cls, writer):
+        cls.writer = writer
+
+    def __call__(self, p, s, o):
+        if self.writer is None:
+            raise NotImplementedError(f"Gmx custom type was not implemented and {p.name} is a custom parameter.")
+        else:
+            return self.writer(p, s, o)
 
 def gmx_set_param(param: InteractionParameter, stream: StringIO, combrule:
                   CombinationRule) -> StringIO:
     ostream = StringIO()
     stream.seek(0)
-    global gmx_custom_replace
     if param.type == InteractionParameterType.MacroParameter:
         gmx_macro_replace(param, stream, ostream)
     if param.type == InteractionParameterType.LJ_14_V:
@@ -320,7 +329,7 @@ def gmx_set_param(param: InteractionParameter, stream: StringIO, combrule:
     if param.type == InteractionParameterType.LJ_W:
         gmx_lj_replace(param, stream, ostream, combrule)
     if param.type == InteractionParameterType.CustomParameter:
-        gmx_custom_replace(param, stream, ostream)
+        GmxCustomReplace()(param, stream, ostream)
     return ostream
 
 
@@ -342,7 +351,7 @@ def gmx_read_combrule(stream: StringIO) -> CombinationRule:
 
 def gmx_topo_out_writer(params: List[InteractionParameter],
                         topo_out: GmxTopologyOutput,
-                        attrs: CustomizableAttributesMixin.CustomizableAttributesData):
+                        attrs: CustomizableAttributesMixin.InputParameters):
     stream = gmx_read_top_ff(attrs.template)
     combrule = gmx_read_combrule(stream)
     for i, param in enumerate(params):

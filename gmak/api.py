@@ -5,6 +5,7 @@ from gmak.property import CustomPropertyFactory
 from gmak.protocols import CustomProtocolFactory
 from gmak.surrogate_model import CustomSurrogateModelFactory
 from gmak.systems import CustomSystemFactory
+from gmak.gmx_system import GmxCustomReplace
 
 
 def add_custom_component_property(type_name, component_calculator, is_timeseries):
@@ -38,8 +39,7 @@ def add_gmx_custom_parameter_writer(funct):
         (see :py:meth:`~gmak.api_signatures.gmx_custom_parameter_writer`)
     :type funct: callable
     """
-    global gmx_custom_replace
-    gmx_custom_replace = funct
+    GmxCustomReplace.add_gmx_custom_parameter_writer(funct)
 
 
 def add_custom_score(type_name, calc_score, calc_score_err=None):

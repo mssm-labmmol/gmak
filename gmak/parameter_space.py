@@ -39,7 +39,7 @@ class ParameterSpaceGenerator:
         for domainSpace, parList in self.members.values():
             values = domainSpace.get(i)
             for j, par in enumerate(parList):
-                par.set_value(values[j])
+                par.value = values[j]
 
     def getStateParameters(self, i):
         """
@@ -51,7 +51,7 @@ class ParameterSpaceGenerator:
             values = domainSpace.get(i)
             for j, par in enumerate(parList):
                 par_copy = deepcopy(par)
-                par_copy.set_value(values[j])
+                par_copy.value = values[j]
                 output_parameters.append(par_copy)
         return output_parameters
 
@@ -60,7 +60,7 @@ class ParameterSpaceGenerator:
         Returns the list of names of the interaction parameters associated with
         the main variation.
         """
-        return [x.get_name() for x in self.members['main'][1]]
+        return [x.name for x in self.members['main'][1]]
 
     def getParameterReferences(self):
         out = []
@@ -125,7 +125,7 @@ class ParameterSpaceGenerator:
         stream.write("$variation\n")
         # Writing name and parameter strings requires ParameterSpaceGenerator
         stream.write("name {}\n".format(name))
-        atomtype_strings = [x.get_name() for x in self.members[name][1]]
+        atomtype_strings = [x.name for x in self.members[name][1]]
         stream.write("pars " + " ".join(atomtype_strings) + "\n")
         # Writing the rest is delegated to DomainSpace
         self.members[name][0].write_block_to_stream(stream)

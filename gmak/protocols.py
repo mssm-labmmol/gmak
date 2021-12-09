@@ -88,6 +88,10 @@ class DefaultExtendMixin:
         else:
             return # None
 
+    def merge(self, other):
+        self.maxSteps = other.maxSteps
+        self.minFactor = other.minFactor
+
 
 
 class BaseProtocol(ABC):
@@ -262,6 +266,10 @@ class BaseProtocol(ABC):
         pass
 
 
+    def merge(self, other):
+        pass
+
+
 class GmxBaseProtocol(BaseProtocol):
     """
     Gromacs-specific functions.
@@ -374,6 +382,7 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
                  ensemble,
                  maxSteps=None,
                  minFactor=None):
+        self.system = core_protocols[0].system
         self.name = name
         self.core_protocols = core_protocols
         self.ensemble = ensemble
@@ -395,7 +404,6 @@ class GmxAlchemicalProtocol(GmxBaseProtocol,
             self.minFactor = minFactor
         # This is initialized later on.
         self.component_properties = {}
-
 
     @classmethod
     def from_dict(cls, bd, systems, coordinates, protocols, grid):
@@ -613,7 +621,7 @@ class CustomProtocol(BaseProtocol,
         return None
 
     @staticmethod
-    def _default_calc_extend(errs_tols, length):
+    def _default_calc_extend(errs_tols, length, attrs):
         return None
 
     @staticmethod
