@@ -9,6 +9,7 @@ from gmak.topology import *
 from gmak.systems import *
 import gmak.property
 import gmak.configurations
+import gmak.config
 import gmak.component_properties as component_properties
 from gmak.protocols import create_protocols
 import gmak.interaction_parameter

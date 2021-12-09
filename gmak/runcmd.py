@@ -32,7 +32,7 @@ def gmx_insert_molecules(args_list):
     # save stdout to check if requested number of molecules was
     # reached
     log = subprocess.check_output(
-        [ConfigVariables.gmx, "insert-molecules"] + args_list,
+        ConfigVariables.gmx.split() + ["insert-molecules"] + args_list,
         env=no_backup_environ,
         stderr=subprocess.STDOUT).decode('utf-8')
     # check number of added molecules

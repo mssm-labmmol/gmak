@@ -19,6 +19,7 @@ from gmak.write_input import *
 from gmak.results_assembler import *
 from gmak.gridpoint_selector import *
 
+import gmak.config
 import gmak.runcmd as runcmd
 import gmak.simulate as simulate
 
@@ -36,6 +37,21 @@ if os.path.isfile("custom.py"):
 plotFlag = False # never plot
 validateFlag = ('--validate' in sys.argv)
 writeNewInput = ('--write-input' in sys.argv)
+
+# -----
+# Gmx Path
+# -----
+try:
+    gmak.config.ConfigVariables.gmx = sys.argv[sys.argv.index('--gmx') + 1]
+except ValueError:
+    try:
+        import subprocess
+        # get gmx path from 'which gmx'
+        gmak.config.ConfigVariables.gmx = subprocess.check_output(['which', 'gmx']).strip().decode('utf-8')
+    except:
+        # Maybe gmx is not needed for the job?
+        pass
+
 
 try:
     cmdNprocs = sys.argv[sys.argv.index('-np') + 1]
@@ -68,7 +84,7 @@ def main():
             globalState.merge(mergeState)
 
     else:
-        globalState.setFromInput(initialize_from_input (sys.argv[1], bool_legacy, validateFlag))
+        globalState.setFromInput(initialize_from_input(sys.argv[1], bool_legacy, validateFlag))
 
         (base_workdir, # read variables from input file
          grid,
