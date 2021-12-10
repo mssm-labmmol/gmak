@@ -22,46 +22,42 @@ from gmak.gridpoint_selector import *
 import gmak.config
 import gmak.runcmd as runcmd
 import gmak.simulate as simulate
+import argparse
+import subprocess
 
-if ('--legacy' in sys.argv):
-    bool_legacy = True
-else:
-    bool_legacy = False
-
-# Run-time custom files.
-if os.path.isfile("custom.py"):
-    sys.path.insert(0, '.')
-    import custom
-
-#plotFlag = not ('--no-plot' in sys.argv)
-plotFlag = False # never plot
-validateFlag = ('--validate' in sys.argv)
-writeNewInput = ('--write-input' in sys.argv)
-
-# -----
-# Gmx Path
-# -----
-try:
-    gmak.config.ConfigVariables.gmx = sys.argv[sys.argv.index('--gmx') + 1]
-except ValueError:
+def find_gmx():
     try:
-        import subprocess
-        # get gmx path from 'which gmx'
-        gmak.config.ConfigVariables.gmx = subprocess.check_output(['which', 'gmx']).strip().decode('utf-8')
+        return subprocess.check_output(['which', 'gmx']).strip().decode('utf-8')
     except:
-        # Maybe gmx is not needed for the job?
-        pass
+        return None
+
+program_description = """
+This program does a lot of stuff.
+
+This and that and this and that.
+"""
 
 
-try:
-    cmdNprocs = sys.argv[sys.argv.index('-np') + 1]
-    simulate.mdrun_nprocs = int(cmdNprocs)
-except ValueError:
-    pass
 
-def main():
-    if ('--restart' in sys.argv): # restart from a given binary file
-        binFilename = sys.argv[sys.argv.index('--restart') + 1]
+def gmak_run(argumentNamespace):
+    plotFlag = False
+    bool_legacy = False
+    writeNewInput = False
+    binFilename = argumentNamespace.restart
+    inputFilename = argumentNamespace.input
+    validateFlag = argumentNamespace.validate
+
+    # Run-time custom files.
+    if os.path.isfile("custom.py"):
+        sys.path.insert(0, '.')
+        import custom
+
+    # Set module/class attributes
+    gmak.config.ConfigVariables.gmx = argumentNamespace.gmx
+    if argumentNamespace.gnp is not None:
+        simulate.mdrun_nprocs = argumentNamespace.gnp
+
+    if binFilename:
         binFile = open(binFilename, 'rb')
         globalState.setFromBinary(binFile) # load state
         binFile.close()
@@ -76,15 +72,13 @@ def main():
 
         logger.globalLogger.putMessage('Restarting from {}'.format(binFilename))
 
-        # Merge new settings from input file, if it is given
-        if not sys.argv[1].startswith('-'):
-            # Set a merging state
-            mergeState = State()
-            mergeState.setFromInput(initialize_from_input(sys.argv[1], bool_legacy, validateFlag))
-            globalState.merge(mergeState)
-
+        # Merge new settings from input file
+        # Set a merging state
+        mergeState = State()
+        mergeState.setFromInput(initialize_from_input(inputFilename, bool_legacy, validateFlag))
+        globalState.merge(mergeState)
     else:
-        globalState.setFromInput(initialize_from_input(sys.argv[1], bool_legacy, validateFlag))
+        globalState.setFromInput(initialize_from_input(inputFilename, bool_legacy, validateFlag))
 
         (base_workdir, # read variables from input file
          grid,
@@ -126,12 +120,12 @@ def main():
     # *********************** Write new input **********************************
 
     if (writeNewInput):
-        mod = InputModifier(sys.argv[1])
+        mod = InputModifier(inputFilename)
         #
         mod.set_workdir(base_workdir + "_best_points")
         mod.set_main_variation(grid.parSpaceGen)
         mod.set_samples(selector.selectPoints())
-        mod.write_to_file(sys.argv[1] + "_best_points")
+        mod.write_to_file(inputFilename + "_best_points")
 
     # *********************** Subgrid part           **************************        
 
@@ -150,6 +144,33 @@ def main():
     #subgridObj.printAndPlotScores(optimizer, plotFlag)
     #subgridObj.writeParameters()
     #subgridObj.save_to_binary(optimizer)
+
+def main():
+    # Read arguments
+    parser = argparse.ArgumentParser(description=program_description)
+    parser.add_argument("input",
+                        metavar="INPUT",
+                        type=str,
+                        help="The path of the input file.")
+    parser.add_argument("--validate",
+                        action="store_true",
+                        help="Activate validation mode.")
+    parser.add_argument("--gmx",
+                        metavar="GMXPATH",
+                        type=str,
+                        default=find_gmx(),
+                        help="Path of the gmx binary. If not given, it is inferred using the command `which'.")
+    parser.add_argument("--gnp",
+                        metavar="NPROCS",
+                        type=int,
+                        help="Number of parallel threads used in GROMACS simulations (option `-nt' of `mdrun').")
+    parser.add_argument("--restart",
+                        metavar="BINPATH",
+                        type=str,
+                        help="Path of the binary state file.")
+    args = parser.parse_args()
+    # Run the job
+    gmak_run(args)
 
 if __name__ == "__main__":
     main()
