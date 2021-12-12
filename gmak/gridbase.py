@@ -246,9 +246,13 @@ class GridPoint:
         self.add_component_property_output_from_name(prop, protocol.name, output)
 
 
-    def makeSimudir(self, protocolSimudir):
+    def makeSimudir(self, protocolSimudir, makeDir=True):
         dirname = os.path.abspath(f"{protocolSimudir}/{self.id}")
-        system(f"mkdir -p {dirname}")
+        if makeDir:
+            try:
+                os.mkdir(dirname)
+            except FileExistsError:
+                pass
         return dirname
 
 
@@ -391,18 +395,19 @@ class ParameterGrid:
         return list(self.topologyBundles.keys())
 
     def writeTopologies(self):
-        for state in range(self.get_linear_size()):
-            grid = self.shifter.get_current_number_of_shifts()
-            params = self.parSpaceGen.getStateParameters(state)
-            for systemName, topoBundle in self.topologyBundles.items():
-                workdir = os.path.join(self.workdir, topoBundle.name)
-                # ensure that workdir exists; if it does not, create it
-                if not os.path.isdir(workdir):
-                    os.mkdir(workdir)
-                topoOut = topoBundle.write_topology(
-                    workdir, grid, state, params)
-                # save topology output to gridpoint
-                self.grid_points[state].topology_outputs[systemName] = topoOut
+        grid = self.shifter.get_current_number_of_shifts()
+        for state, gridpoint in enumerate(self.grid_points):
+            if gridpoint.is_sample:
+                params = self.parSpaceGen.getStateParameters(state)
+                for systemName, topoBundle in self.topologyBundles.items():
+                    workdir = os.path.join(self.workdir, topoBundle.name)
+                    # ensure that workdir exists; if it does not, create it
+                    if not os.path.isdir(workdir):
+                        os.mkdir(workdir)
+                    topoOut = topoBundle.write_topology(
+                        workdir, grid, state, params)
+                    # save topology output to gridpoint
+                    self.grid_points[state].topology_outputs[systemName] = topoOut
 
 
     def writeParameters(self):
@@ -416,7 +421,7 @@ class ParameterGrid:
 
     def get_linear_size(self):
         return self.parSpaceGen.getNumberOfStates()
-        
+
     def __getitem__(self, i):
         return self.grid_points[i]
 
@@ -495,7 +500,7 @@ class ParameterGrid:
                 if not (gp.wasSimulatedWithProtocol(protocol)):
                     logger.globalLogger.putMessage("MESSAGE: GridPoint {} will be simulated or extended up to {} steps.".format(gp.id, gp.getProtocolLength(protocol)), dated=True)
                     logger.globalLogger.indent()
-                    gp.simulate_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
+                    gp.simulate_with_protocol_at_dir(protocol, gp.makeSimudir(workdir))
                     gp.setProtocolAsSimulated(protocol)
                     logger.globalLogger.unindent()
                 else:
@@ -503,7 +508,7 @@ class ParameterGrid:
             # only prepare
             else:
                 logger.globalLogger.putMessage('MESSAGE: GridPoint {} is not a sample.'.format(gp.id))
-                gp.prepare_with_protocol_at_dir (protocol, gp.makeSimudir(workdir))
+                gp.prepare_with_protocol_at_dir(protocol, gp.makeSimudir(workdir, makeDir=False))
 
 
     def compute_and_filter_properties_with_protocol_at_dir(self, protocol, workdir):
@@ -804,6 +809,13 @@ class ParameterGrid:
         logger.globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
         logger.globalLogger.indent()
 
+        for protocol in protocols:
+            if (protocol.requires_corners()):
+                self.add_corners()
+                break
+
+        self.add_fixed_points()
+
         # initialize length of simulations
         # this applies only to the samples that have no saved lengths
         self.initProtocolLengths(protocols)
@@ -814,20 +826,12 @@ class ParameterGrid:
         # create parameters file
         self.writeParameters()
 
-        for protocol in protocols:
-            if (protocol.requires_corners()):
-                self.add_corners()
-                break
-
-        self.add_fixed_points()
-
         self.make_grid_for_protocols(protocols, optimizer)
 
         self.compute_final_properties()
 
-        for prop in properties:
+        for prop in optimizer.getProperties():
             referenceValue = optimizer.referenceValues[prop]
-            kind = surrogateModelHash[prop]
             self.save_property_values_to_file (prop, optimizer)
             self.save_property_err_to_file (prop, optimizer)
             self.save_property_diff_to_file (prop, referenceValue, optimizer)
