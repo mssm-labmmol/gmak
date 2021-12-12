@@ -37,11 +37,13 @@ Welcome to gridmaker's documentation!
    :maxdepth: 3
    :caption: Program Usage:
 
+   usage/command-line
    usage/customization_api
    usage/input_file
    usage/output_files
    usage/post_processing
    usage/restarting_a_run
+   usage/validation_mode
 
 .. toctree::
    :maxdepth: 3

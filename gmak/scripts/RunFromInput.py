@@ -32,12 +32,14 @@ def find_gmx():
         return None
 
 program_description = """
-This program does a lot of stuff.
+gmak is a tool for the optimization of force-field parameters aided by a
+grid-based mapping of the parameter-search space and by the use of surrogate
+models. The optimization targets the reproduction of reference (experimental or
+theoretical) values of (bio)physical properties.
 
-This and that and this and that.
+gmak also serves as a tool for the visualization and quantification of the
+influence of the force-field parameters on the target properties.
 """
-
-
 
 def gmak_run(argumentNamespace):
     plotFlag = False
@@ -46,11 +48,15 @@ def gmak_run(argumentNamespace):
     binFilename = argumentNamespace.restart
     inputFilename = argumentNamespace.input
     validateFlag = argumentNamespace.validate
+    customFlag = argumentNamespace.custom
 
     # Run-time custom files.
-    if os.path.isfile("custom.py"):
-        sys.path.insert(0, '.')
-        import custom
+    if customFlag:
+        if os.path.isfile("custom.py"):
+            sys.path.insert(0, '.')
+            import custom
+        else:
+            raise OSError("Could not find file custom.py.")
 
     # Set module/class attributes
     gmak.config.ConfigVariables.gmx = argumentNamespace.gmx
@@ -168,6 +174,9 @@ def main():
                         metavar="BINPATH",
                         type=str,
                         help="Path of the binary state file.")
+    parser.add_argument("--custom",
+                        action="store_true",
+                        help="Read the customization settings from a file named `custom.py' in the current directory.")
     args = parser.parse_args()
     # Run the job
     gmak_run(args)

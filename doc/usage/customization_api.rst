@@ -36,7 +36,8 @@ However, simply using it in a Python script or module does not
 immediately affect the program. To make the modifications take effect,
 the script or module should be saved in the working directory (i.e.,
 the directory where the program is deployed) with the name
-``custom.py``.  It will then be interpreted at runtime, incorporating
+``custom.py``, and the command-line option ``--custom`` must be passed
+to the program. It will then be interpreted at runtime, incorporating
 the user-defined implementations into the program.
 
 .. note:: We recommend using the `template file`_ provided with the
