@@ -226,6 +226,23 @@ To add a custom grid-shifting type, one should use the function
 .. autofunction:: gmak.api_signatures.calculator
 
 
+Logging
+=======
+
+.. autoclass:: gmak.logger.Logger
+   :members: indent, unindent, putMessage
+
+.. autodata:: gmak.logger.globalLogger
+   :annotation: =gmak.logger.Logger
+
+.. tip:: In any customized function, one can request that a message is
+   written in the log file, at runtime, with:
+
+   .. code-block::
+
+       from gmak.logger import globalLogger as log
+       log.putMessage("Write this message!")
+
 Utilitary Functions and Classes
 ===============================
 

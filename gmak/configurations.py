@@ -138,7 +138,7 @@ class BaseConfiguration(ABC):
 
     def __del__(self):
         if self.tmp:
-            print(f"Removing temporary configuration {self.path}.")
+            #print(f"Removing temporary configuration {self.path}.")
             if os.path.isfile(self.path):
                 os.remove(self.path)
 

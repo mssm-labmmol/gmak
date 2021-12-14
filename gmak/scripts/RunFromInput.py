@@ -76,8 +76,6 @@ def gmak_run(argumentNamespace):
          optimizer,
          surrogateModelHash) = globalState.getInitializationState()
 
-        logger.globalLogger.putMessage('Restarting from {}'.format(binFilename))
-
         # Merge new settings from input file
         # Set a merging state
         mergeState = State()
@@ -102,7 +100,7 @@ def gmak_run(argumentNamespace):
     logger.globalLogger = logger.Logger(
         os.path.join(
             base_workdir,
-            "gmak_{}.dat".format(os.getpid())))
+            "gmak_{}.log".format(os.getpid())))
 
     # Initialize results assembler - hard-coded for now, will go into input file
     resultsAssembler = ResultsAssembler(grid.getParameterNames())
@@ -117,10 +115,10 @@ def gmak_run(argumentNamespace):
     logger.globalLogger.putMessage('END MAINLOOP', dated=True)
 
     # DEBUG
-    resultsAssembler.print(sys.stdout)
+    # resultsAssembler.print(sys.stdout)
 
     # Write assembled results to a file
-    resultsAssembler.writeToFile(grid.makeCurrentWorkdir() + "/assembled")
+    # resultsAssembler.writeToFile(grid.makeCurrentWorkdir() + "/assembled")
 
 
     # *********************** Write new input **********************************

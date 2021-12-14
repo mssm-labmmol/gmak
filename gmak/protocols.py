@@ -73,12 +73,12 @@ class DefaultExtendMixin:
                     lenspec = scalingFactor
         if lenspec is not None:
             if lenspec < self.minFactor:
-                logger.globalLogger.putMessage(f"Adjusted extension factor to minimum "
+                logger.globalLogger.putMessage(f"MESSAGE: Adjusted extension factor to minimum "
                                                f"value {self.minFactor}.")
                 lenspec = self.minFactor
             lenspec = int(last_lenspec * lenspec)
             if lenspec > maxSteps:
-                logger.globalLogger.putMessage(f"Tried to set length to {lenspec},"
+                logger.globalLogger.putMessage(f"MESSAGE: Tried to set length to {lenspec},"
                                                f" but capped it to {maxSteps}.")
                 lenspec = maxSteps
             if lenspec == last_lenspec:

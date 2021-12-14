@@ -73,7 +73,7 @@ class State:
                self.surrogateModelHash)
 
     def saveToFile(self):
-        print(vars(self))
+        #print(vars(self))
         _fn = self.base_workdir + '/state_' + str(os.getpid()) + '.bin'
         _fp = open(_fn, 'wb')
         pickle.dump(self, _fp, pickle.HIGHEST_PROTOCOL)

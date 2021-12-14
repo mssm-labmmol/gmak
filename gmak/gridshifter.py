@@ -16,6 +16,25 @@ from copy import deepcopy
 #     else:
 #         print ("Warning: Link %s already exists.\n" % link_name)
 
+
+class IndexTransform:
+    """
+    This class transforms a tuple index that is specific to a grid-shift
+    iteration into a unique and general tuple index.
+    """
+    def __init__(self):
+        self.origin = None
+
+    def update(self, origin):
+        if self.origin is None:
+            self.origin = -np.array(origin, dtype=int)
+        else:
+            self.origin -= np.array(origin, dtype=int)
+
+    def transform(self, tuple_index):
+        return tuple(np.array(tuple_index, dtype=int) - self.origin)
+
+
 class BaseGridShifter(ABC):
     """
     Attributes
@@ -23,6 +42,9 @@ class BaseGridShifter(ABC):
     
     grid : ParameterGrid
         The ParameterGrid object of the run.
+
+    index_transform : IndexTransform
+        An IndexTransform instance.
 
     nshifts : int
         Current shift iteration.
@@ -107,19 +129,9 @@ class BaseGridShifter(ABC):
             return False
 
         # increment shifts
-        logger.globalLogger.putMessage(f"MESSAGE: The grid *WAS* shifted to linear index = {new_origin}.", dated=True)
+        self.index_transform.update(new_origin)
+        logger.globalLogger.putMessage(f"MESSAGE: The grid *WAS* shifted to index = {new_origin}.", dated=True)
         self.nshifts += 1
-
-        # make sure origin is linear
-        try:
-            # calculate dimension just to check if tuple
-            dimension = len(new_origin)
-            # if TypeError has not been raised, then new_origin is a
-            # tuple index, so it must be converted to a linear index
-            new_origin = cartesian_grid.tuple2linear(new_origin)
-        except TypeError:
-            # then new_origin is already a linear index
-            pass
 
         # set new origin for variations (note that cartesian grid does
         # not change)
@@ -129,7 +141,7 @@ class BaseGridShifter(ABC):
         new_gridpoints = [None for i in range(self.grid.get_linear_size())]
         mask = CartesianGridMask(cartesian_grid,
                                  cartesian_grid,
-                                 cartesian_grid.linear2tuple(new_origin))
+                                 new_origin)
         mask_array = mask.getDestMaskLinear()
 
         # Set new gridpoints.
@@ -170,6 +182,8 @@ class GridShifter(BaseGridShifter):
 
         # Do we keep samples from old grids?
         self.keepsamples = keepsamples
+
+        self.index_transform = IndexTransform()
 
     def merge(self, other):
         self.maxshifts = other.maxshifts
@@ -244,6 +258,7 @@ class CustomGridShifter(BaseGridShifter):
         self.nshifts = 0
         self.maxshifts = 0
         self.keepsamples = False
+        self.index_transform = IndexTransform()
 
 
     def calc_new_origin(self,

@@ -28,8 +28,10 @@ def calculator(tuple_indexes,
         linear index of the grid point.  The second index corresponds to the
         property index in ``propnames``.
     :type uncertainties: numpy.ndarray
-    :return: The tuple index of the new origin, or :py:obj:`None` to complete
-        the run.
+    :return: The :ref:`shifting tuple <overview/parameter-search grid:Variation Shifting>`,
+        or :py:obj:`None` to complete the run. For example, a return value of
+        (-5, 5) indicates that the origin is shifted by -5 grid cells in the
+        first coordinate and +5 grid cells in the second.
     :rtype: tuple or None
     """
     pass

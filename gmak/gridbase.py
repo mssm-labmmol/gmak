@@ -24,13 +24,13 @@ from gmak.state           import *
 import gmak.component_properties as component_properties
 
 def replaceMacros(fn, macros):
-    print("Replacing macros in %s:" % fn)
+    #print("Replacing macros in %s:" % fn)
     fp = open(fn, 'r')
     data = fp.read()
     for macro in macros:
         token = macro.token
         value = macro.value
-        print("\t%s -> %s" % (token, value))
+        #print("\t%s -> %s" % (token, value))
         data = data.replace(token, value)
     fp.close()
     fp = open(fn, 'w')
@@ -806,8 +806,6 @@ class ParameterGrid:
 
     def run(self, protocols, optimizer, surrogateModelHash, properties,
             protocolsHash, resultsAssembler, plotFlag=False):
-        logger.globalLogger.putMessage('BEGIN GRIDSTEP', dated=True)
-        logger.globalLogger.indent()
 
         for protocol in protocols:
             if (protocol.requires_corners()):
@@ -884,12 +882,7 @@ class ParameterGrid:
                     pars = self.parSpaceGen.getParameterValues(gs)
                     resultsAssembler.addData(pars, prop, est, err)
 
-            if self.shift(optimizer):
-                logger.globalLogger.unindent()
-                logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
-            else:
-                logger.globalLogger.unindent()
-                logger.globalLogger.putMessage('END MAINLOOP', dated=True)
+            if not self.shift(optimizer):
                 globalState.saveToFile() # Save state to file if
                                          # needed for further
                                          # analysis.
@@ -898,8 +891,6 @@ class ParameterGrid:
             for sample in nextSample:
                 self.add_sample(sample)
         # Recursion
-        logger.globalLogger.unindent()
-        logger.globalLogger.putMessage('END GRIDSTEP', dated=True)
         globalState.saveToFile()
         self.run(protocols,
                  optimizer,

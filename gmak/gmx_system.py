@@ -51,7 +51,7 @@ def gmx_find_recursive_in_dir(dirpath, fn):
     in_directory = glob(os.path.join(dirpath, "**", fn), recursive=True)
     if len(in_directory) == 1:
         sub_fn = os.path.abspath(in_directory[0])
-        print(f"Include: {fn} matched {sub_fn}.")
+        #print(f"Include: {fn} matched {sub_fn}.")
         return sub_fn
     elif len(in_directory) > 1:
         raise RuntimeError(f"Include: several matches for {fn} in current"
@@ -68,7 +68,7 @@ def gmx_find_include_file(fn, original_fn):
         fn)
     # the path is specified directly
     if os.path.isfile(real_fn):
-        print(f"Include: {fn} matched {real_fn}.")
+        #print(f"Include: {fn} matched {real_fn}.")
         return real_fn
     # search in subdirectories of the current directory
     sub_fn = gmx_find_recursive_in_dir(os.getcwd(), fn)

@@ -8,16 +8,13 @@ from gmak.cartesiangrid import *
 class AbstractVariationFunction(ABC):
     """
     Contract attributes: domain_dim, image_dim
-    Contract methods: apply, set_new_center, rescale
+    Contract methods: apply, rescale, set_new_origin
     """
     @abstractmethod
     def apply(self, list_of_args): pass
 
     @abstractmethod
-    def set_new_center(self, i): pass
-
-    @abstractmethod
-    def set_new_origin(self, i): pass
+    def set_new_origin(self, shift): pass
 
     @abstractmethod
     def rescale(self, factors): pass
@@ -39,9 +36,7 @@ class VariationFunctionReadFromFile(AbstractVariationFunction):
             raise ValueError("Wrong size: expected {} in file {}, but got {}.".format(size, self.fn, self._data.shape[0]))
     def apply(self, args):
         return self._data[args]
-    def set_new_center(self, i):
-        raise NotImplementedError("Can't shift VariationFunctionReadFromFile.")
-    def set_new_origin(self, i):
+    def set_new_origin(self, shift):
         raise NotImplementedError("Can't shift VariationFunctionReadFromFile.")
     def rescale(self, factors):
         raise NotImplementedError("Can't rescale VariationFunctionReadFromFile.")
@@ -55,9 +50,7 @@ class VariationFunctionConstant(AbstractVariationFunction):
         self.constants  = constants
     def apply(self, args):
         return self.constants
-    def set_new_center(self, i):
-        return
-    def set_new_origin(self, i):
+    def set_new_origin(self, shift):
         return
     def rescale(self, factors):
         return
@@ -71,9 +64,7 @@ class VariationFunctionScale(AbstractVariationFunction):
         self.factors    = np.array(factors)
     def apply(self, args):
         return np.array(args) * self.factors
-    def set_new_center(self, i):
-        raise NotImplementedError("Can't shift VariationFunctionScale.")
-    def set_new_origin(self, i):
+    def set_new_origin(self, shift):
         raise NotImplementedError("Can't shift VariationFunctionScale.")
     def rescale(self, factors):
         return
@@ -109,10 +100,7 @@ class VariationFunctionFromString(AbstractVariationFunction):
     def apply(self, args):
         return self._corefunc(args)
 
-    def set_new_center(self, i):
-        raise NotImplementedError
-
-    def set_new_origin(self, i):
+    def set_new_origin(self, shift):
         raise NotImplementedError
 
     def rescale(self, factors):
@@ -137,18 +125,10 @@ class VariationFunctionCartesian(AbstractVariationFunction):
             self._raveled[:,i] = np.array(self.starts) + self.steps * arr
     def apply(self, args):
         return self._raveled[:,args]
-    def set_new_center(self, i):
-        currentCenter      = self._cartesianGrid.getCenterAsLinear()
-        centerDisplacement = self._cartesianGrid.getDisplacement(currentCenter, i)
-        newStarts          = np.array(self.starts) + self.steps * np.array(centerDisplacement)
+    def set_new_origin(self, shift):
+        newStarts = np.array(self.starts) + self.steps * np.array(shift)
         # update data
-        self.starts        = newStarts
-        self._core_calcs()
-    def set_new_origin(self, i):
-        displacement = self._cartesianGrid.getDisplacement(0, i)
-        newStarts          = np.array(self.starts) + self.steps * np.array(displacement)
-        # update data
-        self.starts        = newStarts
+        self.starts = newStarts
         self._core_calcs()
     def rescale(self, factors):
         if (len(factors) != self.domain_dim):
@@ -172,7 +152,6 @@ class AbstractVariation(ABC):
     int dim()
     int size()
     2D (size x dim) np.ndarray gen_data()
-    void set_new_center(int)
     void set_new_origin(int)
     void rescale(list<int>)
     list<int> get_sizes()
@@ -184,9 +163,6 @@ class AbstractVariation(ABC):
 
     @abstractmethod
     def gen_data(self): pass
-
-    @abstractmethod
-    def set_new_center(self, i): pass
 
     @abstractmethod
     def set_new_origin(self, i): pass
@@ -214,9 +190,6 @@ class VariationFromFunction(AbstractVariation):
         for i in range(self.size):
             _data[i,:] = self.func.apply(i)
         return _data
-
-    def set_new_center(self, i):
-        self.func.set_new_center(i)
 
     def set_new_origin(self, i):
         self.func.set_new_origin(i)
@@ -274,9 +247,6 @@ class VariationExplicit(AbstractVariation):
     def gen_data(self):
         return self._data
 
-    def set_new_center(self, i):
-        raise ValueError("Can't set new center for explicit variation.")
-
     def set_new_origin(self, i):
         raise ValueError("Can't set new origin for explicit variation.")
 
@@ -309,9 +279,6 @@ class VariationFromVariation(AbstractVariation):
     def rescale(self, factors):
         self.variation.rescale(factors)
         self.size = self.variation.size
-
-    def set_new_center(self, i):
-        self.variation.set_new_center(i)
 
     def set_new_origin(self, i):
         self.variation.set_new_origin(i)
@@ -466,11 +433,6 @@ class DomainSpace:
             if thisSizes is not None:
                 return thisSizes
         raise ValueError("Could not find generator with appropriate get_sizes() method.")
-
-    def set_new_center(self, i):
-        for gen in self.generators:
-            gen.set_new_center(i)
-        self.update_data()
 
     def set_new_origin(self, i):
         for gen in self.generators:

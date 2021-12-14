@@ -80,13 +80,9 @@ class ParameterSpaceGenerator:
             outfile = prefix + "_" + name + ".dat"
             domainSpace.write_to_file(outfile)
 
-    def setNewCenter(self, i):
+    def setNewOrigin(self, shift):
         for name in self.members:
-            self.members[name][0].set_new_center(i)
-
-    def setNewOrigin(self, i):
-        for name in self.members:
-            self.members[name][0].set_new_origin(i)
+            self.members[name][0].set_new_origin(shift)
 
     def getDimension(self, name):
         return self.members[name][0].get_dim()

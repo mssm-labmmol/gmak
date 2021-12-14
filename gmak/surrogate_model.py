@@ -9,6 +9,7 @@ import pymbar
 import numpy as np
 import sys
 from scipy.interpolate import griddata
+import gmak.logger as logger
 # Import scikit-learn things
 from sklearn import gaussian_process
 from sklearn.gaussian_process.kernels import (RBF, ConstantKernel,
@@ -384,8 +385,8 @@ class GaussianProcessRegressionInterpolation(Interpolation):
             if (gp.log_marginal_likelihood_value_ > maxLogLikelihood):
                 optGP = gp
                 maxLogLikelihood = gp.log_marginal_likelihood_value_
-        print('Optimal GPR is ', optGP)
-        print('LogLikelihood = ', maxLogLikelihood)
+        logger.globalLogger.putMessage('MESSAGE: Optimal GPR model is ' + optGP.__repr__())
+        logger.globalLogger.putMessage(f"MESSAGE: LogLikelihood = {maxLogLikelihood}")
         return optGP.predict(Xpred_, return_std=True) # ypred, sigma
 
     def computeExpectationsFromAvgStd(self, A_ps, dA_ps, I_s, gridShape):

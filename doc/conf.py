@@ -31,8 +31,21 @@ class GmiLexer(RegexLexer):
         ]
     }
 
+class TreeLexer(RegexLexer):
+    name = 'tree'
+    tokens = {
+        'root': [
+            (r'%[a-zA-Z0-9-]+', token.Keyword.Variable),
+            (r'\s+', token.Text),
+            (r'\S+_', token.Text),
+            (r'\S+', token.Text),
+        ]
+    }
+
+# -- Pygmentize file trees ---------------------------------------------------
 
 lexers['gmi'] = GmiLexer()
+lexers['tree'] = TreeLexer()
 
 
 # -- Project information -----------------------------------------------------

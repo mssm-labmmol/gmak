@@ -112,7 +112,8 @@ class gridOptimizer:
         reserved_keys = ['type', 'maxsteps', 'ncut']
         if 'type' not in bd.keys():
             _score = wrmsd_calc_score
-            _score_err = wrmsd_calc_score_err
+            #_score_err = wrmsd_calc_score_err
+            _score_err = None
             _conf_ls = [0.68, 0.80, 0.90, 0.95]
         else:
             # then choose from custom types
