@@ -718,6 +718,9 @@ class ParameterGrid:
     def makePrefixOfParameters(self):
         return "{}/parameters".format(self.makeCurrentWorkdir())
 
+    def makePathOfAbsoluteIndexes(self):
+        return "{}/grid_indexes.dat".format(self.makeCurrentWorkdir())
+
     def save_to_binary(self, optimizer):
         # save grid
         fn = self.makeStepPropertiesdir(optimizer) + "/grid.bin"
@@ -823,6 +826,9 @@ class ParameterGrid:
 
         # create parameters file
         self.writeParameters()
+
+        # create absolute-index file
+        self.writeAbsoluteIndexes()
 
         self.make_grid_for_protocols(protocols, optimizer)
 
@@ -935,3 +941,26 @@ class ParameterGrid:
             logger.globalLogger.putMessage('MESSAGE: Estimates are converged and '
                                     'simulations will not be extended.')
         return output
+
+    def writeAbsoluteIndexes(self):
+        fn = self.makePathOfAbsoluteIndexes()
+        X = self.getAbsoluteIndexes()
+        fp = open(fn, "w")
+        # iterate over tuples
+        for idx in X:
+            # write to file
+            for xi in idx:
+                fp.write("%8d" % xi)
+            fp.write("\n")
+        fp.close()
+
+    def getAbsoluteIndexes(self):
+        idxs = []
+        trans = self.shifter.index_transform
+        # iterate over tuples
+        for x in CartesianGridIterator(self.indexGrid):
+            # transform to absolute index
+            idx = trans.transform(x)
+            # append
+            idxs.append(idx)
+        return idxs

@@ -22,8 +22,8 @@ class IndexTransform:
     This class transforms a tuple index that is specific to a grid-shift
     iteration into a unique and general tuple index.
     """
-    def __init__(self):
-        self.origin = None
+    def __init__(self, dim):
+        self.origin = tuple([0 for i in range(dim)])
 
     def update(self, origin):
         if self.origin is None:
@@ -183,7 +183,7 @@ class GridShifter(BaseGridShifter):
         # Do we keep samples from old grids?
         self.keepsamples = keepsamples
 
-        self.index_transform = IndexTransform()
+        self.index_transform = IndexTransform(self.grid.get_dim())
 
     def merge(self, other):
         self.maxshifts = other.maxshifts
@@ -258,8 +258,6 @@ class CustomGridShifter(BaseGridShifter):
         self.nshifts = 0
         self.maxshifts = 0
         self.keepsamples = False
-        self.index_transform = IndexTransform()
-
 
     def calc_new_origin(self,
                         tuple_indexes,
@@ -287,6 +285,7 @@ class CustomGridShifter(BaseGridShifter):
             else:
                 setattr(out, k, bd[k])
         out.grid = grid
+        out.index_transform = IndexTransform(out.grid.get_dim())
         return out
 
 
