@@ -880,6 +880,8 @@ class ParameterGrid:
                 nextSample = -1
 
         if (nextSample == -1):
+            # update current results
+            globalState.update_record_book()
             # update results assembler
             for gs in self.get_samples_id():
                 for prop in properties:

@@ -4,52 +4,194 @@ import os
 import numpy as np
 from glob import glob
 from collections import OrderedDict
+from abc import ABC, abstractmethod
+
+
+def default_agg(x):
+    if len(x) > 1:
+        return list(x)
+    else:
+        return x.iloc[0]
+
+
+class GroupbyStrategy(ABC):
+
+    @abstractmethod
+    def groupby_X(self, gmak_output, agg=True, agg_arg=None, mu_agg=None, sigma_agg=None):
+        pass
+
+
+class GroupbyParameterValues(GroupbyStrategy):
+
+    def __init__(self):
+        pass
+
+    def _groupby(self, gmak_output):
+        # build full dataframe, with X and data
+        full = pd.merge(gmak_output.X, gmak_output.data, how='inner',
+                        left_index=True, right_index=True)
+        Xcols = list(gmak_output.X.columns.values)
+        return full.groupby(by=Xcols)
+
+    def groupby_X(self, gmak_output, agg=True, agg_arg=None, mu_agg=None, sigma_agg=None):
+        gb_df = self._groupby(gmak_output)
+        propcols = gmak_output.data.columns.values
+        parcols = gmak_output.X.columns.values
+        # aggregate
+        if not(agg):
+            # collect the data for duplicate indexes in a list
+            agg_func = OrderedDict()
+            for proptuple in propcols:
+                agg_func[proptuple] = default_agg
+        else:
+            # build aggregate function
+            if (agg_arg is not None):
+                agg_func = agg_arg
+            else:
+                # build my own functions and replace by those given
+                # by the user if it is the case
+                agg_func = OrderedDict()
+                for proptuple in propcols:
+                    if (proptuple[1] == 'mu') or (proptuple[1] == 'diff'):
+                        if mu_agg is None:
+                            agg_func[proptuple] = "mean"
+                        else:
+                            agg_func[proptuple] = mu_agg
+                    elif (proptuple[1] == 'sigma'):
+                        if sigma_agg is None:
+                            lfunc = lambda r: np.sqrt(np.sum(r*r))/len(r)
+                            agg_func[proptuple] = lfunc
+                        else:
+                            agg_func[proptuple] = sigma_agg
+        return gb_df.agg(agg_func)
+
+
+class GroupbyAbsoluteIndex(GroupbyStrategy):
+
+    def __init__(self, aidx):
+        """
+        aidx is a DataFrame with MultiIndex([grid, gridpoint]) and column 'aidx'.
+        """
+        self.aidx = aidx
+
+    def _groupby(self, gmak_output):
+        # merge X with aidx
+        full_X = pd.merge(gmak_output.X, self.aidx, how='inner',
+                        left_index=True, right_index=True)
+        # merge again
+        full = pd.merge(full_X, gmak_output.data, how='inner',
+                        left_index=True, right_index=True)
+        # grouping column
+        Xcols = list(self.aidx.columns.values)
+        return full.groupby(by=Xcols)
+
+    def groupby_X(self, gmak_output, agg=True, agg_arg=None, mu_agg=None, sigma_agg=None):
+        gb_df = self._groupby(gmak_output)
+        propcols = gmak_output.data.columns.values
+        parcols = gmak_output.X.columns.values
+        # aggregate
+        if not(agg):
+            # collect the data for duplicate indexes in a list
+            agg_func = OrderedDict()
+            for partuple in parcols:
+                # partuple *must* aggregate, otherwise the parameters cannot be used 
+                # as index
+                agg_func[partuple] = "mean"
+            for proptuple in propcols:
+                agg_func[proptuple] = default_agg
+        else:
+            # build aggregate function
+            if (agg_arg is not None):
+                agg_func = agg_arg
+            else:
+                # build my own functions and replace by those given
+                # by the user if it is the case
+                agg_func = OrderedDict()
+                for partuple in parcols:
+                    agg_func[partuple] = "mean"
+                for proptuple in propcols:
+                    if (proptuple[1] == 'mu') or (proptuple[1] == 'diff'):
+                        if mu_agg is None:
+                            agg_func[proptuple] = "mean"
+                        else:
+                            agg_func[proptuple] = mu_agg
+                    elif (proptuple[1] == 'sigma'):
+                        if sigma_agg is None:
+                            lfunc = lambda r: np.sqrt(np.sum(r*r))/len(r)
+                            agg_func[proptuple] = lfunc
+                        else:
+                            agg_func[proptuple] = sigma_agg
+        agg_df = gb_df.agg(agg_func)
+        # set X as index
+        return agg_df.set_index(list(parcols))
+
 
 class GmakOutput:
     """
-    Class to collect and manipulate the output of Gmak jobs.
+    Class that collects the output of ``gmak`` jobs.
 
     Attributes
     ----------
-    data : pandas.DataFrame object
-        The output data of a Gmak job, in memory. The index is a
-        pandas.MultiIndex object with levels ('grid', 'gridpoint') and
-        columns:
-
-        * (name_1, 'mu'), ... , (name_N, 'mu'): Expected value of the property
-          name_i (float).
-        * (name_1, 'sigma'), ... , (name_N, 'sigma'): Statistical uncertainty
-          value of the property name_i (float).
-        * (name_1, 'diff'), ... , (name_N, 'diff'): Difference with
-          respect to reference value of the property name_i (float).
-        * (score, 'mu'): The expected value of the score (float).
-
-    X : pandas.DataFrame object
-        The index is a pandas.MultiIndex object with levels ('grid',
-        'gridpoint') and columns:
-
-        * ('X', '1'), ...: The main variation parameters (float).
-
+    :var data: The output data of a ``gmak`` job. This contains the estimates
+        (second column-level ``mu``), uncertainties (second column-level ``sigma``)
+        and difference with respect to the reference value (second column-level
+        ``diff``), for all explored grid points, of the composite properties
+        that make up the score function, as well as the score itself. The data
+        frame has two index levels: the grid-shift iteration and the linear
+        index of the grid point.
+    :vartype data: pandas.DataFrame
+    :var X: The main-variation parameters. The index is the same as that of
+        :py:data:`~gmak.post_processing.GmakOutput.data`.
+    :vartype X: pandas.DataFrame
     """
-    def __init__(self, df_X, df_data):
-        """Initialize GmakOutput with data. Should not be used; use
-        `from_gmak_job` instead.
+    def __init__(self, df_X, df_data, groupby_strategy):
+        """Initialize GmakOutput with data.
+        Should not be used; use `from_gmak_*` instead.
 
         Parameters
         ----------
         df_X : pandas.DataFrame object
-        df_data: pandas.DataFrame object
-
+        df_data: pandas.DataFrame object groupby_strategy: GroupbyStrategy object
         """
         self.X = df_X
         self.data = df_data
+        self.groupby_strategy = groupby_strategy
 
     @classmethod
     def from_gmak_bin(cls, binpath):
-        raise NotImplementedError
+        """
+        Creates a :py:class:`~gmak.post_processing.GmakOutput` instance from a
+        binary state file.
+
+        :param binpath: The path of the binary file
+        :type binpath: str
+        :return: A :py:class:`~gmak.post_processing.GmakOutput` instance containing the data in the binary file.
+        :rtype: ~gmak.post_processing.GmakOutput
+        """
+        from gmak.state import State as State
+        state = State()
+        fp = open(binpath, "rb")
+        state.setFromBinary(fp)
+        fp.close()
+        rec = state.record_book
+        idx = rec.to_dataframe(tag="idx")
+        aidx = rec.to_dataframe(tag="aidx")
+        properties = rec.to_dataframe(tag="property")
+        score = rec.to_dataframe(tag="score")
+        X = rec.to_dataframe(tag="X")
+        # create object
+        df_X = pd.merge(idx, X, left_index=True, right_index=True)
+        data = pd.merge(idx, properties, left_index=True, right_index=True)
+        data = pd.merge(data, score, left_index=True, right_index=True)
+        df_aidx = pd.merge(idx, aidx, left_index=True, right_index=True)
+        df_X = df_X.set_index(["grid", "gridpoint"])
+        data = data.set_index(["grid", "gridpoint"])
+        df_aidx = df_aidx.set_index(["grid", "gridpoint"])
+        groupby_strategy = GroupbyAbsoluteIndex(df_aidx)
+        return cls(df_X, data, groupby_strategy)
 
     @classmethod
-    def from_gmak_job(cls, jobdirpath, decimals=13):
+    def _from_gmak_job_noaidx(cls, jobdirpath, decimals=13):
         """Create a GmakOutput from the directory of a Gmak job.
 
         Parameters
@@ -61,6 +203,8 @@ class GmakOutput:
             rounded. This is *very* important to set appropriately, because
             precision issues may affect the grouping of the data by parameter
             values.
+
+            Negative values -> don't round
 
         Returns
         -------
@@ -118,8 +262,11 @@ class GmakOutput:
                     properties[(prop, 'sigma')] = []
                     properties[(prop, 'diff')] = []
             # Fill data.
-            parameters += list(np.around(np.loadtxt(parametersfile),
-                                         decimals=decimals))
+            if decimals < 0:
+                parameters += list(np.loadtxt(parametersfile))
+            else:
+                parameters += list(np.around(np.loadtxt(parametersfile),
+                                             decimals=decimals))
             new_scores = list(np.loadtxt(scorefile, comments=['#',])[:,-1])
             scores += new_scores
             number_of_points = len(new_scores)
@@ -169,92 +316,51 @@ class GmakOutput:
             df_X.columns = pd.MultiIndex.from_tuples(df_X.columns)
         except:
             pass
-        return cls(df_X, df_props_score)
+        return cls(df_X, df_props_score, GroupbyParameterValues())
 
     def groupby_X(self, agg=True, agg_arg=None, mu_agg=None, sigma_agg=None):
         """Collects data that corresponds to the same force-field parameters and
         optionally aggregate these values using functions.
 
-        Parameters
-        ----------
-        agg : {True, False}, default: True
-            Indicates whether aggregation is desired. This has priority over
-            agg_arg, mu_agg and sigma_agg.
+        :param agg: Indicates whether aggregation is desired. This has priority
+            over ``agg_arg``, ``mu_agg`` and ``sigma_agg`` (default is
+            :py:obj:`True`).
+        :type agg: bool
+        :param agg_arg: The `func` argument of the
+            :py:meth:`~pandas.core.groupby.DataFrameGroupBy.aggregate` function
+            used to aggregate values of a common group. This has priority over
+            the parameters ``mu_agg`` and ``sigma_agg``.
+        :type agg_arg: function, str, list, dict or None
+        :param mu_agg: The function used to aggregate expected values and their
+            differences with respect to reference data. By default, uses mean.
+        :type mu_agg: function, str or None
+        :param sigma_agg: The function used to aggregate uncertainties. By
+            default, uses :math:`\sqrt{k_1^2 + \cdots + k_n^2}/n`, where the
+            :math:`k_i` are the values to be aggregated.
+        :type sigma_agg: function, str or None
 
-        agg_arg : function, str, list, dict or None, default: None
-            If not None, it is the `func` argument of the
-             `pandas.DataFrameGroupBy.aggregate` function used to aggregate.
-            This has priority over the parameters mu_agg and sigma_agg.
-
-        mu_agg : function, str or None, default: None
-            If not None, use it to aggregate expected values and their
-            differences with respect to reference data. By default, use mean.
-
-        sigma_agg : function, str or None, default: None
-            If not None, use it to aggregate uncertainties. By default, use 1/n
-            * sqrt(k_1**2 + ... + k_n**2), where the k_i's are the n values to
-            be aggregated.
-
-        Returns
-        -------
-        pandas.DataFrame
-            A DataFrame object with the force-field parameters as MultiIndex and
-            the score and properties as columns (like `self.data`).
-
-            If aggregation is not requested, each entry in a column is either a
-            float or a list of floats, depending on whether it was estimated for
-            the force-field parameter once or more than once.
-
-            Otherwise, each entry results from aggregating the values for the
-            same force-field parameter based on the parameters `agg_arg`,
+        :return: A data frame with the force-field parameters as index and the
+            score and properties as columns.  If aggregation is not requested, each
+            entry in a column is either a float or a list of floats, depending on
+            whether it was estimated for the force-field parameter once or more
+            than once.  Otherwise, each entry results from aggregating the values
+            for the same force-field parameter based on the parameters `agg_arg`,
             `mu_agg` and `sigma_agg`.
+        :rtype: pandas.DataFrame
         """
-        # build full dataframe, with X and data
-        full = pd.merge(self.X, self.data, how='inner',
-                        left_index=True, right_index=True)
-        Xcols = list(self.X.columns.values)
-        propcols = self.data.columns.values
-        # groupby X
-        gb_df = full.groupby(by=Xcols)
-        # aggregate
-        if not(agg):
-            # collect the data for duplicate indexes in a list
-            agg_func = lambda x: list(x) if len(x) > 1 else x.iloc[0]
-        else:
-            # build aggregate function
-            if (agg_arg is not None):
-                agg_func = agg_arg
-            else:
-                # build my own functions and replace by those given
-                # by the user if it is the case
-                agg_func = OrderedDict()
-                for proptuple in propcols:
-                    if (proptuple[1] == 'mu') or (proptuple[1] == 'diff'):
-                        if mu_agg is None:
-                            agg_func[proptuple] = "mean"
-                        else:
-                            agg_func[proptuple] = mu_agg
-                    elif (proptuple[1] == 'sigma'):
-                        if sigma_agg is None:
-                            lfunc = lambda r: np.sqrt(np.sum(r*r))/len(r)
-                            agg_func[proptuple] = lfunc
-                        else:
-                            agg_func[proptuple] = sigma_agg
-        return gb_df.agg(agg_func)
+        return self.groupby_strategy.groupby_X(self, agg, agg_arg, mu_agg,
+                                               sigma_agg)
 
 
     def get_dataframe(self):
         """
-        Returns a pandas.DataFrame object containing both the main parameters
-        and the properties and scores.
+        Returns a data frame containing both the main parameters and the
+        properties and scores.
 
-        Returns
-        -------
-        pandas.DataFrame
-            A DataFrame object indexed by grid-shift iteration and gridpoint
+        :return: A data frame indexed by grid-shift iteration and gridpoint
             (linear index). The columns are the main parameters and the scores
-            and property estimates. Naming convention follows that for `self.X`
-            and `self.data`.
+            and property estimates.
+        :rtype: pandas.DataFrame
         """
         return pd.merge(self.X, self.data, how='inner', left_index=True,
                         right_index=True)
@@ -262,30 +368,25 @@ class GmakOutput:
 
     def compute_pareto(self, properties=None, groupby_X=None, **kwargs):
         """
-        Returns the indexes (parameters) that are Pareto optimal. It first
-        groups the data by the parameters using `self.groupby_X`, unless the
-        groupby_X DataFrame is passed, in which case it is used instead.  The
-        optimization problem considered is minimizing the absolute value of the
-        difference between estimated properties and their reference values.
+        Returns the parameters that are Pareto optimal. It first groups the
+        data using the ``groupby_X`` method, unless the parameter `groupby_X`
+        is passed, in which case it is used instead.  The optimization problem
+        considered is minimizing the absolute value of the difference between
+        estimated properties and their reference values.
 
-        Parameters
-        ----------
-        properties : list of str, default: None
-            Properties considered in the optimization problem. If None, all
-            properties are used.
-
-        groupby_X : pandas.DataFrame object, default: None
-            DataFrame obtained from a previous call of `self.groupby_X`.
-            If None, `self.groupby_X` will be called with the keyword
-            arguments kwargs.
-
-        **kwargs
+        :type properties: list of str
+        :param properties: Properties considered in the optimization problem.
+            By default, all properties are used.
+        :type groupby_X: pandas.DataFrame
+        :param groupby_X: data frame obtained from a previous call of
+            the ``groupby_X`` method. If not given, the ``groupby_X`` method
+            will be called with the keyword arguments ``kwargs``.
+        :param kwargs:
             Additional keyword arguments passed to the aggregation method
-            (`self.groupby_X`) called before computing the Pareto front.
-
-        Returns
-        -------
-        List of force-field parameters that are Pareto optimal.
+            (``groupby_X``) called before computing the Pareto front.
+        :return: The list of force-field parameters (each one a tuple of float)
+            that are Pareto optimal.
+        :rtype: list
         """
         from pandas_pareto.pareto import compute_pareto as pd_pareto
         # get diff columns

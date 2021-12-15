@@ -100,6 +100,14 @@ class gridOptimizer:
         self.score_err = score_err
         self.confidenceLevels = confidence_levels
 
+    def getScore(self, gp_id):
+        for x in self.stateScores:
+            if x[0] == gp_id:
+                return x[1]
+
+    def getReferenceValue(self, prop):
+        return self.referenceValues[prop]
+
     def merge(self, other):
         self.referenceTolerances = other.referenceTolerances
         self.referenceValues = other.referenceValues
@@ -323,3 +331,6 @@ class gridOptimizer:
                         return [x[0]]
             self.nsteps += 1
             nTested += 1
+
+    def hasScoreUncertainty(self):
+        return (self.score_err is not None)
