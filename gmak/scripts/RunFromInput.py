@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+from .. import _version
+__version__ = _version.get_versions()['version']
+
 import numpy as np
 import os
 import sys
@@ -156,6 +159,7 @@ def main():
                         metavar="INPUT",
                         type=str,
                         help="The path of the input file.")
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument("--validate",
                         action="store_true",
                         help="Activate validation mode.")
