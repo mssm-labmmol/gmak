@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 import sys
+import versioneer
 
 try:
     import pandas_pareto.pareto
@@ -15,5 +16,7 @@ setup (
             'gmak=gmak.scripts.RunFromInput:main',
         ]
     },
-    install_requires=['numpy', 'scikit-learn', 'alchemlyb', 'pymbar']
+    install_requires=['numpy', 'scikit-learn', 'alchemlyb', 'pymbar'],
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
 )
