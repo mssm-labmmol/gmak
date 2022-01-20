@@ -1,4 +1,4 @@
-from gmak.component_properties import CustomAtomicProperty
+from gmak.component_properties import CustomAtomicPropertyFactory
 from gmak.gridoptimizer import ScoreFactory
 from gmak.gridshifter import CustomGridShifterFactory
 from gmak.property import CustomPropertyFactory

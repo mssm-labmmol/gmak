@@ -16,7 +16,7 @@ the :ref:`output of a protocol<overview/protocols:protocol output>`,
 while, for the latter, it is the expected values and uncertainties of
 the component properties.  Furthermore, component properties are
 treated as intermediaries in the calculation of composite properties,
-which in turn is treated as the final goal.  For this reason, the
+which in turn are treated as the final goal.  For this reason, the
 estimated expected values and uncertainties of only composite
 properties enter in the calculation of the :doc:`score function
 </overview/score>` and are accessible via the :doc:`post-processing
@@ -67,7 +67,7 @@ Input Parameters
 
 
 Protocol-output Interface
-    This component-property requires the object to be subscriptable
+    This component property requires the object to be subscriptable
     and to expose the following items.
 
     'tpr'
@@ -112,7 +112,7 @@ Input Parameters
 
 
 Protocol-output Interface
-    This component-property requires the object to be subscriptable
+    This component property requires the object to be subscriptable
     and to expose the following items.
 
     'tpr'
@@ -147,7 +147,7 @@ Input Parameters
 
 
 Protocol-output Interface
-    This component-property requires the object to be subscriptable
+    This component property requires the object to be subscriptable
     and to expose the following items.
 
     'dhdl'

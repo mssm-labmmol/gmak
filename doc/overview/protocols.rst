@@ -187,9 +187,9 @@ corresponding files for each state. The following keys are included:
 - ``dhdl``
 
 Exceptionally, the ``dhdl`` key maps to a :py:class:`list` of the
-``dhdl.xvg`` files for each state (not to files extension ``dhdl``).
-Those are the files that contain the derivatives of the Hamiltonian
-with respect to the coupling parameter.
+``dhdl.xvg`` files for each state (not to files with extension
+``dhdl``).  Those are the files that contain the derivatives of the
+Hamiltonian with respect to the coupling parameter.
 
 
 .. _extensions2:

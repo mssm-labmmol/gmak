@@ -14,12 +14,13 @@ as a solution strategy is:
 
 where
 
-- :math:`\mathbf{x}` is the independent variable and is associated
-  with the values of the adjusted force-field parameters
-- :math:`s: \mathbb{R}^{N_P} \to \mathbb{R}^+` is the so-called score
+- :math:`\mathbf{x} \in \mathbb{R}^D` is the independent variable and
+  is associated with the values of the adjusted force-field parameters
+- :math:`s: \mathbb{R}^{N_P} \to \mathbb{R}` is the so-called score
   function, which quantifies the deviation of values
-  :math:`(p_1,\ldots,p_{N_P})` of :math:`N_P` distinct properties from
-  some given reference values :math:`\mathbf{r}=(r_1,\ldots,r_{N_P})`
+  :math:`(p_1,\ldots,p_{N_P})` of :math:`N_P` distinct target
+  properties from some given reference values
+  :math:`\mathbf{r}=(r_1,\ldots,r_{N_P})`
 
 - :math:`\mathbf{P}:\mathbb{R}^D\to\mathbb{R}^{N_P}` is a  function
   with random component functions
@@ -27,14 +28,15 @@ where
 
 In the context of molecular mechanics, the value
 :math:`P_i(\mathbf{x})` is typically associated with the expected
-value of the :math:`i`-th property for the force-field-parameter
-values :math:`\mathbf{x}`.  It is a random variable, because it is
-estimated from simulations, which have statistical uncertainties
-associated with them. As a consequence,
+value of the :math:`i`-th target property for the
+force-field-parameter values :math:`\mathbf{x}`.  It is a random
+variable, because it is estimated from simulations, which have
+statistical uncertainties associated with them. As a consequence,
 :math:`(s\circ\mathbf{P})(\mathbf{x};\mathbf{r})` is a random variable
-that quantifies the accuracy of the parameter values :math:`\mathbf{x}` in
-reproducing the reference values of the :math:`N_P` properties of
-which the calculation is embedded in the functions :math:`P_i`.
+that quantifies the accuracy of the parameter values
+:math:`\mathbf{x}` in reproducing the reference values of the
+:math:`N_P` target properties of which the calculation is embedded in the
+functions :math:`P_i`.
 
 Solution strategy
 =================
@@ -224,3 +226,15 @@ Workflow steps
     If the grid does not need to be shifted, the program ends.
 
 
+
+.. note:: While conceived as a tool for parameter optimization,
+   ``gmak`` also serves as a tool for visualizing and quantifying the
+   influence of the parameters on the desired properties, as well as a
+   general driver tool for running simulations and calculating
+   properties--what I mean by this is that the user can create a
+   customized simulation and analysis environment--define its own
+   property-calculation routines, simulation routines, etc., and
+   easily recycle them via ``gmak`` to simply carry out simulations
+   and analyzes, and not necessarily for parameter optimization (e.g.,
+   using a 1x1 grid to ignore parameter modifications; or using
+   explicit grids to compare different models of the same system).

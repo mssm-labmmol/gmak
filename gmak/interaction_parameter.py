@@ -19,14 +19,14 @@ class InteractionParameterType(Enum):
     LJ_V = 2
     """
     The type assigned to :math:`\sigma` or :math:`C_6` Lennard-Jones
-    parameters (see :ref:`overview/interaction_parameters:lennard jones
+    parameters (see :ref:`overview/interaction_parameters:lennard-jones
     parameters` for naming conventions).
     """
 
     LJ_W = 3
     """
     The type assigned to :math:`\epsilon` or :math:`C_{12}` Lennard-Jones
-    parameters  (see :ref:`overview/interaction_parameters:lennard jones
+    parameters  (see :ref:`overview/interaction_parameters:lennard-jones
     parameters` for naming conventions).
     """
 
@@ -34,7 +34,7 @@ class InteractionParameterType(Enum):
     """
     The type assigned to :math:`\sigma` or :math:`C_6` Lennard-Jones parameters
     when applied to 1,4 (third-neighbor) pairs (see
-    :ref:`overview/interaction_parameters:lennard jones parameters` for naming
+    :ref:`overview/interaction_parameters:lennard-jones parameters` for naming
     conventions).
     """
 
@@ -42,7 +42,7 @@ class InteractionParameterType(Enum):
     """
     The type assigned to :math:`\epsilon` or :math:`C_{12}` Lennard-Jones
     parameters when applied to 1,4 (third-neighbor) pairs (see
-    :ref:`overview/interaction_parameters:lennard jones parameters` for naming
+    :ref:`overview/interaction_parameters:lennard-jones parameters` for naming
     conventions).
     """
 

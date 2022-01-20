@@ -6,18 +6,6 @@
 Welcome to gridmaker's documentation!
 =====================================
 
-.. note:: While conceived as a tool for parameter optimization,
-   ``gmak`` also serves as a tool for visualizing and quantifying the
-   influence of the parameters on the desired properties, as well as a
-   general driver tool for running simulations and calculating
-   properties--what I mean by this is that the user can create a
-   customized simulation and analysis environment--define its own
-   property-calculation routines, simulation routines, etc., and
-   easily recycle them via ``gmak`` to simply carry out simulations
-   and analyzes, and not necessarily for parameter optimization (e.g.,
-   using a 1x1 grid to ignore parameter modifications; or using
-   explicit grids to compare different models of the same system).
-
 .. toctree::
    :maxdepth: 3
    :caption: Overview:
@@ -49,15 +37,13 @@ Welcome to gridmaker's documentation!
    :maxdepth: 3
    :caption: Example Applications:
 
-   examples/custom_property
-   examples/custom_package
+   examples/tutorial
 
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 
 

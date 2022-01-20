@@ -70,7 +70,7 @@ first one.
 
 Alternatively, one can customize the behavior of the default ``gmx``
 system type, used for GROMACS-based systems. While nonbonded and
-macro-type parameters (see :ref:`overview/interaction_parameters`) are
+macro-type parameters (see :doc:`/overview/interaction_parameters`) are
 handled automatically by the program, other types of parameters
 (falling into the umbrella category of custom parameters) are not. For
 those, the user can
@@ -96,8 +96,7 @@ simulations, the deployment of replicas, the sequence of simulations,
 etc.  To add a custom protocol type to the program, one should use the
 function :py:func:`~gmak.api.add_custom_protocol`.  Support for
 :ref:`extending the simulations <overview/protocols:simulation
-extensions>` is also provided, as well as for setting up a
-:ref:`followable protocol<overview/protocols:following protocols>`.
+extensions>` is also provided.
 
 Up to four functions can be implemented by the user and supplied to
 the protocol-customization function. The first and mandatory one is
@@ -194,7 +193,6 @@ the function :py:func:`~gmak.api.add_custom_surrogate_model`.
 .. autofunction:: gmak.api.add_custom_surrogate_model
 
 .. autofunction:: gmak.api_signatures.compute
-
 
 Score Function
 ==============

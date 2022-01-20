@@ -144,8 +144,8 @@ Macro-based Parameters
 
 The values of :ref:`macro-based interaction
 parameters<overview/interaction_parameters:macro-based parameters>`
-are replaced for a template by replacing every instance of
-the interaction-parameter name (a string token) by the
+are replaced for in a template by replacing every instance of the
+interaction-parameter name (a string token) by the
 interaction-parameter value.
 
 Custom Parameters

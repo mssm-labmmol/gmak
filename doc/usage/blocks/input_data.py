@@ -467,10 +467,11 @@ class BlockFileFormatter:
     def print_example_block(cls, block_example):
         output = cls.print_section("Example", 1)
         output += "\n"
-        output += ".. code-block:: gmi\n\n"
-        output += block_example.print(formatter="code")
-        output += "\n\n"
-        output += block_example.print(formatter="comments")
+        output += "See :doc:`/examples/tutorial` for a commented example."
+        # output += ".. code-block:: gmi\n\n"
+        # output += block_example.print(formatter="code")
+        # output += "\n\n"
+        # output += block_example.print(formatter="comments")
         return output
 
     @classmethod

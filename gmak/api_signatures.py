@@ -28,7 +28,7 @@ def calculator(tuple_indexes,
         linear index of the grid point.  The second index corresponds to the
         property index in ``propnames``.
     :type uncertainties: numpy.ndarray
-    :return: The :ref:`shifting tuple <overview/parameter-search grid:Variation Shifting>`,
+    :return: The :ref:`shifting tuple <overview/grid:variation shifting>`,
         or :py:obj:`None` to complete the run. For example, a return value of
         (-5, 5) indicates that the origin is shifted by -5 grid cells in the
         first coordinate and +5 grid cells in the second.
@@ -47,7 +47,7 @@ def component_calculator(topology, protocol_output, property_pars):
         protocols, it is the ``dict`` returned by the
         :py:func:`~gmak.api_signatures.simulator` function. For GROMACS-based
         protocols, it is the simulation-output ``dict`` described in
-        :ref:`protocols:gromacs-based protocols`.
+        :ref:`overview/protocols:gromacs-compatible general protocol`.
     :type protocol_output: dict
     :param property_pars: The property input parameters defined in the input file
     :type property_pars:
@@ -224,10 +224,10 @@ def compute(EA_s, dEA_s, I_s, gridshape, X_ki):
     :param gridshape: A tuple with the grid dimensions.
     :type gridshape: tuple
     :param X_ki: A 2D array with the parameter-space values for each grid point
-        (more specifically, the parameters of the :ref:`main variation`). The
+        (more specifically, the parameters of the :ref:`overview/grid:main variation`). The
         first index is the linear index, and the second index is the coordinate
         of the parameter-space point.  For example, ``X_ki[1,0]`` is the value
-        of the first parameter of the :ref:`main variation` for the grid point
+        of the first parameter of the :ref:`overview/grid:main variation` for the grid point
         with linear index equal to 1.
     :type X_ki: numpy.ndarray
     :return: A tuple ``(EA_k, dEA_k)`` containing the estimated values and
@@ -285,7 +285,7 @@ def topo_out_creator(workdir, name, grid, state, system_pars):
         :ref:`overview/general_workflow:general workflow`)
     :type grid: int
     :param state: The linear index of the current grid point (see
-        :ref:`overview/grid_variations:indexing`)
+        :ref:`overview/grid:grid indexing`)
     :type state: int
     :param system_pars: The system input parameters defined in the input file
     :type system_pars:
@@ -294,8 +294,7 @@ def topo_out_creator(workdir, name, grid, state, system_pars):
     :rtype: :py:class:`~gmak.systems.TopologyOutput`
 
     .. note:: If your custom system type is to be used with other GROMACS
-       compatible objects (e.g., with the :ref:`overview/protocols:general
-       protocol[GmxProtocol]`), you should use
+       compatible objects (e.g., with the :ref:`overview/protocols:gromacs-compatible general protocol`), you should use
        :py:class:`~gmak.gmx_system.GmxTopologyOutput` and set this function to::
 
            import gmak.gmx_system.GmxTopologyOutput as GmxTopologyOutput

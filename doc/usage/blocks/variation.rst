@@ -32,8 +32,8 @@ Block parameters
      - 
    * - pars
      - List[string]
-     -  !FIX_MISSING_INCLUDE_EXCLUDE! The names of the parameters associated with the variation (see :doc:`/overview/interaction_parameters`).
-     - 
+     -  The names of the parameters associated with the variation (see :doc:`/overview/interaction_parameters`).
+     - Atomtype parameter names can optionally be followed by ``include INCL`` and/or ``exclude EXCL``, where ``INCL`` and ``EXCL`` are the ``pairs_include`` and ``pairs_exclude`` regular expressions, respectively (see :ref:`overview/interaction_parameters:atomtype parameters`). 
 
 Type ``cartesian``
 ==================
@@ -119,21 +119,4 @@ Type ``explicit``
 Example
 =======
 
-.. code-block:: gmi
-
-    $variation
-    TO_BE_REPLACED_BY_TUTORIAL
-    $end
-
-
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
-nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam
-erat, sed diam voluptua. At vero eos et accusam et justo duo dolores
-et ea rebum.  Stet clita kasd gubergren, no sea takimata sanctus est
-Lorem ipsum dolor sit amet.
-
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam
-nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam
-erat, sed diam voluptua. At vero eos et accusam et justo duo dolores
-et ea rebum.  Stet clita kasd gubergren, no sea takimata sanctus est
-Lorem ipsum dolor sit amet.
+See :doc:`/examples/tutorial` for a commented example.
