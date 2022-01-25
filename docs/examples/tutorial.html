@@ -1,0 +1,1266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2022-01-17 seg 23:58 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>&lrm;</title>
+<meta name="generator" content="Org mode" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        displayAlign: "center",
+        displayIndent: "0em",
+
+        "HTML-CSS": { scale: 100,
+                        linebreaks: { automatic: "false" },
+                        webFont: "TeX"
+                       },
+        SVG: {scale: 100,
+              linebreaks: { automatic: "false" },
+              font: "TeX"},
+        NativeMML: {scale: 100},
+        TeX: { equationNumbers: {autoNumber: "AMS"},
+               MultLineWidth: "85%",
+               TagSide: "right",
+               TagIndent: ".8em"
+             }
+});
+</script>
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+<div id="content">
+
+<div id="outline-container-org7c62681" class="outline-2">
+<h2 id="org7c62681"><span class="section-number-2">1.</span> Tutorial</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>A CENTRAL TIP FOR PATH AND USAGE OF $ROOT</li>
+<li>A SYSTEMATIC SEE ALSO FOR EACH TYPE OF THING</li>
+<li>CHANGE SECTION TO INPUT FILE</li>
+<li>SPLIT POST PROCESSING IN SECTIONS AND USE SEE ALSO FOR THE CODE REFS
+<ul class="org-ul">
+<li>GMAK OUTPUT</li>
+<li>DATAFRAME</li>
+<li>GROUPING</li>
+<li>PARETO</li>
+</ul></li>
+<li>TANGLE CUSTOM PY</li>
+</ul>
+
+<p>
+In this tutorial, the user will learn how to
+</p>
+
+<ul class="org-ul">
+<li>carry out a simple parameter-optimization job using <code>gmak</code></li>
+<li>use the <a href="/usage/post_processing">post-processing module</a> to analyze the results</li>
+<li>use the <a href="/usage/customization_api">customization API</a> to add a custom property-calculation
+routine to the program</li>
+<li>use the <a href="/usage/validation_mode">validation mode</a> to validate the surrogate-model estimates
+of the target properties for some points in the estimated
+parameter-space Pareto front</li>
+</ul>
+
+<p>
+The system considered in this tutorial is the rigid three-point
+water model OPC3
+<a href="izadi16_accur_limit_rigid_water_model">izadi16_accur_limit_rigid_water_model</a>. In particular,
+we want to reoptimize the values of the \(C_6\) and \(C_{12}\)
+parameters of the oxygen atom so as to make the model compatible
+with the GROMOS treatment of long-range Lennard-Jonnes interactions
+(straight cutoff truncation at a distance of 1.4 nm)
+<a href="oostenbrink04_biomol_force_field_based_free">oostenbrink04_biomol_force_field_based_free</a>.  These two
+parameters will be coupled by keeping their ratio constant, <i>i.e.</i>
+</p>
+
+<p>
+\[ \frac{C_{12}}{C_{6}} = 0.0010229709330817824 \text{ nm}^6\]
+</p>
+
+<p>
+In this manner, the parameter search space effectively has only one
+dimension.  Furthermore, this allows us to illustrate how to couple
+the values of parameters within <code>gmak</code>.
+</p>
+
+<p>
+All the simulations and analyses will be carried out based on the
+GROMACS software package, mostly relying on the GROMACS-compatible
+<a href="/overview/protocols">protocols</a> and <a href="/overview/properties">properties</a>. The properties considered in the
+parametrization are the pure-liquid density and the enthalpy of
+vaporization. In the validation stage, the self-diffusion
+coefficient (based on the displacement of the oxygen atoms) is also
+considered to illustrate the implementation of a <a href="/usage/customization_api">custom property</a>.
+</p>
+</div>
+
+<div id="outline-container-org20f45b1" class="outline-3">
+<h3 id="org20f45b1"><span class="section-number-3">1.1.</span> File structure</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+The files of this tutorial can be found in the directory
+<code>$ROOT/doc/tutorial</code>, where <code>$ROOT</code> is the root directory of the
+<code>gmak</code> <a href="http:github.com/mssm-labmmol/gmak">repository</a>. The files in this directory are
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #81A1C1;">cd</span> $<span style="color: #00bfff;">ROOT</span>/doc/tutorial
+tree
+</pre>
+</div>
+<pre class="example" id="orgdcc344e">
+├── custom.py
+├── input_files
+│   ├── gromos53a6.ff
+│   │   ├── aminoacids.c.tdb
+│   │   ├── aminoacids.hdb
+│   │   ├── aminoacids.n.tdb
+│   │   ├── aminoacids.r2b
+│   │   ├── aminoacids.rtp
+│   │   ├── aminoacids.vsd
+│   │   ├── atomtypes.atp
+│   │   ├── ffbonded.itp
+│   │   ├── ff_dum.itp
+│   │   ├── ffnonbonded.itp
+│   │   ├── forcefield.doc
+│   │   ├── forcefield.itp
+│   │   ├── ions.itp
+│   │   ├── spce.itp
+│   │   ├── spc.itp
+│   │   ├── tip3p.itp
+│   │   ├── tip4p.itp
+│   │   └── watermodels.dat
+│   ├── mdp
+│   │   ├── em_liq.mdp
+│   │   ├── md_liq.mdp
+│   │   ├── npt_liq.mdp
+│   │   └── nvt_liq.mdp
+│   ├── opc3_1024.top
+│   ├── opc3.gro
+│   ├── tutorial_01.gmi
+│   └── tutorial_01_validation.gmi
+</pre>
+
+<dl class="org-dl">
+<dt><code>custom.py</code></dt><dd>The file used for interfacing with the <a href="/usage/customization_api">customization API</a>.</dd>
+
+<dt><code>gromos53a6.ff</code></dt><dd>The directory containing the files of the
+GROMOS 53A6 force field. The force-field files are necessary to
+set the form of the Lennard-Jones potential (\(C_6\)-\(C_{12}\)),
+the mixing rule (geometric) and to define the atomtypes used in
+the simulations (in this case, H and OW).</dd>
+
+<dt><code>mdp</code></dt><dd>The directory containing the input-parameter files for
+the GROMACS simulations. They correspond to a protocol consisting
+of
+<ol class="org-ol">
+<li>energy minimization (<code>em</code>)</li>
+<li>equilibration in an NVT ensemble at 298.15K (<code>nvt</code>)</li>
+<li>equilibration in an NPT ensemble at 298.15K and 1 bar (<code>npt</code>)</li>
+<li>production run in an NPT ensemble at 298.15K and 1 bar (<code>md</code>)</li>
+</ol></dd>
+
+<dt><code>opc3_1024.top</code></dt><dd>The topology file corresponding to a system
+of 1024 molecules of OPC3 water.</dd>
+
+<dt><code>opc3.gro</code></dt><dd>The geometry structure of a single OPC3 water
+molecule. We will instruct <code>gmak</code> to construct the simulation box
+(containing 1024 molecules) automatically based on this file.</dd>
+
+<dt><code>tutorial_01.gmi</code></dt><dd>This is the <a href="/usage/input_file">input file</a> of the
+parameter-optimization job. It is commented in more details
+below.</dd>
+
+<dt><code>tutorial_01_validation.gmi</code></dt><dd>This is the <a href="/usage/input_file">input file</a> of the
+validation job. It is commented in more details below.</dd>
+</dl>
+</div>
+</div>
+
+
+<div id="outline-container-org77685e6" class="outline-3">
+<h3 id="org77685e6"><span class="section-number-3">1.2.</span> Parameter optimization</h3>
+<div class="outline-text-3" id="text-1-2">
+</div>
+<div id="outline-container-org029b2f8" class="outline-4">
+<h4 id="org029b2f8"><span class="section-number-4">1.2.1.</span> Input file</h4>
+<div class="outline-text-4" id="text-1-2-1">
+<p>
+The input file of the parameter-optimization job is described in
+details below.
+</p>
+</div>
+
+
+<ol class="org-ol">
+<li><a id="orgf6dabde"></a>Global input parameters<br />
+<div class="outline-text-5" id="text-1-2-1-1">
+<div class="org-src-container">
+<pre class="src src-gmi">
+<span style="color: #6f7787;"># This sets the working directory to ~tutorial_01~, inside the directory</span>
+<span style="color: #6f7787;"># from which the program is called.</span>
+workdir tutorial_01
+
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+<p>
+This sets the working directory to <code>tutorial_01</code>, inside the directory
+from which the program is called.
+</p>
+</div>
+</li>
+
+<li><a id="org8450d91"></a>Blocks<br />
+<ol class="org-ol">
+<li><a id="orge9be7b7"></a>Variations<br />
+<div class="outline-text-6" id="text-1-2-1-2-1">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$variation
+<span style="color: #6f7787;"># This configures the main variation to explore values from</span>
+<span style="color: #6f7787;"># 2.797579e-03 to 3.437579e-03 in 33 points spaced by 0.02e-03. The</span>
+<span style="color: #6f7787;"># string ~V_OW~ indicates that these values replace the value of the</span>
+<span style="color: #6f7787;"># \( C_6 \) parameter of the ~OW~ atomtype. Note that ~V~ is</span>
+<span style="color: #6f7787;"># interpreted as \( C_6 \) due to the force field considered (GROMOS</span>
+<span style="color: #6f7787;"># 53A6).</span>
+name main
+pars V_OW
+type cartesian
+start 2.797579e-03
+step  0.02e-03
+size 33
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This configures the main variation to explore values from
+2.797579e-03 to 3.437579e-03 in 33 points spaced by 0.02e-03. The
+string <code>V_OW</code> indicates that these values replace the value of the
+\( C_6 \) parameter of the <code>OW</code> atomtype. Note that <code>V</code> is
+interpreted as \( C_6 \) due to the force field considered (GROMOS
+53A6).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-gmi">
+$variation
+<span style="color: #6f7787;"># This configures an additional variation named ~c12~ that is coupled</span>
+<span style="color: #6f7787;"># to the main variation by a function</span>
+<span style="color: #6f7787;"># \[ f: \mathbb{R}^1 \to \mathbb{R}^1 \]</span>
+<span style="color: #6f7787;"># \[ (x_0,) \mapsto (0.0010229709330817824 x_0, ) \]</span>
+<span style="color: #6f7787;"># where \((x_0,) \in \mathbb{R}^1\) is an element of the main variation</span>
+<span style="color: #6f7787;"># (which has a single component \(x_0\)).</span>
+<span style="color: #6f7787;"># The string ~W_OW~ indicates that the elements of this variation</span>
+<span style="color: #6f7787;"># replace the value of the \(C_{12}\) parameter of the ~OW~ atomtype.</span>
+<span style="color: #6f7787;"># Note that ~W~ is interpreted as \( C_{12} \) due to the force field</span>
+<span style="color: #6f7787;"># considered (GROMOS 53A6).</span>
+name c12
+pars W_OW
+type coupled
+using main
+function x[0]*0.0010229709330817824
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This configures an additional variation named <code>c12</code> that is coupled
+to the main variation by a function
+\[ f: \mathbb{R}^1 \to \mathbb{R}^1 \]
+\[ (x_0,) \mapsto (0.0010229709330817824 x_0, ) \]
+where \((x_0,) \in \mathbb{R}^1\) is an element of the main variation
+(which has a single component \(x_0\)).
+The string <code>W_OW</code> indicates that the elements of this variation
+replace the value of the \(C_{12}\) parameter of the <code>OW</code> atomtype.
+Note that <code>W</code> is interpreted as \( C_{12} \) due to the force field
+considered (GROMOS 53A6).
+</p>
+</div>
+</li>
+
+<li><a id="org4930ff2"></a>Grid shifting<br />
+<div class="outline-text-6" id="text-1-2-1-2-2">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$gridshift
+<span style="color: #6f7787;"># This sets a default [[rst_doc:/overview/grid_shifting][grid-shifting procedure]] </span>
+<span style="color: #6f7787;"># with a maximum number of iterations of 10, a \(n_\text{cut}\) value of 0.10 and</span>
+<span style="color: #6f7787;"># margins \(\delta_1 = 0.25\) and \(\Delta_1 = 0.75\).</span>
+maxshifts 10
+ncut 0.10
+margins 0.25 0.75
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets a default <a href="/overview/grid_shifting">grid-shifting procedure</a> 
+with a maximum number of iterations of 10, a \(n_\text{cut}\) value of 0.10 and
+margins \(\delta_1 = 0.25\) and \(\Delta_1 = 0.75\).
+</p>
+</div>
+</li>
+
+<li><a id="org2e9ea61"></a>Sampling<br />
+<div class="outline-text-6" id="text-1-2-1-2-3">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$grid
+<span style="color: #6f7787;"># This sets the [[rst_ref:overview/grid:the list of sampled points][sampled grid points]] to those with [[rst_ref:overview/grid:grid indexing][linear indexes]]</span>
+<span style="color: #6f7787;"># 0 (first), 16 (middle) and 32 (last).</span>
+samples 0 16 32
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets the <a href="overview/grid:the list of sampled points">sampled grid points</a> to those with <a href="overview/grid:grid indexing">linear indexes</a>
+0 (first), 16 (middle) and 32 (last).
+</p>
+</div>
+</li>
+
+<li><a id="org3f19846"></a>Coordinates<br />
+<div class="outline-text-6" id="text-1-2-1-2-4">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$coordinates
+<span style="color: #6f7787;"># This sets a routine named ~opc3_1024~ for [[rst_doc:/overview/coordinates][constructing a initial configuration]].</span>
+<span style="color: #6f7787;"># This routine creates a pure liquid containing 1024 molecules of OPC3 water within a cubic box of edge length 3.135 nm (see [[rst_ref:overview/coordinates:pure-liquid configuration][Pure-liquid configuration]]).</span>
+<span style="color: #6f7787;"># The basic molecular structure (one water molecule) replicated within the box is in the file ~input_files/opc3.gro~.</span>
+<span style="color: #6f7787;"># This path is relative to the directory from which the program is run, which is assumed to be ~$ROOT/doc/tutorial~, where ~$ROOT~ is the root directory of the program's repository.</span>
+name opc3_1024
+type gmx_liquid
+coords input_files/opc3.gro
+nmols 1024
+box cubic 3.135
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets a routine named <code>opc3_1024</code> for <a href="/overview/coordinates">constructing a initial configuration</a>.
+This routine creates a pure liquid containing 1024 molecules of OPC3 water within a cubic box of edge length 3.135 nm (see <a href="overview/coordinates:pure-liquid configuration">Pure-liquid configuration</a>).
+The basic molecular structure (one water molecule) replicated within the box is in the file <code>input_files/opc3.gro</code>.
+This path is relative to the directory from which the program is run, which is assumed to be <code>$ROOT/doc/tutorial</code>, where <code>$ROOT</code> is the root directory of the program's repository.
+</p>
+</div>
+</li>
+
+<li><a id="orgb2c7b7d"></a>Systems<br />
+<div class="outline-text-6" id="text-1-2-1-2-5">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$system
+<span style="color: #6f7787;"># This sets a [[rst_ref:overview/systems_and_topologies:gromacs-compatible systems][GROMACS-compatible system]]</span>
+<span style="color: #6f7787;"># named ~opc3_1024~ that uses the file ~input_files/opc3_1024.top~ as a template topology.</span>
+<span style="color: #6f7787;"># This path is relative to the directory from which the program is run, which is assumed to be ~$ROOT/doc/tutorial~, where ~$ROOT~ is the root directory of the program's repository.</span>
+name opc3_1024
+type gmx
+template input_files/opc3_1024.top
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets a <a href="overview/systems_and_topologies:gromacs-compatible systems">GROMACS-compatible system</a>
+named <code>opc3_1024</code> that uses the file <code>input_files/opc3_1024.top</code> as a template topology.
+This path is relative to the directory from which the program is run, which is assumed to be <code>$ROOT/doc/tutorial</code>, where <code>$ROOT</code> is the root directory of the program's repository.
+</p>
+</div>
+</li>
+
+
+<li><a id="org39722bb"></a>Protocols<br />
+<div class="outline-text-6" id="text-1-2-1-2-6">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$protocol
+<span style="color: #6f7787;"># This sets a [[rst_ref:overview/protocols:gromacs-compatible general protocol][GROMACS-compatible general protocol]]</span>
+<span style="color: #6f7787;"># named ~opc3_1024~ that relies on the ~opc3_1024~ system (defined [[rst_ref:examples/tutorial:systems][here]]).</span>
+<span style="color: #6f7787;"># and on the ~opc3_1024~ coordinates (defined [[rst_ref:examples/tutorial:coordinates][here]]).</span>
+<span style="color: #6f7787;"># The simulation parameters are given in the files</span>
+<span style="color: #6f7787;"># ~input_files/mdp/em_liq.mdp~ to ~input_files/mdp/md_liq.mdp~.</span>
+<span style="color: #6f7787;"># This path is relative to the directory from which the program is run, which is assumed to be ~$ROOT/doc/tutorial~, where ~$ROOT~ is the root directory of the program's repository.</span>
+<span style="color: #6f7787;"># The production run of this simulation can be extended up to 2500000 steps (5 ns).</span>
+name opc3_1024
+type gmx
+system opc3_1024
+coords opc3_1024
+mdps input_files/mdp/em_liq.mdp input_files/mdp/nvt_liq.mdp input_files/mdp/npt_liq.mdp input_files/mdp/md_liq.mdp
+maxsteps 2500000
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets a <a href="overview/protocols:gromacs-compatible general protocol">GROMACS-compatible general protocol</a>
+named <code>opc3_1024</code> that relies on the <code>opc3_1024</code> system (defined <a href="examples/tutorial:systems">here</a>).
+and on the <code>opc3_1024</code> coordinates (defined <a href="examples/tutorial:coordinates">here</a>).
+The simulation parameters are given in the files
+<code>input_files/mdp/em_liq.mdp</code> to <code>input_files/mdp/md_liq.mdp</code>.
+This path is relative to the directory from which the program is run, which is assumed to be <code>$ROOT/doc/tutorial</code>, where <code>$ROOT</code> is the root directory of the program's repository.
+The production run of this simulation can be extended up to 2500000 steps (5 ns).
+</p>
+</div>
+</li>
+
+<li><a id="orgae1c673"></a>Properties<br />
+<div class="outline-text-6" id="text-1-2-1-2-7">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$compute
+<span style="color: #6f7787;"># This sets the program to compute the [[rst_ref:overview/properties:density][density]] based on the ~opc3_1024~ protocol (defined [[rst_ref:examples/tutorial:protocols][here]]).</span>
+<span style="color: #6f7787;"># The property is referenced by the name ~dens~.</span>
+<span style="color: #6f7787;"># The estimates for the grid points that are not simulated are obtained based on a [[rst_ref:overview/surrogate_model:linear/cubic interpolation][linear-interpolation surrogate model]].</span>
+name dens
+type density
+protocols opc3_1024
+surrogate_model linear
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets the program to compute the <a href="overview/properties:density">density</a> based on the <code>opc3_1024</code> protocol (defined <a href="examples/tutorial:protocols">here</a>).
+The property is referenced by the name <code>dens</code>.
+The estimates for the grid points that are not simulated are obtained based on a <a href="overview/surrogate_model:linear/cubic interpolation">linear-interpolation surrogate model</a>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-gmi">
+$compute
+<span style="color: #6f7787;"># This sets the program to compute the [[rst_ref:overview/properties:enthalpy of vaporization][enthalpy of vaporization]]</span>
+<span style="color: #6f7787;"># based on the ~opc3_1024~ protocol (defined [[rst_ref:examples/tutorial:protocols][here]]) for the liquid system.</span>
+<span style="color: #6f7787;"># The gas phase is not simulated for the calculation of the gas-phase potential energy and the polarization-energy correction, which is indicated by the pair of ~none~ strings.</span>
+<span style="color: #6f7787;"># However, a constant corrrection of -7.186 kJ/mol is used.</span>
+<span style="color: #6f7787;"># The property is referenced by the name ~dhvap~.</span>
+<span style="color: #6f7787;"># The number of molecules in the liquid phase is recycled from the ~opc3_1024~ coordinates (defined [[rst_ref:examples/tutorial:coordinates][here]]).</span>
+<span style="color: #6f7787;"># The estimates for the grid points that are not simulated are obtained based on a [[rst_ref:overview/surrogate_model:linear/cubic interpolation][linear-interpolation surrogate model]].</span>
+name dhvap
+type dhvap
+protocols opc3_1024 none none
+surrogate_model linear
+C -7.186
+nmols from coordinates opc3_1024
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets the program to compute the <a href="overview/properties:enthalpy of vaporization">enthalpy of vaporization</a>
+based on the <code>opc3_1024</code> protocol (defined <a href="examples/tutorial:protocols">here</a>) for the liquid system.
+The gas phase is not simulated for the calculation of the gas-phase potential energy and the polarization-energy correction, which is indicated by the pair of <code>none</code> strings.
+However, a constant corrrection of -7.186 kJ/mol is used.
+The property is referenced by the name <code>dhvap</code>.
+The number of molecules in the liquid phase is recycled from the <code>opc3_1024</code> coordinates (defined <a href="examples/tutorial:coordinates">here</a>).
+The estimates for the grid points that are not simulated are obtained based on a <a href="overview/surrogate_model:linear/cubic interpolation">linear-interpolation surrogate model</a>.
+</p>
+</div>
+</li>
+
+
+<li><a id="orgc9d1958"></a>Score function and Tolerances<br />
+<div class="outline-text-6" id="text-1-2-1-2-8">
+<div class="org-src-container">
+<pre class="src src-gmi">
+$optimize
+<span style="color: #6f7787;"># This sets a [[rst_doc:/overview/score][default score function]] based on the properties named ~dens~ and ~dhvap~.</span>
+<span style="color: #6f7787;"># The reference values are 997 kg/m^3 and 43.989 kJ/mol, respectively.</span>
+<span style="color: #6f7787;"># The weights are both 1.0.</span>
+<span style="color: #6f7787;">#</span>
+<span style="color: #6f7787;"># This block also sets the tolerances for the statistical errors of these properties: 0.3 kg/m^3 and 0.1 kJ/mol, respectively.</span>
+properties   dens     dhvap
+references   997.00   43.989
+weights      1.0      1.0
+tolerances   0.30     0.10
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets a <a href="/overview/score">default score function</a> based on the properties named <code>dens</code> and <code>dhvap</code>.
+The reference values are 997 kg/m<sup>3</sup> and 43.989 kJ/mol, respectively.
+The weights are both 1.0.
+</p>
+
+<p>
+This block also sets the tolerances for the statistical errors of these properties: 0.3 kg/m<sup>3</sup> and 0.1 kJ/mol, respectively.
+</p>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</div>
+
+<div id="outline-container-org28ea6fa" class="outline-4">
+<h4 id="org28ea6fa"><span class="section-number-4">1.2.2.</span> Running the job</h4>
+<div class="outline-text-4" id="text-1-2-2">
+<p>
+To run the job, call the <code>gmak</code> program as follows:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash">gmak --gmx $<span style="color: #00bfff;">GMXPATH</span> --gnp $<span style="color: #00bfff;">NPROCS</span> input_files/tutorial_01.gmi
+</pre>
+</div>
+
+<p>
+where <code>$GMXPATH</code> is the path of your <code>gmx</code> binary and <code>$NPROCS</code> is
+the number of parallel threads requested (option <code>-nt</code> of <code>gmx
+    mdrun</code>).
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgecaf47c" class="outline-4">
+<h4 id="orgecaf47c"><span class="section-number-4">1.2.3.</span> Post-processing</h4>
+<div class="outline-text-4" id="text-1-2-3">
+<p>
+The program should create a new directory <code>tutorial_01</code> (as
+specified in the input file) where the <a href="/usage/output_files">output files</a> of the job are
+stored. Out of these files, we will only use the binary state file
+<code>tutorial_01/state_%jobid.bin</code>, where <code>%jobid</code> is the PID of the
+<code>gmak</code> job and is specific to your run&#x2014;in our case, this file
+is <code>tutorial_01/state_8949.bin</code>.
+</p>
+
+<p>
+To analyze the results of the job, we will use the <a href="/usage/post_processing">post-processing
+module</a>.  In a python session, we start by reading the output data from
+the state binary file:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #81A1C1;">import</span> gmak.post_processing <span style="color: #81A1C1;">as</span> pp
+
+<span style="color: #00bfff;">jobdata</span> = pp.GmakOutput.<span style="color: #88C0D0;">from_gmak_bin</span>(<span style="color: #A3BE8C;">'%s/doc/tutorial/tutorial_01/state_8949.bin'</span> % ROOT)
+</pre>
+</div>
+
+<p>
+<code>jobdata</code> is a <a href="~gmak.post_processing.GmakOutput">~gmak.post_processing.GmakOutput</a> object
+that contains the main-variation elements, the properties and the
+score for all grid points and all grid-shift iterations. It can be
+visualized more effectively by extracting from it a
+<a href="pandas.DataFrame">pandas.DataFrame</a> object:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #00bfff;">df</span> = jobdata.<span style="color: #88C0D0;">get_dataframe()</span>
+<span style="color: #88C0D0;">print</span>(df)
+</pre>
+</div>
+
+<pre class="example" id="org2f112bf">
+                  (X, 1)  (dens, mu)  (dens, sigma)  (dens, diff)  (dhvap, mu)  (dhvap, sigma)  (dhvap, diff)  (score, mu)
+grid gridpoint                                                                                                            
+0    0          0.002798  992.678092       0.226104     -4.321908    44.365680        0.006418       0.376680     3.067636
+     1          0.002818  991.915764       0.228639     -5.084236    44.259750        0.006425       0.270750     3.600191
+     2          0.002838  991.153437       0.231175     -5.846563    44.153820        0.006432       0.164820     4.135787
+     3          0.002858  990.391110       0.233710     -6.608890    44.047890        0.006439       0.058890     4.673377
+     4          0.002878  989.628782       0.236245     -7.371218    43.941960        0.006446      -0.047040     5.212344
+...                  ...         ...            ...           ...          ...             ...            ...          ...
+1    28         0.003058  982.513245       0.259369    -14.486755    43.003454        0.006766      -0.985546    10.267360
+     29         0.003078  981.769364       0.260034    -15.230636    42.900889        0.006642      -1.088111    10.797135
+     30         0.003098  981.025482       0.260699    -15.974518    42.798325        0.006518      -1.190675    11.327024
+     31         0.003118  980.281601       0.261365    -16.718399    42.695761        0.006393      -1.293239    11.857009
+     32         0.003138  979.537719       0.262030    -17.462281    42.593197        0.006269      -1.395803    12.387080
+
+[66 rows x 8 columns]
+</pre>
+
+<p>
+Note that:
+</p>
+
+<ul class="org-ul">
+<li>The entries of the dataframe are indexed by the <a href="/overview/grid_shifting">grid-shift iteration</a>
+(<code>grid</code>) and the <a href="overview/grid:grid indexing">linear index</a> of the grid point (<code>gridpoint</code>). This
+job in particular involved two grid-shift iterations.</li>
+<li>The only variation shown in the dataframe is the main one, which has
+only one component, <code>(X,1)</code>. This corresonds to the \(C_6\)
+coefficient of the OW atom type. The \(C_{12}\) coefficient, which
+corresponds to the coupled variation, is not shown.</li>
+<li>The estimated expected values (<code>mu</code>), statistical errors (<code>sigma</code>)
+and differences with respect to the reference value (<code>diff</code>) are
+shown for all composite properties involved in the score function
+(in this case, <code>dens</code> and <code>dhvap</code>).</li>
+<li>The estimated values (<code>mu</code>) of the score function (<code>score</code>) are also
+shown.</li>
+</ul>
+
+<p>
+One can interact with this dataframe in the usual fashion. For
+example, the entries can be ordered by score with
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #00bfff;">df_sorted</span> = df.<span style="color: #88C0D0;">sort_values(</span>(<span style="color: #A3BE8C;">'score'</span>, <span style="color: #A3BE8C;">'mu'</span>))
+<span style="color: #81A1C1;">print</span>(df_sorted)
+</pre>
+</div>
+
+<pre class="example" id="org379b51b">
+                  (X, 1)  (dens, mu)  (dens, sigma)  (dens, diff)  (dhvap, mu)  (dhvap, sigma)  (dhvap, diff)  (score, mu)
+grid gridpoint                                                                                                            
+1    11         0.002718  996.728604       0.264170     -0.271396    44.915398        0.008116       0.926398     0.682594
+     10         0.002698  997.786360       0.266727      0.786360    45.051633        0.008087       1.062633     0.934759
+     12         0.002738  995.670847       0.261613     -1.329153    44.779163        0.008144       0.790163     1.093390
+     9          0.002678  998.844116       0.269284      1.844116    45.187867        0.008059       1.198867     1.555321
+     13         0.002758  994.613091       0.259056     -2.386909    44.642929        0.008172       0.653929     1.749994
+...                  ...         ...            ...           ...          ...             ...            ...          ...
+0    28         0.003358  973.295909       0.245010    -23.704091    41.730591        0.006343      -2.258409    16.837226
+     29         0.003378  972.697163       0.243205    -24.302837    41.652240        0.006328      -2.336760    17.263955
+     30         0.003398  972.098418       0.241400    -24.901582    41.573889        0.006313      -2.415111    17.690697
+     31         0.003418  971.499673       0.239595    -25.500327    41.495539        0.006297      -2.493461    18.117451
+     32         0.003438  970.900927       0.237791    -26.099073    41.417188        0.006282      -2.571812    18.544215
+
+[66 rows x 8 columns]
+</pre>
+
+<p>
+To proceed in our analysis, we calculate the approximate Pareto front
+of the optimization problem based on the explored parameter-search
+space:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #00bfff;">pareto</span> = jobdata.<span style="color: #88C0D0;">compute_pareto</span>()
+</pre>
+</div>
+
+<p>
+The Pareto front is returned as a list of the main-variation elements in the Pareto front:
+</p>
+
+<pre class="example">
+[0.0027175790000000003, 0.0027375790000000004, 0.0027575790000000005, 0.002777579, 0.002797579, 0.002817579, 0.0028375790000000002, 0.0028575790000000003]
+</pre>
+
+
+<p>
+To use it more effectively, we first reindex the output data based on
+the main variation (see
+<a href="~gmak.post_processing.GmakOutput.groupby_X">~gmak.post_processing.GmakOutput.groupby_X</a>):
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #00bfff;">df_group</span> = jobdata.<span style="color: #88C0D0;">groupby_X()</span>
+<span style="color: #88C0D0;">print</span>(df_group)
+</pre>
+</div>
+
+<pre class="example" id="org2f57df0">
+                 dens                           dhvap                          score
+                   mu     sigma       diff         mu     sigma      diff         mu
+(X, 1)                                                                              
+0.002498  1008.363921  0.292297  11.363921  46.413979  0.007804  2.424979   8.216423
+0.002518  1007.306164  0.289740  10.306164  46.277744  0.007832  2.288744   7.465098
+0.002538  1006.248408  0.287183   9.248408  46.141509  0.007861  2.152509   6.714401
+0.002558  1005.190652  0.284626   8.190652  46.005275  0.007889  2.016275   5.964568
+0.002578  1004.132896  0.282069   7.132896  45.869040  0.007917  1.880040   5.215973
+0.002598  1003.075140  0.279512   6.075140  45.732806  0.007946  1.743806   4.469238
+0.002618  1002.017384  0.276955   5.017384  45.596571  0.007974  1.607571   3.725482
+0.002638  1000.959628  0.274398   3.959628  45.460336  0.008002  1.471336   2.986929
+0.002658   999.901872  0.271841   2.901872  45.324102  0.008031  1.335102   2.258690
+0.002678   998.844116  0.269284   1.844116  45.187867  0.008059  1.198867   1.555321
+0.002698   997.786360  0.266727   0.786360  45.051633  0.008087  1.062633   0.934759
+0.002718   996.728604  0.264170  -0.271396  44.915398  0.008116  0.926398   0.682594
+0.002738   995.670847  0.261613  -1.329153  44.779163  0.008144  0.790163   1.093390
+0.002758   994.613091  0.259056  -2.386909  44.642929  0.008172  0.653929   1.749994
+0.002778   993.555335  0.256499  -3.444665  44.506694  0.008201  0.517694   2.463100
+0.002798   992.587836  0.170007  -4.412164  44.368070  0.005218  0.379070   3.131367
+0.002818   991.677794  0.169905  -5.322206  44.246987  0.005231  0.257987   3.767826
+0.002838   990.924689  0.171005  -6.075311  44.142740  0.005184  0.153740   4.297285
+0.002858   990.171585  0.172109  -6.828415  44.038493  0.005138  0.049493   4.828552
+0.002878   989.418480  0.173215  -7.581520  43.934246  0.005092 -0.054754   5.361085
+0.002898   988.665376  0.174324  -8.334624  43.829999  0.005046 -0.159001   5.894542
+0.002918   987.912272  0.175436  -9.087728  43.725752  0.005001 -0.263248   6.428690
+0.002938   987.159167  0.176551  -9.840833  43.621505  0.004956 -0.367495   6.963371
+0.002958   986.406063  0.177668 -10.593937  43.517257  0.004911 -0.471743   7.498470
+0.002978   985.652958  0.178788 -11.347042  43.413010  0.004867 -0.575990   8.033903
+0.002998   984.899854  0.179910 -12.100146  43.308763  0.004823 -0.680237   8.569609
+0.003018   984.146749  0.181035 -12.853251  43.204516  0.004780 -0.784484   9.105538
+0.003038   983.393645  0.182163 -13.606355  43.100269  0.004737 -0.888731   9.641653
+0.003058   982.640540  0.183293 -14.359460  42.996022  0.004694 -0.992978  10.177926
+0.003078   981.887436  0.184425 -15.112564  42.891774  0.004652 -1.097226  10.714332
+0.003098   981.134332  0.185560 -15.865668  42.787527  0.004610 -1.201473  11.250852
+0.003118   980.381227  0.186697 -16.618773  42.683280  0.004569 -1.305720  11.787471
+0.003138   979.709914  0.186287 -17.290086  42.592823  0.004520 -1.396177  12.265737
+0.003158   979.283363  0.263057 -17.716637  42.514098  0.006498 -1.474902  12.570891
+0.003178   978.684617  0.261252 -18.315383  42.435747  0.006482 -1.553253  12.997420
+0.003198   978.085872  0.259447 -18.914128  42.357396  0.006467 -1.631604  13.423978
+0.003218   977.487126  0.257643 -19.512874  42.279046  0.006451 -1.709954  13.850563
+0.003238   976.888381  0.255838 -20.111619  42.200695  0.006436 -1.788305  14.277171
+0.003258   976.289636  0.254033 -20.710364  42.122344  0.006421 -1.866656  14.703802
+0.003278   975.690890  0.252228 -21.309110  42.043994  0.006405 -1.945006  15.130453
+0.003298   975.092145  0.250424 -21.907855  41.965643  0.006390 -2.023357  15.557122
+0.003318   974.493399  0.248619 -22.506601  41.887292  0.006374 -2.101708  15.983808
+0.003338   973.894654  0.246814 -23.105346  41.808942  0.006359 -2.180058  16.410510
+0.003358   973.295909  0.245010 -23.704091  41.730591  0.006343 -2.258409  16.837226
+0.003378   972.697163  0.243205 -24.302837  41.652240  0.006328 -2.336760  17.263955
+0.003398   972.098418  0.241400 -24.901582  41.573889  0.006313 -2.415111  17.690697
+0.003418   971.499673  0.239595 -25.500327  41.495539  0.006297 -2.493461  18.117451
+0.003438   970.900927  0.237791 -26.099073  41.417188  0.006282 -2.571812  18.544215
+</pre>
+
+<p>
+We can then filter out the entries that belong to the Pareto front
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #00bfff;">df_pareto</span> = df_group.<span style="color: #88C0D0;">loc[pareto]</span>
+<span style="color: #88C0D0;">print</span>(df_pareto)
+</pre>
+</div>
+
+<pre class="example" id="org3c3acad">
+                dens                          dhvap                         score
+                  mu     sigma      diff         mu     sigma      diff        mu
+(X, 1)                                                                           
+0.002718  996.728604  0.264170 -0.271396  44.915398  0.008116  0.926398  0.682594
+0.002738  995.670847  0.261613 -1.329153  44.779163  0.008144  0.790163  1.093390
+0.002758  994.613091  0.259056 -2.386909  44.642929  0.008172  0.653929  1.749994
+0.002778  993.555335  0.256499 -3.444665  44.506694  0.008201  0.517694  2.463100
+0.002798  992.587836  0.170007 -4.412164  44.368070  0.005218  0.379070  3.131367
+0.002818  991.677794  0.169905 -5.322206  44.246987  0.005231  0.257987  3.767826
+0.002838  990.924689  0.171005 -6.075311  44.142740  0.005184  0.153740  4.297285
+0.002858  990.171585  0.172109 -6.828415  44.038493  0.005138  0.049493  4.828552
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orgc2773f5" class="outline-3">
+<h3 id="orgc2773f5"><span class="section-number-3">1.3.</span> Validation</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+For the sake of illustration, the first three points in the Pareto
+front above are chosen for further validation. For these points, we
+will directly compute the values of the target properties, without
+relying on a surrogate model. We will also calculate the
+self-diffusion coefficient so as to illustrate how the customization
+API can be used to customize the usage of the program.
+</p>
+</div>
+
+<div id="outline-container-org7f56044" class="outline-4">
+<h4 id="org7f56044"><span class="section-number-4">1.3.1.</span> Input file</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<p>
+The input file of the validation job
+(<code>input_files/tutorial_01_validation.gmi</code>) is very similar to the
+parameter-opimization one. Below, we explain only the parts that
+are different.
+</p>
+
+<p>
+The first line
+</p>
+<div class="org-src-container">
+<pre class="src src-gmi">
+<span style="color: #6f7787;"># sets the working directory to ~tutorial_01_validation~, inside</span>
+<span style="color: #6f7787;"># the directory from which the program is called.</span>
+workdir tutorial_01_validation
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+<p>
+sets the working directory to <code>tutorial_01_validation</code>, inside
+the directory from which the program is called.
+</p>
+
+<p>
+The main variation is also set differently, and now reads
+</p>
+<div class="org-src-container">
+<pre class="src src-gmi">
+$variation
+<span style="color: #6f7787;"># This sets the main variation to explore the explicitly given values</span>
+<span style="color: #6f7787;"># of 2.71758e-03, 2.73758e-03 and 2.75758e-03. These values correspond</span>
+<span style="color: #6f7787;"># to the top-three performing points of the Pareto front.</span>
+<span style="color: #6f7787;">#</span>
+<span style="color: #6f7787;"># Note that only the main variation needs to be altered with respect</span>
+<span style="color: #6f7787;"># to the parameter-optimization job. The coupled variation (associated</span>
+<span style="color: #6f7787;"># with \(C_{12}\)) automatically reflects the changes in the main</span>
+<span style="color: #6f7787;"># variation.</span>
+name main
+pars V_OW
+type explicit
+dim 1
+values 2.71758e-03 2.73758e-03 2.75758e-03
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This sets the main variation to explore the explicitly given values
+of 2.71758e-03, 2.73758e-03 and 2.75758e-03. These values correspond
+to the top-three performing points of the Pareto front.
+</p>
+
+<p>
+Note that only the main variation needs to be altered with respect
+to the parameter-optimization job. The coupled variation (associated
+with \(C_{12}\)) automatically reflects the changes in the main
+variation.
+</p>
+
+<p>
+The new parameter-search grid also requires setting a new list of
+sampled points. The block
+</p>
+
+<div class="org-src-container">
+<pre class="src src-gmi">
+$grid
+<span style="color: #6f7787;"># sets the sampled grid points as those</span>
+<span style="color: #6f7787;"># with linear indexes 0, 1 and 2. This corresponds</span>
+<span style="color: #6f7787;"># to all three points of the parameter-search grid</span>
+<span style="color: #6f7787;"># of the validation job.</span>
+samples 0 1 2
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+sets the sampled grid points as those
+with linear indexes 0, 1 and 2. This corresponds
+to all three points of the parameter-search grid
+of the validation job.
+</p>
+
+<p>
+As explained above, the self-diffusion coefficient is also calculated
+in the validation job. This requires setting up the following
+<code>$compute</code> block:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-gmi">
+$compute
+<span style="color: #6f7787;"># This block sets a [[rst_ref:overview/properties:composite properties][composite property]]</span>
+<span style="color: #6f7787;"># of type ~diffusion_coeff~ named ~D~ that has the ~msd~ property as its single [[rst_ref:overview/properties:component properties][component property]]</span>
+<span style="color: #6f7787;"># and is calculated based on the ~opc3_1024~ protocol.</span>
+<span style="color: #6f7787;"># The estimates for the grid points that are not simulated are obtained based on a [[rst_ref:overview/surrogate_model:linear/cubic interpolation][linear-interpolation surrogate model]].</span>
+<span style="color: #6f7787;"># This property also requires an index file (given in ~index_file~) and a group (given in ~group_name~) to use</span>
+<span style="color: #6f7787;"># as a basis for calculating the self-diffusion coefficient.</span>
+<span style="color: #6f7787;"># The ~diffusion_coeff~ composite property and the ~msd~ component property</span>
+<span style="color: #6f7787;"># are defined in the customization file (see below).</span>
+name D
+type diffusion_coeff
+components msd
+protocols opc3_1024
+surrogate_model linear
+index_file input_files/OW.ndx
+group_name OW
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+
+
+
+<p>
+This block sets a <a href="overview/properties:composite properties">composite property</a>
+of type <code>diffusion_coeff</code> named <code>D</code> that has the <code>msd</code> property as its single <a href="overview/properties:component properties">component property</a>
+and is calculated based on the <code>opc3_1024</code> protocol.
+The estimates for the grid points that are not simulated are obtained based on a <a href="overview/surrogate_model:linear/cubic interpolation">linear-interpolation surrogate model</a>.
+This property also requires an index file (given in <code>index_file</code>) and a group (given in <code>group_name</code>) to use
+as a basis for calculating the self-diffusion coefficient.
+The <code>diffusion_coeff</code> composite property and the <code>msd</code> component property
+are defined in the customization file (see below).
+</p>
+
+<p>
+Finally, the self-diffusion coefficient is also included
+in the score function by altering the <code>$optimize</code> block
+to
+</p>
+
+<div class="org-src-container">
+<pre class="src src-gmi">
+$optimize
+properties   dens     dhvap    D
+references   997.00   43.989   2.30
+weights      1.0      1.0      1.0
+tolerances   0.30     0.10     0.20
+$end
+
+</pre>
+</div>
+
+<p>
+
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgdcaea12" class="outline-4">
+<h4 id="orgdcaea12"><span class="section-number-4">1.3.2.</span> Customization</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<p>
+The file <code>$ROOT/doc/tutorial/custom.py</code> contains the
+implementation of the routine for calculating the self-diffusion
+coefficient. We highly recommend reading the <a href="usage/customization_api:properties">corresponding section</a>
+regarding custom properties before continuing this tutorial in
+order to understand the contents of the customization file, which
+is reproduced (with comments) below:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-python"><span style="color: #81A1C1;">try</span>:
+    <span style="color: #00bfff;">a</span> = 2
+<span style="color: #81A1C1;">except</span>:
+    <span style="color: #00bfff;">a</span> = 10
+
+<span style="color: #81A1C1;">def</span> <span style="color: #88C0D0;">test_function</span>():
+    <span style="color: #81A1C1;">try</span>:
+        <span style="color: #00bfff;">a</span> = 10
+    <span style="color: #81A1C1;">except</span>:
+        <span style="color: #00bfff;">a</span> = 15
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgfe892f5" class="outline-4">
+<h4 id="orgfe892f5"><span class="section-number-4">1.3.3.</span> Running the job</h4>
+</div>
+
+
+<div id="outline-container-orgf4ee45d" class="outline-4">
+<h4 id="orgf4ee45d"><span class="section-number-4">1.3.4.</span> Post-processing</h4>
+</div>
+</div>
+
+<div id="outline-container-orgf1fae89" class="outline-3">
+<h3 id="orgf1fae89"><span class="section-number-3">1.4.</span> References</h3>
+<div class="outline-text-3" id="text-1-4">
+<blockquote>
+nil</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Created: 2022-01-17 seg 23:58</p>
+</div>
+</body>
+</html>

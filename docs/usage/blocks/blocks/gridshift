@@ -1,0 +1,28 @@
+The ``$gridshift`` block sets up the routine for the grid-shifting procedure.
+unique
+none
+type
+optional
+string
+The type of grid-shifting procedure (default value is ``default`` - see :doc:`/overview/grid_shifting`).
+
+maxshifts
+required
+numerical
+The maximum number of grid-shifting iterations.
+Setting it to zero disables grid-shifting.
+mergeable
+
+margins
+required
+list numerical
+The margins :math:`\delta_i` and :math:`\Delta_i` for each grid dimension :math:`i`. The values should be listed in the order :math:`\delta_1`, :math:`\Delta_1`, :math:`\delta_2`, :math:`\Delta_2`, :math:`\cdots`, :math:`\delta_D`, :math:`\Delta_D`.
+For type = default.
+mergeable
+
+ncut
+required
+numerical
+The value of :math:`n_\text{cut}`.
+For type = default.
+mergeable

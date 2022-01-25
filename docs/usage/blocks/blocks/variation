@@ -1,0 +1,76 @@
+The ``$variation`` block sets up the variations (see :doc:`/overview/grid`).
+nonunique
+none
+name
+required
+string
+The name for the variation object.
+The :ref:`main variation <overview/grid:main variation>` *must* be named ``main``.
+
+type
+required
+string
+The type of the variation object. The allowed values are cartesian, coupled and explicit.
+
+pars
+required
+list string
+The names of the parameters associated with the variation (see :doc:`/overview/interaction_parameters`).
+Atomtype parameter names can optionally be followed by ``include INCL`` and/or ``exclude EXCL``, where ``INCL`` and ``EXCL`` are the ``pairs_include`` and ``pairs_exclude`` regular expressions, respectively (see :ref:`overview/interaction_parameters:atomtype parameters`).
+
+function
+optional
+list expr
+A list of mathematical expressions that correspond to the components of the enhanced-cartesian-variation scaling function (see :ref:`overview/grid:cartesian variation`).
+Each expression accepts numbers, the usual operations ``+,-,*,/,**`` as well as the functions ``exp`` and ``log``.
+The original components of a variation member can be referred to as ``x[0]``, ``x[1]``, etc.
+The expressions cannot contain spaces.
+For type = cartesian.
+
+start
+required
+list numerical
+The components of the cartesian-variation origin.
+For type = cartesian.
+
+step
+required
+list numerical
+The components of the cartesian-variation step.
+For type = cartesian.
+
+size
+required
+list numerical
+The dimensions of the cartesian variation.
+For type = cartesian.
+
+using
+required
+objname
+The name of the variation to which the variation at hand is coupled.
+For type = coupled.
+Depends on the variation to which it refers.
+
+function
+required
+list expr
+The list of mathematical expressions that correspond to the components of the coupling function (see :ref:`overview/grid:coupled variation`).
+Each expression accepts numbers, the usual operations ``+,-,*,/,**`` as well as the functions ``exp`` and ``log``.
+The original components of a variation member can be referred to as ``x[0]``, ``x[1]``, etc.
+The expressions cannot contain spaces.
+For type = coupled.
+
+dim
+required
+numerical
+The number of dimensions of the grid members, i.e. how many parameters are defined by each grid point.
+For type = explicit.
+This value must match with the number of parameters specified in the ``pars`` option.
+
+values
+required
+list numerical
+The explicit parameter values associated with each grid member. The values are read in batches of size ``dim`` for each grid point.
+For type = explicit.
+The resulting grid is uni-dimensional with size equal to the number of entries divided by ``dim``.
