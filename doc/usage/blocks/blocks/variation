@@ -15,7 +15,8 @@ The type of the variation object. The allowed values are cartesian, coupled and 
 pars
 required
 list string
-!FIX_MISSING_INCLUDE_EXCLUDE! The names of the parameters associated with the variation (see :doc:`/overview/interaction_parameters`).
+The names of the parameters associated with the variation (see :doc:`/overview/interaction_parameters`).
+Atomtype parameter names can optionally be followed by ``include INCL`` and/or ``exclude EXCL``, where ``INCL`` and ``EXCL`` are the ``pairs_include`` and ``pairs_exclude`` regular expressions, respectively (see :ref:`overview/interaction_parameters:atomtype parameters`).
 
 function
 optional
