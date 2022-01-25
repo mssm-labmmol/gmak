@@ -5,7 +5,6 @@ from gmak.gridshifter import *
 from gmak.parameter_space import *
 from gmak.variations import *
 from gmak.gridbase import *
-from gmak.topology import *
 from gmak.systems import *
 import gmak.property
 import gmak.configurations
