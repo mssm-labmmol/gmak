@@ -71,7 +71,7 @@ extensions = [
     'sphinxcontrib.bibtex',
 ]
 
-bibtex_bibfiles = ['/home/yan/WORK/BIB/main.bib']
+bibtex_bibfiles = ['main.bib']
 
 
 intersphinx_mapping = {
