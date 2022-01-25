@@ -3,3 +3,4 @@ sphinxcontrib-bibtex
 numpy
 pandas
 scipy
+pymbar
