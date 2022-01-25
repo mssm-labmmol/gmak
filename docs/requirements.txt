@@ -1,5 +1,2 @@
 pygments
-sphinx.ext.intersphinx
-sphinx.ext.autodoc
-sphinx.ext.autosectionlabel
-sphinxcontrib.bibtex
+sphinxcontrib-bibtex
