@@ -1,0 +1,84 @@
+workdir tutorial_01_validation
+
+$variation
+name main
+pars V_OW
+type explicit
+dim 1
+# these values are the top three of the Pareto front
+values 2.71758e-03 2.73758e-03 2.75758e-03
+$end
+
+$variation
+name c12
+pars W_OW
+type coupled
+using main
+function x[0]*0.0010229709330817824
+$end
+
+$gridshift
+maxshifts 10
+ncut 0.10
+margins 0.25 0.75
+$end
+
+$grid
+samples 0 1 2
+$end
+
+$coordinates
+name opc3_1024
+type gmx_liquid
+coords input_files/opc3.gro
+nmols 1024
+box cubic 3.135
+$end
+
+$system
+name opc3_1024
+type gmx
+template input_files/opc3_1024.top
+$end
+
+$protocol
+name opc3_1024
+type gmx
+system opc3_1024
+coords opc3_1024
+mdps input_files/mdp/em_liq.mdp input_files/mdp/nvt_liq.mdp input_files/mdp/npt_liq.mdp input_files/mdp/md_liq.mdp
+maxsteps 2500000
+$end
+
+$compute
+name dens
+type density
+protocols opc3_1024
+surrogate_model linear
+$end
+
+$compute
+name dhvap
+type dhvap
+protocols opc3_1024 none none
+surrogate_model linear
+C -7.186
+nmols from coordinates opc3_1024
+$end
+
+$compute
+name D
+type diffusion_coeff
+components msd
+protocols opc3_1024
+surrogate_model linear
+index_file input_files/OW.ndx
+group_name OW
+$end
+
+$optimize
+properties   dens     dhvap    D
+references   997.00   43.989   2.30
+weights      1.0      1.0      1.0
+tolerances   0.30     0.10     0.20
+$end
