@@ -1,0 +1,100 @@
+The ``$compute`` block sets up a composite property and the associated component properties (see :ref:`overview/properties:component and composite properties`).
+nonunique
+none
+name
+required
+string
+The name for the composite property.
+
+type
+required
+string
+The type of the composite property.
+
+protocols
+custom Type-specific
+list objname
+The names of the protocols on which the calculation of the component properties is based.
+Depends on the protocols to which it refers.
+Each composite-property type requires different protocols; see below.
+
+surrogate_model
+required
+objname
+The type of surrogate model used in the estimation of the component properties.
+
+components
+custom Required for custom properties only
+list string
+The types of the component properties involved in the custom composite property.
+
+protocols
+required
+objname
+The name of the protocol for which the property is calculated.
+Depends on the protocol to which it refers.
+Read the protocol requirements in :ref:`overview/properties:density`.
+For type = density.
+
+protocols
+required
+objname
+The name of the protocol for which the property is calculated.
+Depends on the protocol to which it refers.
+Read the protocol requirements in :ref:`overview/properties:surface-tension coefficient`.
+For type = gamma.
+
+protocols
+required
+objname
+The name of the protocol for which the property is calculated.
+Depends on the protocol to which it refers.
+Read the protocol requirements in :ref:`overview/properties:free-energy difference`.
+For type = dg.
+
+temperature
+optional
+numerical
+The value of the reference temperature of the alchemical-transformation simulations. By default, it is inferred from the ``.mdp`` file of the production run.
+For type = dg.
+
+protocols
+required
+list objname objname objname
+The names of the protocols for which the liquid-phase potential energy, gas-phase potential energy and polarization-energy correction, respectively, are calculated.
+Depends on the protocols to which it refers.
+Read the protocol requirements in :ref:`overview/properties:enthalpy of vaporization`.
+The calculation of the gas-phase potential energy and/or the polarization-energy correction can be ignored by using ``none`` as the corresponding protocol names.
+For type = dhvap.
+
+nmols
+required
+numerical
+The number of molecules in the liquid phase.
+For type = dhvap.
+
+mu
+optional
+numerical
+The experimental value of the molecular dipole moment in the gas phase (in cubic nanometers).
+For type = dhvap.
+Required for polarization-energy correction. 
+
+alpha
+optional
+numerical
+The value of the molecular isotropic polarizability in the gas-phase (in Debye).
+For type = dhvap.
+Required for polarization-energy correction. 
+
+C
+optional
+numerical
+The value of the additional constant corrections (in kJ per mole; default is 0.0).
+For type = dhvap.
+
+temperature
+optional
+numerical
+The value of the reference temperature. By default, it is inferred from the ``.mdp`` file of the production run of the liquid simulation.
+For type = dhvap.
