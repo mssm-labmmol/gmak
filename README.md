@@ -1,23 +1,25 @@
 # Requirements
 
-- ```alchemlyb``` for MBAR-based free-energy calculations
+- `numpy`
+- `scikit-learn`
+- `pymbar`
+- `alchemlyb` 
 
-# TODO
+# Installation
 
-- update example input file in share
-- More general support for complex topologies (for instance, ALTER some atomtypes instead of defining all of them)
-- Refactor read_input for god's sake
-- grep all TODO and todo
-- consistent naming of methods (e.g., CamelCase vs camel_case)
-- make it so that, with suitable custom functions, it is possible to use other programs besides GROMACS
+Clone the repository and clone and initialize the submodules:
 
-# Documentation Points
+```
+git clone --recurse-submodules https://github.com/mssm-labmmol/gmak.git
+```
 
-- dgsolv protocol:
-    - uses MBAR so calc-lambda-neighbors -1
-    - assumes NPT production runs in MBAR
-    - assumes desolvation, so calculates -DeltaG_{A \to B}
-- input files
-  - sort of like GROMOS, list an order of directives that must be
-    followed (with some possibly omitted)
-- describe what is saved to state and what is recalculated
+After changing into the repository directory, install as usual:
+
+```
+python setup.py install
+```
+
+# Documentation
+
+For usage instructions and more details, consult the
+[documentation](http://gmak.readthedocs.io).
