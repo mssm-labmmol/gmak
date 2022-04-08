@@ -1,7 +1,0 @@
-The ``$grid`` block sets up the :ref:`sampled points <overview/grid:the list of sampled points>`.
-unique
-variation, gridshift
-samples
-required
-list numerical
-The linear indexes of the sampled points of the grid.

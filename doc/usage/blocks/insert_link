@@ -1,5 +1,0 @@
-#!/bin/bash
-
-echo "Choose directive: "
-read directive_type
-echo :$directive_type:

@@ -1,5 +1,0 @@
-workdir
-required
-path
-The directory where the files created by the job are saved.
-The directory is created if it does not exist.

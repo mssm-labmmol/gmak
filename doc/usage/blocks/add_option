@@ -1,4 +1,0 @@
-#!/bin/bash
-
-source commands.sh
-add_option
